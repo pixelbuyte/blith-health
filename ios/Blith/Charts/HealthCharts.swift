@@ -11,9 +11,9 @@ struct AccumulationChart: View {
     /// White-on-cobalt styling for the story card.
     var onHero = false
 
-    var lineColor: Color { onHero ? .white : Palette.accent }
-    var usualColor: Color { onHero ? Color.white.opacity(0.55) : Palette.baseline }
-    var axisColor: Color { onHero ? Color.white.opacity(0.7) : Palette.secondaryInk }
+    var lineColor: Color { Palette.signalBright }
+    var usualColor: Color { Palette.tertiaryInk }
+    var axisColor: Color { Palette.tertiaryInk }
 
     struct Point: Identifiable {
         let hour: Double
@@ -41,41 +41,44 @@ struct AccumulationChart: View {
 
     var body: some View {
         Chart {
+            // Your usual day, as a soft territory: the baseline motif.
             ForEach(usualPoints) { p in
+                AreaMark(x: .value("Hour", p.hour), y: .value("Steps", p.steps))
+                    .foregroundStyle(Palette.usualBand)
+                    .interpolationMethod(.monotone)
                 LineMark(x: .value("Hour", p.hour), y: .value("Steps", p.steps), series: .value("Series", "Usual"))
-                    .foregroundStyle(usualColor)
-                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, dash: [3, 5]))
+                    .foregroundStyle(Palette.quiet)
+                    .lineStyle(StrokeStyle(lineWidth: 1.25, lineCap: .round, dash: [2, 4]))
                     .interpolationMethod(.monotone)
             }
             ForEach(todayPoints) { p in
-                AreaMark(x: .value("Hour", p.hour), y: .value("Steps", p.steps))
-                    .foregroundStyle(LinearGradient(colors: [(onHero ? Palette.cyan : Palette.accent).opacity(onHero ? 0.45 : 0.28), lineColor.opacity(0.02)],
-                                                    startPoint: .top, endPoint: .bottom))
-                    .interpolationMethod(.monotone)
                 LineMark(x: .value("Hour", p.hour), y: .value("Steps", p.steps), series: .value("Series", "Today"))
                     .foregroundStyle(lineColor)
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                     .interpolationMethod(.monotone)
             }
             RuleMark(x: .value("Now", pace.hourNow))
-                .foregroundStyle(lineColor.opacity(0.25))
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
-            PointMark(x: .value("Hour", pace.hourNow), y: .value("Steps", pace.stepsSoFar))
-                .foregroundStyle(onHero ? Palette.cyan : Palette.accent)
-                .symbolSize(110)
+                .foregroundStyle(Palette.hairline)
+                .lineStyle(StrokeStyle(lineWidth: 1))
             if let usual = pace.usualByNow {
                 PointMark(x: .value("Hour", pace.hourNow), y: .value("Usual", usual))
-                    .foregroundStyle(usualColor)
-                    .symbolSize(40)
+                    .symbol { Circle().strokeBorder(Palette.tertiaryInk, lineWidth: 1.5).frame(width: 9, height: 9) }
             }
+            PointMark(x: .value("Hour", pace.hourNow), y: .value("Steps", pace.stepsSoFar))
+                .symbol {
+                    ZStack {
+                        Circle().fill(Palette.signal.opacity(0.25)).frame(width: 20, height: 20)
+                        Circle().fill(Palette.ink).frame(width: 8, height: 8)
+                    }
+                }
         }
         .chartXScale(domain: 0...24)
         .chartXAxis {
             AxisMarks(values: [0.0, 6.0, 12.0, 18.0, 24.0]) { value in
-                AxisGridLine().foregroundStyle(onHero ? Color.white.opacity(0.12) : Palette.separator.opacity(0.4))
+                AxisGridLine().foregroundStyle(Palette.hairline)
                 AxisValueLabel {
                     if let h = value.as(Double.self) {
-                        Text(Fmt.hour(Int(h) % 24).replacingOccurrences(of: " ", with: "")).foregroundStyle(axisColor)
+                        Text(Fmt.hour(Int(h) % 24).replacingOccurrences(of: " ", with: "")).font(Typo.mono(10)).foregroundStyle(axisColor)
                     }
                 }
             }
@@ -140,14 +143,14 @@ struct StepHistoryChart: View {
             ForEach(buckets) { b in
                 if let hour = b.hour {
                     BarMark(x: .value("Hour", hourDate(hour), unit: .hour), y: .value("Steps", b.value ?? 0))
-                        .foregroundStyle(selectedHour == nil || selectedHour == hour ? Palette.accent.gradient : Palette.accent.opacity(0.35).gradient)
+                        .foregroundStyle(selectedHour == nil || selectedHour == hour ? Palette.signal : Palette.signal.opacity(0.3))
                         .cornerRadius(3)
                 }
             }
             ForEach(typicalHourly, id: \.0) { item in
                 LineMark(x: .value("Hour", hourDate(item.0), unit: .hour), y: .value("Usual", item.1))
-                    .foregroundStyle(Palette.baseline)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [3, 4]))
+                    .foregroundStyle(Palette.tertiaryInk)
+                    .lineStyle(StrokeStyle(lineWidth: 1.25, dash: [2, 4]))
                     .interpolationMethod(.monotone)
             }
             if let h = selectedHour, let b = buckets.first(where: { $0.hour == h }) {
@@ -161,14 +164,14 @@ struct StepHistoryChart: View {
         .chartXScale(domain: dayStart...hourDate(24))
         .chartXAxis {
             AxisMarks(values: .stride(by: .hour, count: 6)) { _ in
-                AxisGridLine().foregroundStyle(Palette.separator.opacity(0.4))
-                AxisValueLabel(format: .dateTime.hour())
+                AxisGridLine().foregroundStyle(Palette.hairline)
+                AxisValueLabel(format: .dateTime.hour()).font(Typo.mono(10))
             }
         }
         .chartYAxis {
             AxisMarks(position: .trailing) { _ in
-                AxisGridLine().foregroundStyle(Palette.separator.opacity(0.4))
-                AxisValueLabel()
+                AxisGridLine().foregroundStyle(Palette.hairline)
+                AxisValueLabel().font(Typo.mono(10))
             }
         }
         .chartXSelection(value: interactive ? $selectedDate : .constant(nil))
@@ -202,27 +205,27 @@ struct StepHistoryChart: View {
                 } else if b.value == 0 {
                     // A measured zero: a flat cobalt tick on the baseline.
                     PointMark(x: .value("Date", b.start.chartDate, unit: calendarUnit), y: .value("Steps", 0))
-                        .symbol { Capsule().fill(Palette.cobalt).frame(width: 10, height: 3) }
+                        .symbol { Capsule().fill(Palette.signal).frame(width: 10, height: 3) }
                 } else if !b.isPartial {
                     // No record at all: a hollow marker, visibly different from zero.
                     PointMark(x: .value("Date", b.start.chartDate, unit: calendarUnit), y: .value("Steps", 0))
-                        .symbol { Circle().strokeBorder(Palette.baseline, lineWidth: 1.5).frame(width: 7, height: 7) }
+                        .symbol { Circle().strokeBorder(Palette.tertiaryInk, lineWidth: 1.25).frame(width: 7, height: 7) }
                 }
             }
             if let previousAverage, selectedBucket == nil {
                 RuleMark(y: .value("Previous", previousAverage))
-                    .foregroundStyle(Palette.baseline)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                    .foregroundStyle(Palette.tertiaryInk)
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 4]))
                     .annotation(position: .bottom, alignment: .trailing) {
-                        Text("before \(Fmt.int(previousAverage))").font(.caption2.weight(.semibold)).foregroundStyle(Palette.secondaryInk)
+                        Text("BEFORE \(Fmt.int(previousAverage))").font(Typo.mono(10)).foregroundStyle(Palette.tertiaryInk)
                     }
             }
             if let average, selectedBucket == nil {
                 RuleMark(y: .value("Average", average))
-                    .foregroundStyle(Palette.cobalt.opacity(0.7))
-                    .lineStyle(StrokeStyle(lineWidth: 1.5))
+                    .foregroundStyle(Palette.ink.opacity(0.55))
+                    .lineStyle(StrokeStyle(lineWidth: 1))
                     .annotation(position: .top, alignment: .leading) {
-                        Text("avg \(Fmt.int(average))").font(.caption2.weight(.bold)).foregroundStyle(Palette.cobalt)
+                        Text("AVG \(Fmt.int(average))").font(Typo.mono(10, .medium)).foregroundStyle(Palette.secondaryInk)
                     }
             }
             if let b = selectedBucket {
@@ -235,13 +238,13 @@ struct StepHistoryChart: View {
         }
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: unit == .day && buckets.count <= 7 ? 7 : 5)) { value in
-                AxisValueLabel(format: axisFormat, centered: true)
+                AxisValueLabel(format: axisFormat, centered: true).font(Typo.mono(10))
             }
         }
         .chartYAxis {
             AxisMarks(position: .trailing) { value in
-                AxisGridLine().foregroundStyle(Palette.separator.opacity(0.4))
-                AxisValueLabel { if let v = value.as(Double.self) { Text(v >= 1000 ? "\(Fmt.decimal(v / 1000, digits: v.truncatingRemainder(dividingBy: 1000) == 0 ? 0 : 1))k" : Fmt.int(v)) } }
+                AxisGridLine().foregroundStyle(Palette.hairline)
+                AxisValueLabel { if let v = value.as(Double.self) { Text(v >= 1000 ? "\(Fmt.decimal(v / 1000, digits: v.truncatingRemainder(dividingBy: 1000) == 0 ? 0 : 1))k" : Fmt.int(v)).font(Typo.mono(10)) } }
             }
         }
         .chartXSelection(value: interactive ? $selectedDate : .constant(nil))
@@ -255,10 +258,12 @@ struct StepHistoryChart: View {
     }
 
     func barStyle(_ b: ChartBucket) -> AnyShapeStyle {
-        if let sel = selectedBucket, sel.id != b.id { return AnyShapeStyle(Palette.accent.opacity(0.3)) }
-        if selectedBucket == nil, let pinned, unit == .day, pinned != b.start, buckets.contains(where: { $0.start == pinned }) { return AnyShapeStyle(Palette.accent.opacity(0.45)) }
-        if b.isPartial { return AnyShapeStyle(Palette.accent.opacity(0.55)) }
-        return AnyShapeStyle(Palette.accent.gradient)
+        if let sel = selectedBucket { return AnyShapeStyle(sel.id == b.id ? Palette.signalBright : Palette.signal.opacity(0.25)) }
+        if let pinned, unit == .day, buckets.contains(where: { $0.start == pinned }) {
+            return AnyShapeStyle(pinned == b.start ? Palette.signalBright : Palette.signal.opacity(0.35))
+        }
+        if b.isPartial { return AnyShapeStyle(Palette.signal.opacity(0.45)) }
+        return AnyShapeStyle(LinearGradient(colors: [Palette.signal, Palette.signal.opacity(0.7)], startPoint: .top, endPoint: .bottom))
     }
 
     var axisFormat: Date.FormatStyle {
@@ -280,13 +285,14 @@ struct StepHistoryChart: View {
 
 func tooltip(title: String, value: String) -> some View {
     VStack(alignment: .leading, spacing: 2) {
-        Text(title).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
-        Text(value).font(.subheadline.weight(.bold)).monospacedDigit()
+        Text(title).font(Typo.mono(10, .medium)).foregroundStyle(Palette.tertiaryInk)
+        Text(value).font(Typo.geist(15, .semibold, relativeTo: .subheadline)).monospacedDigit().foregroundStyle(Palette.ink)
     }
-    .padding(.horizontal, 10)
-    .padding(.vertical, 6)
-    .background(Palette.cardRaised, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-    .shadow(color: .black.opacity(0.08), radius: 6, y: 2)
+    .padding(.horizontal, 11)
+    .padding(.vertical, 7)
+    .background(Palette.raised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.hairline, lineWidth: 1))
+    .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
 }
 
 // MARK: - Patterns
@@ -301,7 +307,7 @@ struct WeekdayBars: View {
         Chart {
             ForEach(order, id: \.self) { wd in
                 BarMark(x: .value("Day", Fmt.weekdayShort[wd - 1]), y: .value("Typical steps", pattern.medians[wd - 1] ?? 0))
-                    .foregroundStyle(wd == pattern.busiest ? AnyShapeStyle(Palette.accent.gradient) : AnyShapeStyle(Palette.accent.opacity(0.35)))
+                    .foregroundStyle(wd == pattern.busiest ? AnyShapeStyle(Palette.signal) : AnyShapeStyle(Palette.quiet))
                     .cornerRadius(5)
             }
         }
@@ -325,14 +331,14 @@ struct TimeOfDayBars: View {
             ForEach(0..<24, id: \.self) { h in
                 BarMark(x: .value("Hour", hourDate(h), unit: .hour), y: .value("Share", profile.shares[h]))
                     .foregroundStyle(h >= profile.peakWindowStart && h < profile.peakWindowStart + 4
-                                     ? AnyShapeStyle(Palette.accent.gradient) : AnyShapeStyle(Palette.accent.opacity(0.3)))
+                                     ? AnyShapeStyle(Palette.signal) : AnyShapeStyle(Palette.quiet))
                     .cornerRadius(2)
             }
         }
         .chartXScale(domain: dayStart...hourDate(24))
         .chartXAxis {
             AxisMarks(values: .stride(by: .hour, count: 6)) { _ in
-                AxisValueLabel(format: .dateTime.hour())
+                AxisValueLabel(format: .dateTime.hour()).font(Typo.mono(10))
             }
         }
         .chartYAxis(.hidden)
@@ -375,14 +381,14 @@ struct WeightTrendChart: View {
             if showReadings {
                 ForEach(points) { p in
                     PointMark(x: .value("Date", p.date), y: .value("Reading", display(p.value)))
-                        .foregroundStyle(Palette.baseline.opacity(0.6))
-                        .symbolSize(18)
+                        .foregroundStyle(Palette.tertiaryInk.opacity(0.7))
+                        .symbolSize(16)
                 }
             }
             ForEach(points) { p in
                 LineMark(x: .value("Date", p.date), y: .value("Trend", display(p.trend)))
                     .foregroundStyle(Palette.weight)
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
                     .interpolationMethod(.monotone)
             }
             if let g = goalKg {
@@ -390,7 +396,7 @@ struct WeightTrendChart: View {
                     .foregroundStyle(Palette.weight.opacity(0.6))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                     .annotation(position: .bottom, alignment: .trailing) {
-                        Text("Goal").font(.caption2.weight(.semibold)).foregroundStyle(Palette.weight)
+                        Text("GOAL").font(Typo.mono(10, .medium)).foregroundStyle(Palette.weight)
                     }
             }
             if let p = selectedPoint {
@@ -405,8 +411,8 @@ struct WeightTrendChart: View {
         .chartYScale(domain: yDomain)
         .chartYAxis {
             AxisMarks(position: .trailing) { _ in
-                AxisGridLine().foregroundStyle(Palette.separator.opacity(0.4))
-                AxisValueLabel()
+                AxisGridLine().foregroundStyle(Palette.hairline)
+                AxisValueLabel().font(Typo.mono(10))
             }
         }
         .chartXSelection(value: interactive ? $selected : .constant(nil))
@@ -447,7 +453,7 @@ struct SleepTimelineView: View {
                 if !compact {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(Self.lanes, id: \.0) { lane in
-                            Text(lane.0).font(.caption2).foregroundStyle(Palette.secondaryInk).frame(maxHeight: .infinity)
+                            Text(lane.0.uppercased()).font(Typo.mono(9.5)).foregroundStyle(Palette.tertiaryInk).frame(maxHeight: .infinity)
                         }
                     }
                     .frame(width: 40)
@@ -456,7 +462,7 @@ struct SleepTimelineView: View {
                     let laneHeight = geo.size.height / 4
                     ZStack(alignment: .topLeading) {
                         ForEach(0..<4, id: \.self) { i in
-                            Rectangle().fill(Palette.separator.opacity(0.35)).frame(height: 1)
+                            Rectangle().fill(Palette.hairline).frame(height: 1)
                                 .offset(y: laneHeight * CGFloat(i) + laneHeight / 2)
                         }
                         ForEach(Array(night.segments.enumerated()), id: \.offset) { _, seg in
@@ -479,8 +485,8 @@ struct SleepTimelineView: View {
                     Spacer()
                     Text(end.formatted(date: .omitted, time: .shortened))
                 }
-                .font(.caption2)
-                .foregroundStyle(Palette.secondaryInk)
+                .font(Typo.mono(10))
+                .foregroundStyle(Palette.tertiaryInk)
                 .padding(.leading, 48)
             }
         }
@@ -499,7 +505,7 @@ struct Sparkline: View {
             ForEach(Array(values.enumerated()), id: \.offset) { i, v in
                 LineMark(x: .value("i", i), y: .value("v", v))
                     .foregroundStyle(color)
-                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    .lineStyle(StrokeStyle(lineWidth: 1.75, lineCap: .round))
                     .interpolationMethod(.monotone)
             }
         }
@@ -521,20 +527,20 @@ struct SleepTimingChart: View {
         Chart(points) { p in
             BarMark(x: .value("Night", p.date.chartDate, unit: .day),
                     yStart: .value("Asleep", p.bedMinutes / 60), yEnd: .value("Awake", p.wakeMinutes / 60), width: .ratio(0.6))
-                .foregroundStyle(Palette.sleep.gradient)
+                .foregroundStyle(LinearGradient(colors: [Palette.sleep, Palette.sleep.opacity(0.6)], startPoint: .top, endPoint: .bottom))
                 .cornerRadius(4)
         }
         .chartYScale(domain: .automatic(includesZero: false, reversed: true))
         .chartYAxis {
             AxisMarks(position: .trailing, values: .stride(by: 2)) { value in
-                AxisGridLine().foregroundStyle(Palette.separator.opacity(0.4))
+                AxisGridLine().foregroundStyle(Palette.hairline)
                 AxisValueLabel {
-                    if let h = value.as(Double.self) { Text(Fmt.hour(Int(h.rounded()))).font(.caption2) }
+                    if let h = value.as(Double.self) { Text(Fmt.hour(Int(h.rounded()))).font(Typo.mono(10)) }
                 }
             }
         }
         .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: 5)) { _ in AxisValueLabel(format: .dateTime.day().month(.abbreviated)) }
+            AxisMarks(values: .automatic(desiredCount: 5)) { _ in AxisValueLabel(format: .dateTime.day().month(.abbreviated)).font(Typo.mono(10)) }
         }
         .frame(height: height)
         .accessibilityElement(children: .ignore)
@@ -577,14 +583,14 @@ struct WalkSignatureView: View {
             for ring in 0..<7 {
                 let r = maxR * (0.3 + 0.7 * CGFloat(ring) / 6)
                 ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
-                           with: .color(Palette.cobalt.opacity(0.07)), lineWidth: 1)
+                           with: .color(Palette.hairline), lineWidth: 0.75)
                 for hour in 0..<24 {
                     let v = m[ring][hour] / peak
                     guard v > 0.02 else { continue }
                     let angle = (Double(hour) / 24) * 2 * .pi - .pi / 2
                     let p = CGPoint(x: c.x + r * CGFloat(cos(angle)), y: c.y + r * CGFloat(sin(angle)))
                     let dot = CGFloat(1.5 + 7.5 * sqrt(v)) * (appear ? 1 : 0.2)
-                    let color = v > 0.6 ? Palette.cyan : Palette.cobalt
+                    let color = v > 0.6 ? Palette.cyan : Palette.signal
                     ctx.fill(Path(ellipseIn: CGRect(x: p.x - dot / 2, y: p.y - dot / 2, width: dot, height: dot)),
                              with: .color(color.opacity(0.35 + 0.65 * v)))
                 }
@@ -592,7 +598,7 @@ struct WalkSignatureView: View {
             for (label, hour) in [("12a", 0), ("6a", 6), ("12p", 12), ("6p", 18)] {
                 let angle = (Double(hour) / 24) * 2 * .pi - .pi / 2
                 let r = maxR + 2
-                ctx.draw(Text(label).font(.system(size: 9, weight: .semibold, design: .monospaced)).foregroundStyle(Palette.secondaryInk),
+                ctx.draw(Text(label.uppercased()).font(Typo.mono(9, .medium)).foregroundStyle(Palette.tertiaryInk),
                          at: CGPoint(x: c.x + r * CGFloat(cos(angle)) * 0.86, y: c.y + r * CGFloat(sin(angle)) * 0.86))
             }
         }

@@ -12,7 +12,7 @@ struct BlithApp: App {
                 .environment(app)
                 .environment(app.router)
                 .tint(Palette.accent)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(AppearancePreference.current.scheme)
                 .task { await app.start() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active, app.phase == .ready { app.checkIn(); Task { await app.refresh() } }
@@ -30,7 +30,7 @@ struct RootView: View {
             switch app.phase {
             case .launching:
                 Palette.canvas.ignoresSafeArea()
-                    .overlay(ProgressView())
+                    .overlay(SignalPulse(size: 72))
             case .onboarding:
                 OnboardingView()
                     .transition(.opacity)

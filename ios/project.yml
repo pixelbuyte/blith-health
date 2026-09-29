@@ -79,6 +79,14 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UILaunchScreen:
           UIColorName: LaunchBackground
+        UIAppFonts:
+          - Geist-Light.ttf
+          - Geist-Regular.ttf
+          - Geist-Medium.ttf
+          - Geist-SemiBold.ttf
+          - Geist-Bold.ttf
+          - GeistMono-Regular.ttf
+          - GeistMono-Medium.ttf
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSHealthShareUsageDescription: Blith reads the health data you choose, such as steps, walking, workouts, sleep and weight, to learn your personal baselines and explain how you're changing. It's stored on this iPhone and never used for advertising.
