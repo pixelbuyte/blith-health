@@ -175,7 +175,7 @@ public struct ScoreEngine: Sendable {
             let prior = (1...7).compactMap { history.sleepNights[date.adding(days: -$0)]?.segments.first(where: { $0.stage.isAsleep })?.start }
                 .map { Self.minutesOfDay($0) }
             if prior.count >= 3, let med = Stats.median(prior) {
-                consistency = max(0, 1 - abs(Self.minutesOfDay(bedtime) - med) / 120)
+                consistency = max(0, 1 - abs(Self.minutesOfDay(bedtime) - med) / 240)
             }
         }
         var parts: [(Double, Double)] = [(sufficiency, 0.55), (efficiency, 0.15)]
@@ -233,13 +233,13 @@ public struct ScoreEngine: Sendable {
         if let energy {
             let base = Stats.median((1...28).compactMap { history.value(.activeEnergy, on: date.adding(days: -$0)) })
             factors.append(ScoreFactor(id: "energy", title: "Active energy", value: "\(Fmt.int(energy)) kcal",
-                                       baseline: base.map { "usual \(Fmt.int($0)) kcal" } ?? "building your usual",
+                                       baseline: base.map { "\(date == today ? "usual full day" : "usual") \(Fmt.int($0)) kcal" } ?? "building your usual",
                                        effect: base.map { max(-1, min(1, (energy - $0) / max($0, 1))) } ?? 0, weight: 0.7))
         }
         if let exercise {
             let base = Stats.median((1...28).compactMap { history.value(.exerciseMinutes, on: date.adding(days: -$0)) })
             factors.append(ScoreFactor(id: "exercise", title: "Exercise minutes", value: "\(Fmt.int(exercise)) min",
-                                       baseline: base.map { "usual \(Fmt.int($0)) min" } ?? "building your usual",
+                                       baseline: base.map { "\(date == today ? "usual full day" : "usual") \(Fmt.int($0)) min" } ?? "building your usual",
                                        effect: base.map { max(-1, min(1, (exercise - $0) / max($0, 1))) } ?? 0, weight: 0.3))
         }
         return LoadResult(date: date, value: value, effort: effort, usualRange: usual, activeEnergy: energy, exerciseMinutes: exercise,
@@ -251,7 +251,8 @@ public struct ScoreEngine: Sendable {
     public func readiness(on date: LocalDate) -> ReadinessResult {
         let hrvBase = baseline(.hrv, before: date, log: true)
         let rhrBase = baseline(.restingHeartRate, before: date)
-        let calibration = min(hrvBase?.n ?? 0, rhrBase?.n ?? 0, Self.calibrationDays)
+        let window = DateSpan(date.adding(days: -30), date.adding(days: -1))
+        let calibration = min(history.values(.hrv, in: window).count, history.values(.restingHeartRate, in: window).count, Self.calibrationDays)
         guard calibration >= Self.calibrationDays else {
             return ReadinessResult(date: date, score: nil, band: nil, calibrationDays: calibration, factors: [],
                                    summary: "Learning your usual heart signals: \(calibration) of \(Self.calibrationDays) nights so far.")

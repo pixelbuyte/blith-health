@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-  <circle cx="12" cy="15" r="5.6" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M9.6,10.2 L7,3.2 H10.4 L12,7.4" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M14.4,10.2 L17,3.2 H13.6 L12.9,5.1" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M12,12.7 Q12.51,14.49 14.3,15 Q12.51,15.51 12,17.3 Q11.49,15.51 9.7,15 Q11.49,14.49 12,12.7 Z" fill="#000000" stroke="none"/>
+  <circle cx="12" cy="15.3" r="5.2" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M10,10.4 L7.4,3.2 L10.6,3.2 L12,6.9" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M14,10.4 L16.6,3.2 L13.4,3.2 L12.85,4.7" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M12,12.9 Q12.53,14.77 14.4,15.3 Q12.53,15.83 12,17.7 Q11.47,15.83 9.6,15.3 Q11.47,14.77 12,12.9 Z" fill="#000000" stroke="none"/>
 </svg>

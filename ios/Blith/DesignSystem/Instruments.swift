@@ -112,6 +112,8 @@ struct MonoPill: View {
 struct FactorRow: View {
     let factor: ScoreFactor
     var color: Color
+    /// Colour for factors that pulled the score down (neutral where "lower" isn't worse, e.g. a day in progress).
+    var negative: Color = Palette.coral
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -120,7 +122,7 @@ struct FactorRow: View {
                 Spacer()
                 Text(factor.value).font(Typo.number(17)).foregroundStyle(Palette.ink).monospacedDigit()
             }
-            DivergingMeter(value: factor.effect, color: factor.effect >= 0 ? color : Palette.coral)
+            DivergingMeter(value: factor.effect, color: factor.effect >= 0 ? color : negative)
             HStack {
                 Text(factor.baseline).font(.caption).foregroundStyle(Palette.secondaryInk)
                 Spacer()
@@ -255,11 +257,17 @@ struct ScoreHeatmap: View {
         }
     }
 
+    /// Intensity relative to the range shown, so personal differences stay visible.
+    func relative(_ v: Double, _ all: [Double]) -> Double {
+        guard let lo = all.min(), let hi = all.max(), hi > lo else { return 0.6 }
+        return (v - lo) / (hi - lo)
+    }
+
     func color(_ d: DayScores) -> Color {
         switch mode {
-        case .readiness: return d.readiness == nil ? Palette.raised : Palette.band(d.band).opacity(0.25 + 0.75 * Double(d.readiness ?? 0) / 100)
-        case .sleep: return d.sleep.map { Palette.sleep.opacity(0.15 + 0.85 * pow(Double($0) / 100, 2)) } ?? Palette.raised
-        case .load: return d.load.map { Palette.cobalt.opacity(0.12 + 0.88 * $0 / LoadResult.maximum) } ?? Palette.raised
+        case .readiness: return d.readiness == nil ? Palette.raised : Palette.band(d.band).opacity(0.35 + 0.65 * Double(d.readiness ?? 0) / 100)
+        case .sleep: return d.sleep.map { Palette.sleep.opacity(0.12 + 0.88 * relative(Double($0), days.compactMap(\.sleep).map(Double.init))) } ?? Palette.raised
+        case .load: return d.load.map { Palette.cobalt.opacity(0.12 + 0.88 * relative($0, days.compactMap(\.load))) } ?? Palette.raised
         }
     }
 

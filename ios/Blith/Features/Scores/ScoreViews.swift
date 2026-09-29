@@ -40,7 +40,7 @@ struct ReadinessDetailView: View {
                           unit: r.score == nil ? "/\(ScoreEngine.calibrationDays)" : "%", label: r.score == nil ? "Calibrating" : "Readiness",
                           color: r.score == nil ? Palette.secondaryInk : color, size: 190)
                     .id(day)
-                if let b = r.band { MonoPill(text: "\(b.label) · 67+ high · 34–66 moderate", color: color) }
+                if let b = r.band { MonoPill(text: "\(b.label) readiness · \(b == .high ? "67–100" : b == .moderate ? "34–66" : "0–33")", color: color) }
                 Text(r.summary).font(Typo.story).foregroundStyle(Palette.ink).multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)

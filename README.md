@@ -1,21 +1,31 @@
 # Blith
 
-A personal health intelligence app for iPhone. Blith turns your Apple Health history into
-understanding: it learns **your** normal, notices what changed, explains why it matters with
-the evidence behind it, and lets you ask questions that are answered from your real data with
-native charts right in the conversation.
+A personal health intelligence app for iPhone, built like an instrument. Blith turns your Apple
+Health history into three daily scores measured against **you**:
 
-**Today** · what matters about you right now, compared with your usual at the same time
-**Walk** · every range with its own story, the exact days behind it, and your walking signature
-**Body** · a blue body map for dated notes, anchored to regions, with a history timeline
+- **Readiness**: overnight HRV and resting heart rate against your own baseline, plus sleep.
+- **Sleep performance**: sleep measured against your personal need.
+- **Load**: how much the day asked of your body.
+
+It also keeps a health monitor of your personal vital ranges and a 3D body map for dated notes,
+and answers questions from your real data with native cards. Every number is one tap away from the
+factors behind it.
+
+**Today** · readiness, sleep and load dials, the 7-day strip, the health monitor, and movement compared with the same time on a usual day
+**Activity** · load against your usual range, steps with a story for every range, gait and your walking signature
+**Sleep** · stages, efficiency, time to fall asleep, wake-ups, consistency, 7-night sleep debt, a suggestion for tonight and a 13-week heatmap
+**Body** · a free-rotating 3D male figure (CC0 MakeHuman base mesh) with region notes, a timeline and a muscle layer
 **Ask** · an assistant that computes from your records and answers with native cards
 
 <p>
-<img src="design/screenshots/iPhone17e-light-1-today.png" width="200">
-<img src="design/screenshots/iPhone17e-light-2-walk.png" width="200">
-<img src="design/screenshots/iPhone17e-light-3-ask.png" width="200">
-<img src="design/screenshots/iPhone17e-light-4-body.png" width="200">
-<img src="design/screenshots/iPhone17ProMax-dark-1-today.png" width="200">
+<img src="design/screenshots/iPhone17e-01-today.png" width="200">
+<img src="design/screenshots/iPhone17e-02-today-monitor.png" width="200">
+<img src="design/screenshots/iPhone17e-05-sleep.png" width="200">
+<img src="design/screenshots/iPhone17e-07-body.png" width="200">
+<img src="design/screenshots/iPhone17e-09-body-muscle.png" width="200">
+<img src="design/screenshots/iPhone17e-04-activity.png" width="200">
+<img src="design/screenshots/iPhone17e-11-readiness.png" width="200">
+<img src="design/screenshots/iPhone17e-12-ask.png" width="200">
 </p>
 
 _Simulator screenshots from CI using labelled sample data._
@@ -30,8 +40,8 @@ ios/
   Blith/                SwiftUI app: HealthKit provider, design system, features
 codemagic.yaml          CI: tests, simulator build, screenshots; TestFlight release
 scripts/screenshots.sh  simulator screenshots with sample data
-design/                 app icon sources
-docs/                   ARCHITECTURE, PRIVACY, HUAWEI, RELEASE
+design/                 icon, symbols, 3D body generator (design/body3d), screenshots
+docs/                   DESIGN, ARCHITECTURE, PRIVACY, HUAWEI, RELEASE
 ```
 
 ## Develop
@@ -51,8 +61,8 @@ cd ios && xcodegen generate && open Blith.xcodeproj
 ```
 
 Launch arguments for testing (Edit Scheme › Arguments): `-BlithDemo balanced` (sample data,
-see `DemoScenario`), `-BlithTab walk|ask`, `-BlithSheet sleep|weight|insight`,
-`-BlithResetOnboarding YES`.
+see `DemoScenario`), `-BlithTab walk|sleep|body|ask`, `-BlithSheet readiness|vital|weight|insight`,
+`-BlithBodyLayer muscle`, `-BlithScrollTo monitor`, `-BlithResetOnboarding YES`.
 
 ## AI
 

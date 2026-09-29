@@ -495,7 +495,7 @@ struct LoadSection: View {
                 }
             }
             if let load {
-                ForEach(load.factors) { FactorRow(factor: $0, color: Palette.cobalt) }
+                ForEach(load.factors) { FactorRow(factor: $0, color: Palette.cobalt, negative: Palette.cobalt.opacity(0.45)) }
                 if !load.workouts.isEmpty {
                     VStack(alignment: .leading, spacing: Space.s) {
                         Eyebrow(text: "Workouts")

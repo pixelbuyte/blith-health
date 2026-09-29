@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-  <circle cx="10.8" cy="4.6" r="2.2" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M10.8,8.6 V14" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M6.5,12.6 L10.8,9.4 L15.1,12.6" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M8.1,20.6 L10.8,14 L13.5,20.6" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="17.4" cy="19.2" r="1.9" fill="#000000" stroke="none"/>
+  <circle cx="12" cy="3.6" r="2.2" fill="#000000" stroke="none"/>
+  <path d="M9.8,7.4 C8.9,7.45 8.1,7.55 7.3,7.85 C5.8,8.4 5.3,9.6 5.9,10.7 L9.3,14.5 L14.7,14.5 L18.1,10.7 C18.7,9.6 18.2,8.4 16.7,7.85 C15.9,7.55 15.1,7.45 14.2,7.4" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M4.2,11 L3.7,16.2" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M10.35,14.8 L9.85,21" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M19.8,11 L20.3,16.2" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M13.65,14.8 L14.15,21" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

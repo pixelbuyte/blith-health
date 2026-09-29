@@ -70,10 +70,17 @@ SwiftUI              Today · Walk · Ask, detail sheets, AppRouter deep links
 | Swift 5 language mode in the app target, Swift 6 in BlithCore | App code is compiled only in CI; this keeps HealthKit/SwiftUI concurrency friction low while the logic package stays strict. |
 | iOS 18 minimum, Liquid Glass on iOS 26 with material fallbacks | `Tab` API + Observation; native glass tab bar, composer, picker and buttons. |
 
+## Scores
+
+`BlithCore/Analytics/Scores.swift` (`ScoreEngine`) computes readiness, sleep performance, load and the
+health monitor from `HealthHistory` alone. It is deterministic and unit-tested (`ScoreTests`). The
+snapshot carries today's results and 91 days of `DayScores` for the strip and heatmaps. See
+`docs/DESIGN.md` for the formulas.
+
 ## Future-proofing (not built)
 
-- `HealthEvent` (date, kind, title, note, bodyRegion, severity, relatedMetrics) is persisted in
-  `HealthHistory.events` so a future body view and injury timeline ("twisted right ankle") can
-  attach to history without a migration. There is no body UI or mascot in this phase.
+- Body notes (`HealthEvent`) are stored by `BodyRegion`, never by screen or mesh position. The
+  3D figure groups its triangles by region, so a different or more detailed model can replace it
+  without migrating any notes.
 - Background delivery (HKObserverQuery) can call `AppModel.refresh()`; the sync engine is
   already incremental and idempotent.
