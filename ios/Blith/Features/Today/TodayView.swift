@@ -324,12 +324,14 @@ struct TodayView: View {
         let values = s.ctx.history.values(.vo2Max, in: s.ctx.trailing(180)).sorted { $0.key < $1.key }
         return Button { router.sheet = .vital(.vo2Max) } label: {
             MetricTile(title: "Cardio fitness", icon: "bl.vo2", value: values.last.map { Fmt.decimal($0.value) } ?? "–", unit: values.isEmpty ? nil : "VO₂",
-                       caption: values.count >= 2 ? "\(Fmt.decimal(values.last!.value - values.first!.value, digits: 1)) since \(Fmt.shortDate(values.first!.key))" : "From outdoor walks and runs",
+                       caption: values.count >= 2 ? "\(signed(values.last!.value - values.first!.value)) since \(Fmt.shortDate(values.first!.key))" : "From outdoor walks and runs",
                        color: Palette.heart, spark: values.map(\.value))
                 .frame(maxHeight: .infinity, alignment: .top)
         }
         .buttonStyle(.plain)
     }
+
+    func signed(_ v: Double) -> String { (v >= 0 ? "+" : "−") + Fmt.decimal(abs(v)) }
 
     func weightTile(_ s: HealthSnapshot, units: UnitSystem) -> some View {
         Button { router.sheet = .weight } label: {

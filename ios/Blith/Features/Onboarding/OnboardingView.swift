@@ -307,18 +307,23 @@ struct BrandMark: View {
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
+            let r = w * 0.2
+            let c = CGPoint(x: w * 0.55, y: w * 0.58)
+            let end = Angle.degrees(195 + 0.87 * 360)
             ZStack {
                 RoundedRectangle(cornerRadius: w * 0.26, style: .continuous)
                     .fill(RadialGradient(colors: [Color(hex: 0x12245A), Color(hex: 0x05070D)], center: .center, startRadius: 0, endRadius: w * 0.7))
                 RoundedRectangle(cornerRadius: w * 0.26, style: .continuous).strokeBorder(Palette.cobalt.opacity(0.35), lineWidth: 1)
-                Capsule().fill(Palette.ink).frame(width: w * 0.1, height: w * 0.6).position(x: w * 0.33, y: w * 0.48)
-                Circle().trim(from: 0, to: 0.82)
+                Capsule().fill(Palette.cobalt).frame(width: w * 0.1, height: w * 0.4).position(x: c.x - r, y: w * 0.36)
+                Circle().trim(from: 0, to: 0.87)
                     .stroke(AngularGradient(colors: [Palette.cobalt, Palette.cyan], center: .center),
                             style: StrokeStyle(lineWidth: w * 0.1, lineCap: .round))
-                    .rotationEffect(.degrees(150))
-                    .frame(width: w * 0.42, height: w * 0.42)
-                    .position(x: w * 0.54, y: w * 0.6)
+                    .rotationEffect(.degrees(195))
+                    .frame(width: r * 2, height: r * 2)
+                    .position(c)
                     .shadow(color: Palette.cyan.opacity(0.6), radius: w * 0.05)
+                Circle().fill(.white).frame(width: w * 0.05)
+                    .position(x: c.x + r * cos(end.radians), y: c.y + r * sin(end.radians))
             }
         }
         .aspectRatio(1, contentMode: .fit)

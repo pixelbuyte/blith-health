@@ -160,7 +160,7 @@ final class BodySceneController: NSObject {
         turntable.addChildNode(bodyNode)
         turntable.addChildNode(markers)
         scene.rootNode.addChildNode(turntable)
-        scene.rootNode.addChildNode(floor())
+        scene.rootNode.addChildNode(floorNode())
 
         let camera = SCNCamera()
         camera.fieldOfView = 30
@@ -245,7 +245,7 @@ final class BodySceneController: NSObject {
         return m
     }
 
-    func floor() -> SCNNode {
+    func floorNode() -> SCNNode {
         let size = 256
         let img = UIGraphicsImageRenderer(size: CGSize(width: size, height: size)).image { ctx in
             let colors = [UIColor(hex: 0x4C8DFF, alpha: 0.55).cgColor, UIColor(hex: 0x4C8DFF, alpha: 0.12).cgColor, UIColor.clear.cgColor] as CFArray
@@ -383,8 +383,8 @@ final class BodySceneController: NSObject {
             node.addChildNode(ring)
             if !UIAccessibility.isReduceMotionEnabled {
                 let pulse = CABasicAnimation(keyPath: "scale")
-                pulse.fromValue = SCNVector3(0.6, 0.6, 0.6)
-                pulse.toValue = SCNVector3(1.4, 1.4, 1.4)
+                pulse.fromValue = NSValue(scnVector3: SCNVector3(0.6, 0.6, 0.6))
+                pulse.toValue = NSValue(scnVector3: SCNVector3(1.4, 1.4, 1.4))
                 pulse.duration = 1.6
                 pulse.repeatCount = .infinity
                 let fade = CABasicAnimation(keyPath: "opacity")
@@ -529,12 +529,10 @@ struct BodySceneView: UIViewRepresentable {
         }
 
         /// Only horizontal drags turn the figure, so vertical drags keep scrolling the page.
-        nonisolated func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
-            MainActor.assumeIsolated {
-                guard let pan = g as? UIPanGestureRecognizer else { return true }
-                let v = pan.velocity(in: pan.view)
-                return abs(v.x) > abs(v.y)
-            }
+        func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
+            guard let pan = g as? UIPanGestureRecognizer else { return true }
+            let v = pan.velocity(in: pan.view)
+            return abs(v.x) > abs(v.y)
         }
     }
 }

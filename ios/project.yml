@@ -53,6 +53,7 @@ targets:
           - "Resources/Body3D/**"
       - path: Blith/Resources/Body3D
         buildPhase: resources
+        optional: true
     dependencies:
       - package: BlithCore
         product: BlithCore
