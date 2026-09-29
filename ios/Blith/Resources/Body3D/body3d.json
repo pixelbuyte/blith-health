@@ -1,0 +1,748 @@
+{
+ "source": "MakeHuman 1.x base mesh + macro targets (CC0 1.0)",
+ "height": 1.8,
+ "bounds": {
+  "min": [
+   -0.4722,
+   0.0,
+   -0.158
+  ],
+  "max": [
+   0.4722,
+   1.8,
+   0.158
+  ]
+ },
+ "regions": [
+  {
+   "id": "head",
+   "anchor": [
+    -0.0001,
+    1.6687,
+    0.0977
+   ],
+   "normal": [
+    -0.0,
+    0.4659,
+    0.8848
+   ],
+   "radius": 0.192
+  },
+  {
+   "id": "neck",
+   "anchor": [
+    -0.0001,
+    1.5438,
+    0.0278
+   ],
+   "normal": [
+    -0.0,
+    -0.2695,
+    0.963
+   ],
+   "radius": 0.15
+  },
+  {
+   "id": "rightShoulder",
+   "anchor": [
+    -0.2594,
+    1.4322,
+    -0.0008
+   ],
+   "normal": [
+    -0.4779,
+    0.2215,
+    0.85
+   ],
+   "radius": 0.143
+  },
+  {
+   "id": "leftShoulder",
+   "anchor": [
+    0.2592,
+    1.4322,
+    -0.0008
+   ],
+   "normal": [
+    0.4779,
+    0.2215,
+    0.85
+   ],
+   "radius": 0.143
+  },
+  {
+   "id": "chest",
+   "anchor": [
+    -0.0067,
+    1.3472,
+    0.0745
+   ],
+   "normal": [
+    0.1127,
+    0.0223,
+    0.9934
+   ],
+   "radius": 0.286
+  },
+  {
+   "id": "abdomen",
+   "anchor": [
+    -0.0098,
+    1.0953,
+    0.0628
+   ],
+   "normal": [
+    0.0171,
+    0.1229,
+    0.9923
+   ],
+   "radius": 0.194
+  },
+  {
+   "id": "upperBack",
+   "anchor": [
+    -0.0001,
+    1.3405,
+    -0.1419
+   ],
+   "normal": [
+    -0.0,
+    0.0029,
+    -1.0
+   ],
+   "radius": 0.289
+  },
+  {
+   "id": "lowerBack",
+   "anchor": [
+    -0.0001,
+    1.0751,
+    -0.1178
+   ],
+   "normal": [
+    -0.0,
+    0.2258,
+    -0.9742
+   ],
+   "radius": 0.18
+  },
+  {
+   "id": "rightUpperArm",
+   "anchor": [
+    -0.2885,
+    1.2826,
+    0.0098
+   ],
+   "normal": [
+    -0.0487,
+    0.1746,
+    0.9834
+   ],
+   "radius": 0.128
+  },
+  {
+   "id": "leftUpperArm",
+   "anchor": [
+    0.2883,
+    1.2826,
+    0.0098
+   ],
+   "normal": [
+    0.0487,
+    0.1746,
+    0.9834
+   ],
+   "radius": 0.128
+  },
+  {
+   "id": "rightElbow",
+   "anchor": [
+    -0.3312,
+    1.1685,
+    0.01
+   ],
+   "normal": [
+    0.1287,
+    0.0694,
+    0.9892
+   ],
+   "radius": 0.084
+  },
+  {
+   "id": "leftElbow",
+   "anchor": [
+    0.3311,
+    1.1685,
+    0.01
+   ],
+   "normal": [
+    -0.1287,
+    0.0694,
+    0.9892
+   ],
+   "radius": 0.084
+  },
+  {
+   "id": "rightForearm",
+   "anchor": [
+    -0.3774,
+    1.0643,
+    0.0276
+   ],
+   "normal": [
+    -0.0034,
+    0.1983,
+    0.9801
+   ],
+   "radius": 0.148
+  },
+  {
+   "id": "leftForearm",
+   "anchor": [
+    0.3773,
+    1.0643,
+    0.0276
+   ],
+   "normal": [
+    0.0034,
+    0.1983,
+    0.9801
+   ],
+   "radius": 0.148
+  },
+  {
+   "id": "rightWrist",
+   "anchor": [
+    -0.4292,
+    0.9279,
+    0.0846
+   ],
+   "normal": [
+    -0.0216,
+    0.8011,
+    0.5982
+   ],
+   "radius": 0.059
+  },
+  {
+   "id": "leftWrist",
+   "anchor": [
+    0.4296,
+    0.9282,
+    0.0839
+   ],
+   "normal": [
+    -0.0038,
+    0.7841,
+    0.6206
+   ],
+   "radius": 0.059
+  },
+  {
+   "id": "rightHand",
+   "anchor": [
+    -0.4606,
+    0.8407,
+    0.1175
+   ],
+   "normal": [
+    -0.7805,
+    0.0767,
+    0.6204
+   ],
+   "radius": 0.118
+  },
+  {
+   "id": "leftHand",
+   "anchor": [
+    0.4597,
+    0.8427,
+    0.1184
+   ],
+   "normal": [
+    0.7254,
+    0.2611,
+    0.6369
+   ],
+   "radius": 0.118
+  },
+  {
+   "id": "hips",
+   "anchor": [
+    -0.0001,
+    0.9739,
+    0.0579
+   ],
+   "normal": [
+    -0.0,
+    -0.2333,
+    0.9724
+   ],
+   "radius": 0.163
+  },
+  {
+   "id": "rightHip",
+   "anchor": [
+    -0.1374,
+    0.9317,
+    -0.1084
+   ],
+   "normal": [
+    -0.7606,
+    0.0942,
+    -0.6424
+   ],
+   "radius": 0.16
+  },
+  {
+   "id": "leftHip",
+   "anchor": [
+    0.1372,
+    0.9317,
+    -0.1084
+   ],
+   "normal": [
+    0.7606,
+    0.0942,
+    -0.6424
+   ],
+   "radius": 0.16
+  },
+  {
+   "id": "rightThigh",
+   "anchor": [
+    -0.1248,
+    0.7604,
+    0.063
+   ],
+   "normal": [
+    -0.0164,
+    -0.0513,
+    0.9985
+   ],
+   "radius": 0.24
+  },
+  {
+   "id": "leftThigh",
+   "anchor": [
+    0.1247,
+    0.7604,
+    0.063
+   ],
+   "normal": [
+    0.0164,
+    -0.0513,
+    0.9985
+   ],
+   "radius": 0.24
+  },
+  {
+   "id": "rightKnee",
+   "anchor": [
+    -0.145,
+    0.5353,
+    0.0189
+   ],
+   "normal": [
+    -0.0319,
+    -0.231,
+    0.9724
+   ],
+   "radius": 0.115
+  },
+  {
+   "id": "leftKnee",
+   "anchor": [
+    0.1448,
+    0.5353,
+    0.0189
+   ],
+   "normal": [
+    0.0319,
+    -0.231,
+    0.9724
+   ],
+   "radius": 0.115
+  },
+  {
+   "id": "rightShin",
+   "anchor": [
+    -0.2006,
+    0.3201,
+    -0.0088
+   ],
+   "normal": [
+    -0.1062,
+    -0.062,
+    0.9924
+   ],
+   "radius": 0.194
+  },
+  {
+   "id": "leftShin",
+   "anchor": [
+    0.2005,
+    0.3201,
+    -0.0088
+   ],
+   "normal": [
+    0.1062,
+    -0.062,
+    0.9924
+   ],
+   "radius": 0.194
+  },
+  {
+   "id": "rightCalf",
+   "anchor": [
+    -0.1943,
+    0.3282,
+    -0.1225
+   ],
+   "normal": [
+    -0.1028,
+    -0.1796,
+    -0.9784
+   ],
+   "radius": 0.199
+  },
+  {
+   "id": "leftCalf",
+   "anchor": [
+    0.1941,
+    0.3282,
+    -0.1225
+   ],
+   "normal": [
+    0.1028,
+    -0.1796,
+    -0.9784
+   ],
+   "radius": 0.199
+  },
+  {
+   "id": "rightAnkle",
+   "anchor": [
+    -0.208,
+    0.0777,
+    0.0203
+   ],
+   "normal": [
+    -0.1308,
+    0.7954,
+    0.5918
+   ],
+   "radius": 0.084
+  },
+  {
+   "id": "leftAnkle",
+   "anchor": [
+    0.2079,
+    0.0777,
+    0.0203
+   ],
+   "normal": [
+    0.1308,
+    0.7954,
+    0.5918
+   ],
+   "radius": 0.084
+  },
+  {
+   "id": "rightFoot",
+   "anchor": [
+    -0.2016,
+    0.0422,
+    0.0799
+   ],
+   "normal": [
+    -0.1524,
+    0.8938,
+    0.4219
+   ],
+   "radius": 0.148
+  },
+  {
+   "id": "leftFoot",
+   "anchor": [
+    0.2014,
+    0.0422,
+    0.0799
+   ],
+   "normal": [
+    0.1524,
+    0.8938,
+    0.4219
+   ],
+   "radius": 0.148
+  }
+ ],
+ "muscles": [
+  {
+   "id": "neck",
+   "name": "Neck (sternocleidomastoid)",
+   "anchor": [
+    -0.0001,
+    1.5438,
+    0.0278
+   ],
+   "normal": [
+    -0.0,
+    -0.2695,
+    0.963
+   ]
+  },
+  {
+   "id": "trapezius",
+   "name": "Upper back (trapezius)",
+   "anchor": [
+    -0.0001,
+    1.4581,
+    -0.1201
+   ],
+   "normal": [
+    -0.0,
+    0.2944,
+    -0.9557
+   ]
+  },
+  {
+   "id": "deltoids",
+   "name": "Shoulders (deltoids)",
+   "anchor": [
+    0.2901,
+    1.4207,
+    -0.0298
+   ],
+   "normal": [
+    0.8957,
+    0.2483,
+    0.3688
+   ]
+  },
+  {
+   "id": "pectorals",
+   "name": "Chest (pectorals)",
+   "anchor": [
+    0.072,
+    1.3548,
+    0.0825
+   ],
+   "normal": [
+    0.1052,
+    0.0957,
+    0.9898
+   ]
+  },
+  {
+   "id": "biceps",
+   "name": "Front of upper arm (biceps)",
+   "anchor": [
+    0.2905,
+    1.2561,
+    0.0122
+   ],
+   "normal": [
+    -0.1434,
+    -0.0009,
+    0.9897
+   ]
+  },
+  {
+   "id": "triceps",
+   "name": "Back of upper arm (triceps)",
+   "anchor": [
+    0.2916,
+    1.2802,
+    -0.0962
+   ],
+   "normal": [
+    0.279,
+    -0.062,
+    -0.9583
+   ]
+  },
+  {
+   "id": "forearmFlexors",
+   "name": "Inner forearm (flexors)",
+   "anchor": [
+    0.3588,
+    1.075,
+    0.0228
+   ],
+   "normal": [
+    -0.293,
+    0.0151,
+    0.956
+   ]
+  },
+  {
+   "id": "forearmExtensors",
+   "name": "Outer forearm (extensors)",
+   "anchor": [
+    0.3882,
+    1.0806,
+    -0.0393
+   ],
+   "normal": [
+    0.6417,
+    -0.0551,
+    -0.765
+   ]
+  },
+  {
+   "id": "abdominals",
+   "name": "Abs (rectus abdominis)",
+   "anchor": [
+    -0.0093,
+    1.1006,
+    0.0616
+   ],
+   "normal": [
+    0.0246,
+    0.121,
+    0.9924
+   ]
+  },
+  {
+   "id": "obliques",
+   "name": "Sides of waist (obliques)",
+   "anchor": [
+    0.1196,
+    1.103,
+    0.0335
+   ],
+   "normal": [
+    0.6501,
+    0.128,
+    0.749
+   ]
+  },
+  {
+   "id": "serratus",
+   "name": "Side of ribs (serratus anterior)",
+   "anchor": [
+    0.158,
+    1.2785,
+    0.0048
+   ],
+   "normal": [
+    0.685,
+    -0.4025,
+    0.6073
+   ]
+  },
+  {
+   "id": "lats",
+   "name": "Mid back (latissimus dorsi)",
+   "anchor": [
+    0.1442,
+    1.2699,
+    -0.1253
+   ],
+   "normal": [
+    0.5328,
+    -0.3585,
+    -0.7666
+   ]
+  },
+  {
+   "id": "erectors",
+   "name": "Lower back (spinal erectors)",
+   "anchor": [
+    -0.0104,
+    1.1156,
+    -0.1149
+   ],
+   "normal": [
+    0.0924,
+    -0.0456,
+    -0.9947
+   ]
+  },
+  {
+   "id": "glutes",
+   "name": "Buttocks (glutes)",
+   "anchor": [
+    0.0859,
+    0.9561,
+    -0.1488
+   ],
+   "normal": [
+    0.3432,
+    -0.1053,
+    -0.9334
+   ]
+  },
+  {
+   "id": "quadriceps",
+   "name": "Front of thigh (quadriceps)",
+   "anchor": [
+    0.1381,
+    0.7087,
+    0.0563
+   ],
+   "normal": [
+    0.1327,
+    -0.1887,
+    0.973
+   ]
+  },
+  {
+   "id": "adductors",
+   "name": "Inner thigh (adductors)",
+   "anchor": [
+    0.0451,
+    0.7992,
+    0.0218
+   ],
+   "normal": [
+    -0.7512,
+    -0.1144,
+    0.6501
+   ]
+  },
+  {
+   "id": "hamstrings",
+   "name": "Back of thigh (hamstrings)",
+   "anchor": [
+    0.1293,
+    0.6855,
+    -0.1025
+   ],
+   "normal": [
+    0.1479,
+    -0.1042,
+    -0.9835
+   ]
+  },
+  {
+   "id": "calves",
+   "name": "Calves (gastrocnemius & soleus)",
+   "anchor": [
+    0.1815,
+    0.3567,
+    -0.1276
+   ],
+   "normal": [
+    0.0372,
+    -0.1197,
+    -0.9921
+   ]
+  },
+  {
+   "id": "tibialis",
+   "name": "Front of shin (tibialis anterior)",
+   "anchor": [
+    0.1919,
+    0.3475,
+    -0.0068
+   ],
+   "normal": [
+    -0.0439,
+    -0.0711,
+    0.9965
+   ]
+  }
+ ]
+}
