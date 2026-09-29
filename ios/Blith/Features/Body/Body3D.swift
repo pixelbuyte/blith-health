@@ -150,7 +150,7 @@ final class BodySceneController: NSObject {
 
     private func build() {
         scene.background.contents = UIColor.clear
-        let detail = Bundle.main.path(forResource: "body_detail", ofType: "png").flatMap(UIImage.init(contentsOfFile:))
+        let detail = Bundle.main.path(forResource: "body_detail", ofType: "png").flatMap(UIImage.init(contentsOfFile:)).map(Self.tinted)
         let muscle = Bundle.main.path(forResource: "body_muscle", ofType: "jpg").flatMap(UIImage.init(contentsOfFile:))
         for _ in model.groups {
             skinMaterials.append(Self.skinMaterial(detail: detail))
@@ -212,7 +212,6 @@ final class BodySceneController: NSObject {
         m.emission.intensity = 0.32
         m.setValue(Float(0), forKey: "highlight")
         m.shaderModifiers = [
-            .surface: "_surface.emission.rgb *= float3(0.43, 0.88, 1.0);",
             .fragment: """
             #pragma arguments
             float highlight;
@@ -223,6 +222,18 @@ final class BodySceneController: NSObject {
             """,
         ]
         return m
+    }
+
+    /// The grayscale anatomy-line map tinted cyan once, so the material needs no surface shader.
+    static func tinted(_ gray: UIImage) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        return UIGraphicsImageRenderer(size: gray.size, format: format).image { ctx in
+            UIColor(hex: 0x6FE0FF).setFill()
+            ctx.fill(CGRect(origin: .zero, size: gray.size))
+            gray.draw(in: CGRect(origin: .zero, size: gray.size), blendMode: .multiply, alpha: 1)
+        }
     }
 
     static func muscleMaterial(albedo: UIImage?) -> SCNMaterial {

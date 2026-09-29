@@ -69,6 +69,10 @@ for DEV in "$SMALL" "$LARGE"; do
     shoot "$UDID" "$NAME-16-newuser" -BlithDemo newUser -BlithClockHour 15.5 -BlithTab today
     shoot "$UDID" "$NAME-17-onboarding" -BlithResetOnboarding YES
   fi
+  # Keep any crash reports and SceneKit/Metal errors from this device for debugging.
+  xcrun simctl spawn "$UDID" log show --last 20m --style compact --predicate 'process == "Blith" AND (messageType == error OR messageType == fault)' \
+    > "$OUT/$NAME-log.txt" 2>/dev/null || true
+  cp ~/Library/Logs/DiagnosticReports/Blith* "$OUT/" 2>/dev/null || true
   xcrun simctl shutdown "$UDID" || true
 done
 ls -1 "$OUT"

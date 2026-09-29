@@ -68,6 +68,7 @@ struct BodyView: View {
                     if app.isDemo { SampleDataBanner() }
                 }
                 Text("Body").font(Typo.display).foregroundStyle(Palette.ink)
+                Text("Drag to turn · pinch to zoom · tap a region").font(.footnote).foregroundStyle(Palette.secondaryInk)
             }
             Spacer()
             AvatarButton(name: app.profile.name) { router.sheet = .profile }
@@ -186,8 +187,6 @@ struct BodyView: View {
                 .foregroundStyle(Palette.ink)
                 .glassSurface(Capsule(), interactive: true)
             }
-            Text("DRAG TO TURN · PINCH TO ZOOM · TAP A REGION").font(Typo.eyebrow).tracking(1).foregroundStyle(Palette.tertiaryInk)
-                .padding(.top, 6)
         }
         .padding(Space.m)
     }
