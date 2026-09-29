@@ -170,6 +170,10 @@ public enum Fmt {
         case .weight: weight(v, units: units)
         case .restingHeartRate, .walkingHeartRate: "\(int(v)) bpm"
         case .hrv: "\(int(v)) ms"
+        case .respiratoryRate: "\(decimal(v)) /min"
+        case .oxygenSaturation: "\(decimal(v * 100))%"
+        case .wristTemperature: "\(decimal(v))°C"
+        case .vo2Max: "\(decimal(v))"
         case .sleepDuration: duration(v)
         }
     }

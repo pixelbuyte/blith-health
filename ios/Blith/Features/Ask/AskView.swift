@@ -7,7 +7,8 @@ struct AskView: View {
     @FocusState private var focused: Bool
 
     static let suggestions: [(String, String)] = [
-        ("How have I been walking?", "bl.walk"), ("Why was my walking lower last Tuesday?", "bl.calendar"),
+        ("What's my readiness today, and why?", "bl.readiness"), ("How have I been walking?", "bl.steps"),
+        ("Why was my walking lower last Tuesday?", "bl.calendar"),
         ("Show my sleep last night.", "bl.sleep"), ("How has my weight changed?", "bl.weight"),
         ("What changed recently?", "bl.sparkle"), ("Show my body notes.", "bl.bodynote"),
     ]
@@ -28,7 +29,7 @@ struct AskView: View {
                         }
                         if ask.isResponding {
                             HStack(spacing: Space.s) {
-                                BlithMascot(pose: .thinking, size: 34)
+                                AssistantOrb(active: true, size: 30)
                                 Text(ask.progress ?? "Thinking").font(.subheadline).foregroundStyle(Palette.secondaryInk)
                                     .contentTransition(.opacity)
                             }
@@ -76,7 +77,7 @@ struct AskView: View {
                 Text("Ask Blith").font(Typo.display).foregroundStyle(Palette.ink)
             }
             Spacer()
-            BlithMascot(pose: responding ? .thinking : .listening, size: 58)
+            AssistantOrb(active: responding, size: 54)
         }
     }
 
@@ -262,5 +263,34 @@ struct AIConsentSheet: View {
 
     func point(_ symbol: String, _ text: String) -> some View {
         Label { Text(text).fixedSize(horizontal: false, vertical: true) } icon: { Image(systemName: symbol).foregroundStyle(Palette.accent) }
+    }
+}
+
+
+/// The assistant's mark: a small instrument ring that turns while it's working.
+struct AssistantOrb: View {
+    var active: Bool
+    var size: CGFloat = 54
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: !active || reduceMotion)) { tl in
+            let t = active && !reduceMotion ? tl.date.timeIntervalSinceReferenceDate : 0
+            ZStack {
+                Circle().fill(RadialGradient(colors: [Palette.cyan.opacity(0.35), .clear], center: .center, startRadius: 0, endRadius: size * 0.6))
+                Circle().trim(from: 0, to: 0.72)
+                    .stroke(AngularGradient(colors: [Palette.cobalt.opacity(0.1), Palette.cobalt, Palette.cyan], center: .center),
+                            style: StrokeStyle(lineWidth: size * 0.07, lineCap: .round))
+                    .rotationEffect(.radians(t * 2.4))
+                    .padding(size * 0.08)
+                Circle().trim(from: 0, to: 0.4)
+                    .stroke(Palette.cyan.opacity(0.7), style: StrokeStyle(lineWidth: size * 0.04, lineCap: .round))
+                    .rotationEffect(.radians(-t * 3.4 + 1))
+                    .padding(size * 0.24)
+                BLIcon(name: "bl.sparkle", size: size * 0.3).foregroundStyle(Palette.ink)
+            }
+            .frame(width: size, height: size)
+        }
+        .accessibilityHidden(true)
     }
 }

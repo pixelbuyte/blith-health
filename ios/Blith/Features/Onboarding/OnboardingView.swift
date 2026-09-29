@@ -7,12 +7,13 @@ struct OnboardingView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var step = 0
     @State private var goals: Set<UserGoal> = []
-    @State private var categories: Set<HealthCategory> = [.movement, .sleep, .body]
+    @State private var categories: Set<HealthCategory> = [.movement, .sleep, .body, .heart]
     @State private var connecting = false
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Palette.heroGradientTop, Palette.background], startPoint: .top, endPoint: .center)
+            Palette.canvas.ignoresSafeArea()
+            RadialGradient(colors: [Palette.cobalt.opacity(0.28), .clear], center: .top, startRadius: 0, endRadius: 460)
                 .ignoresSafeArea()
             Group {
                 switch step {
@@ -32,14 +33,19 @@ struct OnboardingView: View {
     var welcome: some View {
         VStack(alignment: .leading, spacing: Space.xl) {
             Spacer()
-            HStack(alignment: .bottom, spacing: Space.m) {
-                BrandMark().frame(width: 64, height: 64)
-                BlithMascot(pose: .waving, size: 92)
+            BrandMark().frame(width: 56, height: 56)
+            HStack(spacing: -6) {
+                ScoreDial(fraction: 0.86, valueText: "86", unit: "%", label: "Sleep", color: Palette.sleep, size: 96)
+                ScoreDial(fraction: 0.74, valueText: "74", unit: "%", label: "Readiness", color: Palette.mint, size: 132)
+                ScoreDial(fraction: 0.54, valueText: "5.4", label: "Load", color: Palette.cobalt, size: 96)
             }
-            Text("Understand your health, not just your numbers.")
+            .frame(maxWidth: .infinity)
+            .accessibilityHidden(true)
+            Text("Your body, measured against you.")
                 .font(Typo.display)
+                .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Blith learns your normal from your own history, notices what changes, and explains why it matters. Ask it anything about your walking, sleep and weight.")
+            Text("Blith turns your Apple Health history into daily readiness, sleep and load scores, a personal health monitor and a 3D body map — every number explained with the evidence behind it.")
                 .font(.body)
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: Space.m) {
@@ -251,8 +257,9 @@ struct ImportProgressView: View {
         let current = app.importProgress
         VStack(alignment: .leading, spacing: Space.xl) {
             Spacer()
-            BlithMascot(pose: .walking, size: 90)
-            Text("Building your health history…").font(Typo.display)
+            ScoreDial(fraction: current?.fraction ?? 0.02, valueText: "\(Int(((current?.fraction ?? 0) * 100).rounded()))", unit: "%",
+                      label: "Importing", color: Palette.cyan, size: 120)
+            Text("Building your health history…").font(Typo.display).foregroundStyle(Palette.ink)
             VStack(alignment: .leading, spacing: Space.l) {
                 ForEach(Array(stages.enumerated()), id: \.offset) { index, item in
                     let state = stageState(item.0, current: current?.stage)
@@ -302,16 +309,16 @@ struct BrandMark: View {
             let w = geo.size.width
             ZStack {
                 RoundedRectangle(cornerRadius: w * 0.26, style: .continuous)
-                    .fill(LinearGradient(colors: [Color(red: 0.5, green: 0.7, blue: 1), Color(red: 0.25, green: 0.42, blue: 1), Color(red: 0.13, green: 0.2, blue: 0.79)],
-                                         startPoint: .topLeading, endPoint: .bottomTrailing))
-                Path { p in
-                    p.move(to: CGPoint(x: w * 0.19, y: w * 0.69))
-                    p.addCurve(to: CGPoint(x: w * 0.48, y: w * 0.575), control1: CGPoint(x: w * 0.32, y: w * 0.70), control2: CGPoint(x: w * 0.38, y: w * 0.585))
-                    p.addCurve(to: CGPoint(x: w * 0.69, y: w * 0.5), control1: CGPoint(x: w * 0.6, y: w * 0.63), control2: CGPoint(x: w * 0.63, y: w * 0.56))
-                    p.addCurve(to: CGPoint(x: w * 0.8, y: w * 0.33), control1: CGPoint(x: w * 0.74, y: w * 0.42), control2: CGPoint(x: w * 0.76, y: w * 0.34))
-                }
-                .stroke(.white, style: StrokeStyle(lineWidth: w * 0.057, lineCap: .round, lineJoin: .round))
-                Circle().fill(.white).frame(width: w * 0.105).position(x: w * 0.8, y: w * 0.33)
+                    .fill(RadialGradient(colors: [Color(hex: 0x12245A), Color(hex: 0x05070D)], center: .center, startRadius: 0, endRadius: w * 0.7))
+                RoundedRectangle(cornerRadius: w * 0.26, style: .continuous).strokeBorder(Palette.cobalt.opacity(0.35), lineWidth: 1)
+                Capsule().fill(Palette.ink).frame(width: w * 0.1, height: w * 0.6).position(x: w * 0.33, y: w * 0.48)
+                Circle().trim(from: 0, to: 0.82)
+                    .stroke(AngularGradient(colors: [Palette.cobalt, Palette.cyan], center: .center),
+                            style: StrokeStyle(lineWidth: w * 0.1, lineCap: .round))
+                    .rotationEffect(.degrees(150))
+                    .frame(width: w * 0.42, height: w * 0.42)
+                    .position(x: w * 0.54, y: w * 0.6)
+                    .shadow(color: Palette.cyan.opacity(0.6), radius: w * 0.05)
             }
         }
         .aspectRatio(1, contentMode: .fit)

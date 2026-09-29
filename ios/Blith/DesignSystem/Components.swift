@@ -21,7 +21,7 @@ struct BLIcon: View {
     }
 }
 
-/// Spaced mono label above a story ("TODAY · 3:30 PM").
+/// Spaced mono data label ("LAST NIGHT · 7H 12M").
 struct Eyebrow: View {
     let text: String
     var icon: String?
@@ -29,14 +29,15 @@ struct Eyebrow: View {
 
     var body: some View {
         HStack(spacing: Space.xs + 2) {
-            if let icon { BLIcon(name: icon, size: 13) }
-            Text(text.uppercased()).font(Typo.eyebrow).tracking(1.4)
+            if let icon { BLIcon(name: icon, size: 12) }
+            Text(text.uppercased()).font(Typo.eyebrow).tracking(1.3)
         }
         .foregroundStyle(color)
         .accessibilityElement(children: .combine)
     }
 }
 
+/// Expanded caps section head with an optional mono action.
 struct SectionHeader: View {
     let title: String
     var subtitle: String?
@@ -45,23 +46,31 @@ struct SectionHeader: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(Typo.sectionTitle).foregroundStyle(Palette.ink)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title.uppercased()).font(Typo.sectionTitle).tracking(1.2).foregroundStyle(Palette.ink)
                 if let subtitle {
-                    Text(subtitle).font(.subheadline).foregroundStyle(Palette.secondaryInk)
+                    Text(subtitle).font(.footnote).foregroundStyle(Palette.secondaryInk)
                 }
             }
             Spacer(minLength: Space.s)
             if let trailing, let action {
-                Button(trailing, action: action).font(.subheadline.weight(.semibold))
+                Button(action: action) {
+                    HStack(spacing: 3) {
+                        Text(trailing.uppercased()).font(Typo.eyebrow).tracking(1.1)
+                        Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
+                    }
+                    .foregroundStyle(Palette.cobalt)
+                }
+                .buttonStyle(.plain)
             }
         }
+        .padding(.top, Space.s)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
     }
 }
 
-/// A change vs a baseline. Neutral by design: an arrow and a number, no red/green verdict.
+/// A change vs a baseline: an arrow and a number, no verdict.
 struct DeltaBadge: View {
     let change: Double
     var caption: String?
@@ -71,12 +80,12 @@ struct DeltaBadge: View {
         let flat = Int((change * 100).rounded()) == 0
         HStack(spacing: Space.xs) {
             Image(systemName: flat ? "equal" : (change >= 0 ? "arrow.up.right" : "arrow.down.right"))
-                .font(.caption.weight(.bold))
+                .font(.caption.weight(.heavy))
             Text(flat ? "About the same" : Fmt.signedPercent(change))
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
             if let caption {
-                Text(caption).font(.subheadline).foregroundStyle(tint.opacity(0.75)).lineLimit(2)
+                Text(caption).font(.subheadline).foregroundStyle(Palette.secondaryInk).lineLimit(2)
             }
         }
         .foregroundStyle(tint)
@@ -92,9 +101,9 @@ struct StatTile: View {
     var color: Color = Palette.ink
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.caption).foregroundStyle(Palette.secondaryInk)
-            Text(value).font(Typo.metric).foregroundStyle(color).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title.uppercased()).font(Typo.eyebrow).tracking(1).foregroundStyle(Palette.secondaryInk).lineLimit(1)
+            Text(value).font(Typo.metric).foregroundStyle(color).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
             if let caption {
                 Text(caption).font(.caption2).foregroundStyle(Palette.secondaryInk).lineLimit(2)
             }
@@ -120,28 +129,23 @@ struct EmptyStateView: View {
     let message: String
     var actionTitle: String?
     var action: (() -> Void)?
-    var mascot: MascotPose?
 
     var body: some View {
         HStack(alignment: .top, spacing: Space.l) {
-            VStack(alignment: .leading, spacing: Space.s) {
-                if mascot == nil {
-                    BLIcon(name: symbol, size: 22)
-                        .foregroundStyle(Palette.accent)
-                        .frame(width: 44, height: 44)
-                        .background(Palette.accentSoft, in: Circle())
-                }
-                Text(title).font(Typo.storySmall).foregroundStyle(Palette.ink)
+            BLIcon(name: symbol, size: 20)
+                .foregroundStyle(Palette.cobalt)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(Palette.accentSoft))
+                .overlay(Circle().strokeBorder(Palette.cobalt.opacity(0.3), lineWidth: 1))
+            VStack(alignment: .leading, spacing: Space.xs + 2) {
+                Text(title).font(.headline).foregroundStyle(Palette.ink)
                 Text(message).font(.subheadline).foregroundStyle(Palette.secondaryInk).fixedSize(horizontal: false, vertical: true)
                 if let actionTitle, let action {
                     Button(actionTitle, action: action)
                         .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Palette.cobalt)
                         .padding(.top, Space.xs)
                 }
-            }
-            if let mascot {
-                Spacer(minLength: 0)
-                BlithMascot(pose: mascot, size: 64)
             }
         }
         .card()
@@ -149,18 +153,18 @@ struct EmptyStateView: View {
     }
 }
 
-/// Sample data is always labelled, but compactly: an amber capsule, not a banner.
+/// Sample data is always labelled, compactly.
 struct SampleDataBanner: View {
     var body: some View {
-        Label {
-            Text("Sample data").font(.caption.weight(.semibold))
-        } icon: {
-            Image(systemName: "flask.fill").font(.caption2)
+        HStack(spacing: 5) {
+            Circle().fill(Palette.amber).frame(width: 5, height: 5)
+            Text("SAMPLE DATA").font(Typo.eyebrow).tracking(1.2)
         }
-        .foregroundStyle(Palette.review)
-        .padding(.horizontal, 10)
+        .foregroundStyle(Palette.amber)
+        .padding(.horizontal, 9)
         .padding(.vertical, 5)
-        .background(Palette.reviewSoft, in: Capsule())
+        .background(Capsule().fill(Palette.amber.opacity(0.12)))
+        .overlay(Capsule().strokeBorder(Palette.amber.opacity(0.3), lineWidth: 1))
         .accessibilityLabel("Showing sample data, not your health records")
     }
 }
@@ -180,12 +184,12 @@ struct SyncStatusLine: View {
             }
         }
         .font(.caption)
-        .foregroundStyle(Palette.secondaryInk)
+        .foregroundStyle(Palette.tertiaryInk)
         .frame(maxWidth: .infinity)
     }
 }
 
-/// Top-right profile entry point. Glass circle with the user's initial.
+/// Top-right profile entry point.
 struct AvatarButton: View {
     let name: String
     let action: () -> Void
@@ -194,21 +198,22 @@ struct AvatarButton: View {
         Button(action: action) {
             Group {
                 if let first = name.trimmingCharacters(in: .whitespaces).first {
-                    Text(String(first).uppercased()).font(.system(.headline, design: .serif, weight: .bold))
+                    Text(String(first).uppercased()).font(.system(size: 17, weight: .bold).width(.condensed))
                 } else {
-                    Image(systemName: "person.fill").font(.headline)
+                    Image(systemName: "person.fill").font(.subheadline)
                 }
             }
-            .foregroundStyle(Palette.accent)
-            .frame(width: 44, height: 44)
-            .glassSurface(Circle(), interactive: true)
+            .foregroundStyle(Palette.ink)
+            .frame(width: 40, height: 40)
+            .background(Circle().fill(Palette.raised))
+            .overlay(Circle().strokeBorder(LinearGradient(colors: [Palette.cobalt, Palette.cyan], startPoint: .top, endPoint: .bottom), lineWidth: 1.5))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Profile and settings")
     }
 }
 
-/// D / W / M / 6M / Y / All. Liquid Glass capsule with a morphing selection.
+/// D / W / M / 6M / Y / All.
 struct PeriodPicker: View {
     @Binding var selection: WalkPeriod
     @Namespace private var ns
@@ -220,13 +225,15 @@ struct PeriodPicker: View {
                 Button {
                     withAnimation(Motion.respecting(reduceMotion, Motion.snappy)) { selection = p }
                 } label: {
-                    Text(p.shortTitle)
-                        .font(.subheadline.weight(selection == p ? .bold : .medium))
-                        .foregroundStyle(selection == p ? Color.white : Palette.secondaryInk)
-                        .frame(maxWidth: .infinity, minHeight: 36)
+                    Text(p.shortTitle.uppercased())
+                        .font(.system(size: 12, weight: selection == p ? .bold : .medium, design: .monospaced))
+                        .foregroundStyle(selection == p ? Palette.ink : Palette.secondaryInk)
+                        .frame(maxWidth: .infinity, minHeight: 32)
                         .background {
                             if selection == p {
-                                Capsule().fill(Palette.cobalt).matchedGeometryEffect(id: "sel", in: ns)
+                                Capsule().fill(Palette.raised)
+                                    .overlay(Capsule().strokeBorder(Palette.cobalt.opacity(0.6), lineWidth: 1))
+                                    .matchedGeometryEffect(id: "sel", in: ns)
                             }
                         }
                         .contentShape(Capsule())
@@ -236,24 +243,25 @@ struct PeriodPicker: View {
                 .accessibilityAddTraits(selection == p ? .isSelected : [])
             }
         }
-        .padding(4)
-        .glassSurface(Capsule())
+        .padding(3)
+        .background(Capsule().fill(Palette.surface))
+        .overlay(Capsule().strokeBorder(Palette.hairline, lineWidth: 1))
     }
 }
 
-/// Seven soft dots for the week. Filled = at or near the user's usual; nothing is "broken".
+/// The week as seven cells. Filled = at or near the person's usual; nothing is "broken".
 struct ConsistencyDots: View {
     let week: WeekConsistency
     var tint: Color = Palette.accent
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 6) {
             ForEach(week.days) { day in
-                VStack(spacing: Space.s) {
+                VStack(spacing: 6) {
+                    cell(day.state)
                     Text(String(Fmt.weekdayShort[day.date.weekday - 1].prefix(1)))
                         .font(Typo.eyebrow)
-                        .foregroundStyle(Palette.secondaryInk)
-                    dot(day.state)
+                        .foregroundStyle(day.state == .inProgress ? Palette.ink : Palette.secondaryInk)
                 }
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .ignore)
@@ -263,17 +271,13 @@ struct ConsistencyDots: View {
     }
 
     @ViewBuilder
-    func dot(_ state: WeekConsistency.DayState) -> some View {
+    func cell(_ state: WeekConsistency.DayState) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
         switch state {
-        case .met:
-            Circle().fill(tint).frame(width: 26, height: 26)
-                .overlay(Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(.white))
-        case .inProgress:
-            Circle().strokeBorder(tint, style: StrokeStyle(lineWidth: 2.5, dash: [3, 3])).frame(width: 26, height: 26)
-        case .notMet:
-            Circle().fill(tint.opacity(0.16)).frame(width: 26, height: 26)
-        case .noData, .future:
-            Circle().strokeBorder(Palette.baseline.opacity(0.4), lineWidth: 1.5).frame(width: 26, height: 26)
+        case .met: shape.fill(tint.gradient).frame(height: 26)
+        case .inProgress: shape.strokeBorder(tint, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])).frame(height: 26)
+        case .notMet: shape.fill(tint.opacity(0.18)).frame(height: 26)
+        case .noData, .future: shape.strokeBorder(Palette.hairline, lineWidth: 1).frame(height: 26)
         }
     }
 
@@ -292,7 +296,7 @@ struct ConsistencyDots: View {
 // MARK: - Insights
 
 extension Insight {
-    /// The color family an insight belongs to.
+    /// The colour family an insight belongs to.
     var tint: Color {
         switch kind {
         case .sleepMovement, .sleepTiming: Palette.sleep
@@ -304,12 +308,12 @@ extension Insight {
 
     var icon: String {
         switch kind {
-        case .baselineChange, .momentum, .longTermChange: "bl.progress"
+        case .baselineChange, .momentum, .longTermChange: "bl.trend"
         case .consistency: "bl.streak"
         case .dayOfWeek, .weekdayDecline: "bl.calendar"
         case .timing: "bl.steptrail"
         case .personalBest: "bl.medal"
-        case .pace: "bl.walk"
+        case .pace: "bl.steps"
         case .weightTrend, .weightActivity: "bl.weight"
         case .rebound: "bl.progress"
         case .sleepMovement, .sleepTiming: "bl.sleep"
@@ -326,17 +330,17 @@ struct EvidenceChart: View {
 
     var body: some View {
         Chart(points) { p in
-            BarMark(x: .value("Label", p.label), y: .value("Value", p.value), width: .ratio(0.62))
-                .foregroundStyle(p.highlighted ? AnyShapeStyle(tint.gradient) : AnyShapeStyle(Palette.baseline.opacity(0.35)))
-                .cornerRadius(6)
+            BarMark(x: .value("Label", p.label), y: .value("Value", p.value), width: .ratio(0.58))
+                .foregroundStyle(p.highlighted ? AnyShapeStyle(tint.gradient) : AnyShapeStyle(Palette.baseline.opacity(0.45)))
+                .cornerRadius(4)
                 .annotation(position: .top, spacing: 3) {
-                    Text(short(p.value)).font(.caption2.weight(.semibold)).monospacedDigit()
+                    Text(short(p.value)).font(.system(size: 11, weight: .semibold).width(.condensed)).monospacedDigit()
                         .foregroundStyle(p.highlighted ? tint : Palette.secondaryInk)
                 }
         }
         .chartYAxis(.hidden)
         .chartXAxis {
-            AxisMarks { _ in AxisValueLabel().font(.caption2) }
+            AxisMarks { _ in AxisValueLabel().font(.system(size: 10, design: .monospaced)).foregroundStyle(Palette.secondaryInk) }
         }
         .frame(height: height)
         .accessibilityElement(children: .ignore)
@@ -353,13 +357,14 @@ struct EvidenceChart: View {
 
 struct WhyButton: View {
     var tint: Color = Palette.accent
+    var title = "Why you're seeing this"
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                BLIcon(name: "bl.evidence", size: 15)
-                Text("Why you're seeing this").font(.subheadline.weight(.semibold))
+                BLIcon(name: "bl.evidence", size: 14)
+                Text(title).font(.footnote.weight(.semibold))
             }
             .foregroundStyle(tint)
             .padding(.vertical, 6)
@@ -369,7 +374,7 @@ struct WhyButton: View {
     }
 }
 
-/// The main insight on Today: a story, its evidence, and where to go next.
+/// An insight as an accent-barred card: the claim, its evidence and where to go next.
 struct InsightCard: View {
     let insight: Insight
     var featured = false
@@ -378,20 +383,21 @@ struct InsightCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.m) {
-            HStack(alignment: .top) {
-                Eyebrow(text: featured ? "Worth knowing" : insight.confidence.label, icon: insight.icon, color: insight.tint)
+            HStack {
+                Eyebrow(text: featured ? "Worth knowing" : insight.kind.family, icon: insight.icon, color: insight.tint)
                 Spacer()
-                if featured { BlithMascot(pose: .noticing, size: 46).offset(y: -6) }
+                Text("confidence \(insight.confidence.label.lowercased())")
+                    .font(Typo.eyebrow).foregroundStyle(Palette.secondaryInk)
             }
             Text(insight.headline)
-                .font(featured ? Typo.story : Typo.storySmall)
+                .font(featured ? .title3.weight(.semibold) : .body.weight(.semibold))
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
             if let emphasis = insight.emphasis {
                 HStack(alignment: .firstTextBaseline, spacing: Space.s) {
-                    Text(emphasis).font(Typo.number(featured ? 34 : 26)).monospacedDigit().foregroundStyle(insight.tint)
+                    Text(emphasis).font(Typo.score(featured ? 44 : 32)).monospacedDigit().foregroundStyle(insight.tint)
                     if let c = insight.emphasisCaption {
-                        Text(c).font(.subheadline).foregroundStyle(Palette.secondaryInk)
+                        Text(c).font(.footnote).foregroundStyle(Palette.secondaryInk)
                     }
                 }
             }
@@ -413,8 +419,8 @@ struct InsightCard: View {
                 if let onOpen {
                     Button(action: onOpen) {
                         HStack(spacing: 4) {
-                            Text("Inspect").font(.subheadline.weight(.semibold))
-                            Image(systemName: "chevron.right").font(.caption.weight(.bold))
+                            Text("INSPECT").font(Typo.eyebrow).tracking(1.1)
+                            Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
                         }
                         .foregroundStyle(insight.tint)
                     }
@@ -422,7 +428,11 @@ struct InsightCard: View {
                 }
             }
         }
+        .padding(.leading, 6)
         .card(padding: featured ? Space.xl : Space.l, tone: featured ? .tinted(insight.tint) : .plain)
+        .overlay(alignment: .leading) {
+            Capsule().fill(insight.tint).frame(width: 3).padding(.vertical, 18).padding(.leading, 1)
+        }
         .accessibilityElement(children: .contain)
     }
 }
@@ -447,35 +457,11 @@ struct InsightExplanationSheet: View {
                     if insight.points.count >= 2 {
                         EvidenceChart(points: insight.points, tint: insight.tint, height: 130).card()
                     }
-                    VStack(alignment: .leading, spacing: 0) {
-                        Eyebrow(text: "Measured").padding(.bottom, Space.s)
-                        ForEach(Array(insight.evidence.enumerated()), id: \.offset) { index, row in
-                            HStack(alignment: .firstTextBaseline) {
-                                Text(row.label).foregroundStyle(Palette.secondaryInk)
-                                Spacer(minLength: Space.m)
-                                Text(row.value).fontWeight(.semibold).multilineTextAlignment(.trailing).monospacedDigit()
-                            }
-                            .font(.subheadline)
-                            .padding(.vertical, Space.m)
-                            if index < insight.evidence.count - 1 { Divider() }
-                        }
-                    }
-                    .card(padding: Space.l)
-
-                    VStack(alignment: .leading, spacing: 0) {
-                        Eyebrow(text: "Reliability").padding(.bottom, Space.s)
-                        row("Observations", "\(insight.sampleCount)")
-                        Divider()
-                        row("Reliability", insight.confidence.label)
-                        Divider()
-                        row("Data", insight.source)
-                        if let updated {
-                            Divider()
-                            row("Updated", updated.formatted(date: .abbreviated, time: .shortened))
-                        }
-                    }
-                    .card(padding: Space.l)
-
+                    KeyValueCard(title: "Measured", rows: insight.evidence.map { ($0.label, $0.value) })
+                    KeyValueCard(title: "Reliability", rows: [("Observations", "\(insight.sampleCount)"),
+                                                              ("Confidence", insight.confidence.label),
+                                                              ("Data", insight.source)]
+                        + (updated.map { [("Updated", $0.formatted(date: .abbreviated, time: .shortened))] } ?? []))
                     if let caveat = insight.caveat {
                         Label(caveat, systemImage: "exclamationmark.bubble")
                             .font(.subheadline)
@@ -483,7 +469,7 @@ struct InsightExplanationSheet: View {
                     }
                     Text("Compared against your own history, not population averages. Not medical advice.")
                         .font(.footnote)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Palette.tertiaryInk)
 
                     HStack(spacing: Space.m) {
                         if let onAsk {
@@ -509,32 +495,45 @@ struct InsightExplanationSheet: View {
                 }
                 .padding(Space.page)
             }
-            .background(Palette.background)
+            .background(Palette.canvas)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
         }
     }
+}
 
-    func row(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label).foregroundStyle(Palette.secondaryInk)
-            Spacer(minLength: Space.m)
-            Text(value).fontWeight(.medium).multilineTextAlignment(.trailing)
+/// Label / value rows in a card, with a mono title.
+struct KeyValueCard: View {
+    var title: String?
+    let rows: [(String, String)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let title { Eyebrow(text: title).padding(.bottom, Space.xs) }
+            ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                HStack(alignment: .firstTextBaseline) {
+                    Text(row.0).foregroundStyle(Palette.secondaryInk)
+                    Spacer(minLength: Space.m)
+                    Text(row.1).fontWeight(.semibold).foregroundStyle(Palette.ink).multilineTextAlignment(.trailing).monospacedDigit()
+                }
+                .font(.subheadline)
+                .padding(.vertical, Space.m)
+                if index < rows.count - 1 { Rectangle().fill(Palette.separator).frame(height: 1) }
+            }
         }
-        .font(.subheadline)
-        .padding(.vertical, Space.m)
+        .card(padding: Space.l)
     }
 }
 
 // MARK: - Streaks and milestones
 
-/// A soft progress ring with content in the middle.
+/// A thin progress ring with content in the middle.
 struct StreakRing<Center: View>: View {
     let progress: Double
     var tint: Color = Palette.accent
-    var lineWidth: CGFloat = 9
+    var lineWidth: CGFloat = 7
     @ViewBuilder var center: () -> Center
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown = 0.0
@@ -544,13 +543,14 @@ struct StreakRing<Center: View>: View {
             Circle().stroke(tint.opacity(0.14), lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: shown)
-                .stroke(AngularGradient(colors: [tint.opacity(0.6), tint, Palette.cyan], center: .center),
+                .stroke(AngularGradient(colors: [tint.opacity(0.5), tint, Palette.cyan], center: .center),
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
+                .shadow(color: tint.opacity(0.5), radius: 6)
             center()
         }
         .onAppear {
-            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.9)) { shown = min(1, max(0.02, progress)) }
+            withAnimation(reduceMotion ? nil : Motion.reveal) { shown = min(1, max(0.02, progress)) }
         }
         .onChange(of: progress) { _, p in shown = min(1, max(0.02, p)) }
     }
@@ -559,13 +559,13 @@ struct StreakRing<Center: View>: View {
 extension Achievement {
     var icon: String {
         switch family {
-        case .walking: "bl.walk"
+        case .walking: "bl.steps"
         case .consistency: "bl.streak"
         case .history: "bl.calendar"
         case .sleep: "bl.sleep"
         case .body: "bl.bodynote"
         case .ask: "bl.sparkle"
-        case .checkIn: "bl.today"
+        case .checkIn: "bl.target"
         }
     }
 
@@ -574,12 +574,13 @@ extension Achievement {
         case .sleep: Palette.sleep
         case .body: Palette.note
         case .ask: Palette.cyan
+        case .checkIn: Palette.mint
         default: Palette.cobalt
         }
     }
 }
 
-/// Medallion for a milestone. Locked badges show progress, never a penalty.
+/// Hexagonal medallion for a milestone. Locked badges show progress, never a penalty.
 struct AchievementBadge: View {
     let achievement: Achievement
     var size: CGFloat = 64
@@ -588,24 +589,39 @@ struct AchievementBadge: View {
         VStack(spacing: Space.s) {
             ZStack {
                 if achievement.isUnlocked {
-                    Circle().fill(LinearGradient(colors: [achievement.tint, achievement.tint.opacity(0.7)], startPoint: .top, endPoint: .bottom))
-                    Circle().strokeBorder(.white.opacity(0.45), lineWidth: 2).padding(4)
-                    BLIcon(name: achievement.icon, size: size * 0.4).foregroundStyle(.white)
+                    Hexagon().fill(LinearGradient(colors: [achievement.tint.opacity(0.9), achievement.tint.opacity(0.35)], startPoint: .top, endPoint: .bottom))
+                    Hexagon().stroke(achievement.tint, lineWidth: 1.5).padding(3)
+                    BLIcon(name: achievement.icon, size: size * 0.38).foregroundStyle(Palette.canvas)
                 } else {
-                    Circle().fill(Palette.cardRaised)
-                    Circle().trim(from: 0, to: achievement.progress)
-                        .stroke(achievement.tint.opacity(0.7), style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                        .rotationEffect(.degrees(-90)).padding(2)
-                    BLIcon(name: achievement.icon, size: size * 0.38).foregroundStyle(Palette.baseline)
+                    Hexagon().fill(Palette.raised)
+                    Hexagon().trim(from: 0, to: achievement.progress)
+                        .stroke(achievement.tint, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    BLIcon(name: achievement.icon, size: size * 0.36).foregroundStyle(Palette.baseline)
                 }
             }
             .frame(width: size, height: size)
+            .shadow(color: achievement.isUnlocked ? achievement.tint.opacity(0.45) : .clear, radius: 10)
             Text(achievement.title).font(.caption.weight(.semibold)).foregroundStyle(Palette.ink)
                 .multilineTextAlignment(.center).lineLimit(2).frame(width: size + 24)
-            Text(achievement.unlockedOn.map { Fmt.shortDate($0) } ?? achievement.progressText)
-                .font(.caption2).foregroundStyle(Palette.secondaryInk).lineLimit(1)
+            Text((achievement.unlockedOn.map { Fmt.shortDate($0) } ?? achievement.progressText).uppercased())
+                .font(Typo.eyebrow).foregroundStyle(Palette.secondaryInk).lineLimit(1)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(achievement.title). \(achievement.isUnlocked ? "Earned \(achievement.unlockedOn.map { Fmt.shortDate($0) } ?? "")" : achievement.progressText). \(achievement.detail)")
+    }
+}
+
+struct Hexagon: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let c = CGPoint(x: rect.midX, y: rect.midY)
+        let r = min(rect.width, rect.height) / 2
+        for i in 0..<6 {
+            let a = Double(i) * .pi / 3 - .pi / 2
+            let pt = CGPoint(x: c.x + r * cos(a), y: c.y + r * sin(a))
+            if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
+        }
+        p.closeSubpath()
+        return p
     }
 }

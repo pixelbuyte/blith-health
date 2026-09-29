@@ -77,6 +77,7 @@ public struct LLMAssistant: AssistantEngine {
     You are Ask, the assistant inside Blith, a personal health intelligence app. You help one person understand their own health data: walking, activity, weight, sleep, workouts and heart context.
 
     Rules:
+    - For readiness, recovery, HRV, resting heart rate, vitals or load questions, call get_readiness and attach the "scores" widget. Readiness, sleep performance and load are Blith's own scores relative to the user's history; never present them as medical assessments.
     - Every number you state must come from a tool result or the context below. Never do arithmetic yourself; if you need a comparison or percentage, call compare_periods or another tool that returns it.
     - Compare against the person's own history (their baselines), not population norms, unless they ask.
     - Be specific and brief: 2–4 short sentences, plain language, no bullet lists unless asked. Name the comparison window ("vs your previous 4 weeks").
@@ -144,6 +145,7 @@ public struct LLMAssistant: AssistantEngine {
         switch tool {
         case "get_walking_summary", "get_today_summary": "Checking your walking"
         case "get_weight_trend": "Looking at your weight trend"
+        case "get_readiness": "Checking your readiness"
         case "get_sleep_summary": "Reading your sleep"
         case "compare_periods": "Comparing periods"
         case "find_correlation": "Looking for patterns"

@@ -30,6 +30,10 @@ final class AppleHealthProvider: HealthDataProvider, @unchecked Sendable {
         case .restingHeartRate: HKQuantityType(.restingHeartRate)
         case .walkingHeartRate: HKQuantityType(.walkingHeartRateAverage)
         case .hrv: HKQuantityType(.heartRateVariabilitySDNN)
+        case .respiratoryRate: HKQuantityType(.respiratoryRate)
+        case .oxygenSaturation: HKQuantityType(.oxygenSaturation)
+        case .wristTemperature: HKQuantityType(.appleSleepingWristTemperature)
+        case .vo2Max: HKQuantityType(.vo2Max)
         case .sleepDuration: nil
         }
     }
@@ -45,6 +49,10 @@ final class AppleHealthProvider: HealthDataProvider, @unchecked Sendable {
         case .weight: .gramUnit(with: .kilo)
         case .restingHeartRate, .walkingHeartRate: HKUnit.count().unitDivided(by: .minute())
         case .hrv: .secondUnit(with: .milli)
+        case .respiratoryRate: HKUnit.count().unitDivided(by: .minute())
+        case .oxygenSaturation: .percent()
+        case .wristTemperature: .degreeCelsius()
+        case .vo2Max: HKUnit(from: "ml/kg*min")
         case .sleepDuration: .second()
         }
     }

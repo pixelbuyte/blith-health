@@ -36,6 +36,7 @@ enum LaunchOptions {
         switch args.string(forKey: "BlithTab") {
         case "walk": app.router.tab = .walk
         case "ask": app.router.tab = .ask
+        case "sleep": app.router.tab = .sleep
         case "body": app.router.tab = .body
         default: break
         }
@@ -45,8 +46,9 @@ enum LaunchOptions {
         if let id = args.string(forKey: "BlithBodyFocus") { app.router.open(.body(id), snapshot: app.snapshot) }
         if let period = args.string(forKey: "BlithPeriod").flatMap(WalkPeriod.init(rawValue:)) { app.router.walkPeriod = period }
         if args.bool(forKey: "BlithAskScript"), let snapshot = app.snapshot {
-            await app.ask.runScript(["Why was my walking lower on \(Fmt.shortDate(LocalDate(AppClock.now(), calendar: .current).adding(days: -MockHealthProvider.ankleNoteDaysAgo)))?",
-                                     "How have I been walking?", "Show my sleep last night."],
+            await app.ask.runScript(["What's my readiness today, and why?",
+                                     "Why was my walking lower on \(Fmt.shortDate(LocalDate(AppClock.now(), calendar: .current).adding(days: -MockHealthProvider.ankleNoteDaysAgo)))?",
+                                     "Show my sleep last night."],
                                     snapshot: snapshot)
         }
         switch args.string(forKey: "BlithSheet") {
@@ -56,7 +58,17 @@ enum LaunchOptions {
         case "sources": app.router.sheet = .sources
         case "insight": if let i = app.snapshot?.feed.first { app.router.sheet = .insight(i) }
         case "achievements": app.router.showAchievements = true
+        case "readiness": app.router.sheet = .readiness(nil)
+        case "vital": app.router.sheet = .vital(.hrv)
         default: break
         }
+    }
+
+    /// CI screenshots: scroll a screen to a named section after launch (`-BlithScrollTo monitor`).
+    @MainActor
+    static func scroll(_ apply: (String) -> Void) async {
+        guard let id = args.string(forKey: "BlithScrollTo") else { return }
+        try? await Task.sleep(nanoseconds: 1_600_000_000)
+        apply(id)
     }
 }

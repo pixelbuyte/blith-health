@@ -11,9 +11,11 @@ struct WalkView: View {
         @Bindable var router = router
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: Space.xl) {
+                VStack(alignment: .leading, spacing: Space.l) {
                     header
                     if let s = app.snapshot, s.availability[.steps] != .noData || s.todaySteps != nil {
+                        LoadSection(snapshot: s)
+                        SectionHeader(title: "Steps", subtitle: "Every range with its own comparison")
                         PeriodPicker(selection: $router.walkPeriod)
                         story(s, period: router.walkPeriod)
                         chart(s, period: router.walkPeriod)
@@ -37,13 +39,14 @@ struct WalkView: View {
                     } else {
                         EmptyStateView(symbol: "bl.walk", title: "No steps yet",
                                        message: "Steps come from your iPhone or Apple Watch through Apple Health. If you've limited access, you can change it in Settings › Health › Data Access.",
-                                       actionTitle: "Connected data", action: { router.sheet = .profile }, mascot: .walking)
+                                       actionTitle: "Connected data", action: { router.sheet = .profile })
                     }
                 }
                 .padding(.horizontal, Space.page)
                 .padding(.bottom, Space.section)
             }
-            .blithBackground()
+            .scrollIndicators(.hidden)
+            .blithBackground(wash: Palette.cobalt.opacity(0.2))
             .refreshable { await app.refresh(force: true) }
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: router.walkPeriod) { _, _ in selectedBucket = nil }
@@ -54,15 +57,15 @@ struct WalkView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: Space.xs) {
                 HStack(spacing: Space.s) {
-                    Eyebrow(text: "Movement", icon: "bl.walk", color: Palette.cobalt)
+                    Eyebrow(text: "Load · steps · gait", icon: "bl.activity", color: Palette.cobalt)
                     if app.isDemo { SampleDataBanner() }
                 }
-                Text("Walking").font(Typo.display).foregroundStyle(Palette.ink)
+                Text("Activity").font(Typo.display).foregroundStyle(Palette.ink)
             }
             Spacer()
             AvatarButton(name: app.profile.name) { router.sheet = .profile }
         }
-        .padding(.top, Space.l)
+        .padding(.top, Space.s)
     }
 
     // MARK: Story for the selected range
@@ -104,7 +107,7 @@ struct WalkView: View {
             Text(storyLine(s, p)).font(Typo.story).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                 Text(Fmt.int(period == .day ? (s.todaySteps ?? 0) : (p.dailyAverage ?? 0)))
-                    .font(Typo.number(heroSize)).monospacedDigit().foregroundStyle(Palette.cobalt)
+                    .font(Typo.score(heroSize + 10)).monospacedDigit().foregroundStyle(Palette.ink)
                     .contentTransition(.numericText())
                 Text(period == .day ? "steps so far" : "steps a day").font(.headline).foregroundStyle(Palette.secondaryInk)
             }
@@ -245,7 +248,7 @@ struct WalkView: View {
             SectionHeader(title: "What it means", subtitle: "Interpretations Blith drew from the facts above")
             if insights.isEmpty && s.patterns.isEmpty {
                 EmptyStateView(symbol: "bl.calendar", title: "Still learning",
-                               message: "Patterns appear after a few weeks of history.", mascot: .thinking)
+                               message: "Patterns appear after a few weeks of history.")
             }
             ForEach(Array(insights)) { insight in
                 InsightCard(insight: insight, onWhy: { router.sheet = .insight(insight) },
@@ -463,5 +466,66 @@ struct WorkoutList: View {
                 if index < workouts.count - 1 { Divider() }
             }
         }
+    }
+}
+
+
+/// Load: how much the day asked of the body, on a 0–10 logarithmic scale, against the person's
+/// usual range, with the inputs behind it.
+struct LoadSection: View {
+    let snapshot: HealthSnapshot
+    @State private var selected: LocalDate?
+
+    var body: some View {
+        let engine = ScoreEngine(snapshot.ctx)
+        let day = selected ?? snapshot.ctx.today
+        let load = engine.load(on: day)
+        let usual = load?.usualRange.map { ($0.lowerBound / LoadResult.maximum)...($0.upperBound / LoadResult.maximum) }
+        VStack(alignment: .leading, spacing: Space.l) {
+            HStack(alignment: .center, spacing: Space.l) {
+                ScoreDial(fraction: load.map { $0.value / LoadResult.maximum }, valueText: load.map { Fmt.decimal($0.value) } ?? "–",
+                          label: "Load", color: Palette.cobalt, size: 140, usual: usual)
+                    .id(day)
+                VStack(alignment: .leading, spacing: Space.s) {
+                    Eyebrow(text: day == snapshot.ctx.today ? "Today so far" : Fmt.dayLabel(day), icon: "bl.load", color: Palette.cobalt)
+                    Text(sentence(load)).font(Typo.storySmall).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
+                    if let r = load?.usualRange {
+                        MonoPill(text: "usual \(Fmt.decimal(r.lowerBound))–\(Fmt.decimal(r.upperBound))", color: Palette.cobalt)
+                    }
+                }
+            }
+            if let load {
+                ForEach(load.factors) { FactorRow(factor: $0, color: Palette.cobalt) }
+                if !load.workouts.isEmpty {
+                    VStack(alignment: .leading, spacing: Space.s) {
+                        Eyebrow(text: "Workouts")
+                        ForEach(load.workouts) { w in
+                            HStack {
+                                BLIcon(name: w.isWalking ? "bl.steps" : "bl.energy", size: 14).foregroundStyle(Palette.cobalt)
+                                Text(w.activity).font(.subheadline.weight(.medium)).foregroundStyle(Palette.ink)
+                                Spacer()
+                                Text("\(Fmt.duration(w.duration)) · \(w.energyKcal.map { "\(Fmt.int($0)) kcal" } ?? "")")
+                                    .font(Typo.number(14)).foregroundStyle(Palette.secondaryInk)
+                            }
+                        }
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: Space.s) {
+                Eyebrow(text: "Last 13 weeks · tap a day")
+                ScoreHeatmap(days: snapshot.scoreHistory, mode: .load, selected: day) { d in withAnimation(Motion.standard) { selected = d } }
+            }
+            Text("Load combines active energy and exercise minutes. Each point takes more effort than the one before; it isn't a training prescription.")
+                .font(.caption2).foregroundStyle(Palette.tertiaryInk)
+        }
+        .card(padding: Space.l, tone: .hero)
+    }
+
+    func sentence(_ l: LoadResult?) -> String {
+        guard let l else { return "No activity recorded for this day." }
+        guard let r = l.usualRange else { return "Building your usual range from a few more days." }
+        if l.value > r.upperBound { return "A bigger day than usual for you." }
+        if l.value < r.lowerBound { return "Lighter than your usual day so far." }
+        return "Within your usual range."
     }
 }

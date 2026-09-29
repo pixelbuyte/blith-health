@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Boots a small and a large iPhone simulator, installs the Debug build and captures key
-# screens in light and dark mode using sample data (launch arguments, see LaunchOptions.swift).
+# screens (the app is dark by design) using sample data (launch arguments, see LaunchOptions.swift).
 set -euo pipefail
 
 ROOT="${CM_BUILD_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -49,22 +49,26 @@ for DEV in "$SMALL" "$LARGE"; do
   xcrun simctl install "$UDID" "$APP"
   echo "$NAME ($UDID)"
   DEMO=(-BlithDemo balanced -BlithAIConsent NO -BlithClockHour 15.5)
-  for MODE in light dark; do
-    xcrun simctl ui "$UDID" appearance "$MODE"
-    shoot "$UDID" "$NAME-$MODE-1-today" "${DEMO[@]}" -BlithTab today
-    shoot "$UDID" "$NAME-$MODE-2-walk" "${DEMO[@]}" -BlithTab walk -BlithPeriod month -BlithWalkDaysAgo 40
-    shoot "$UDID" "$NAME-$MODE-3-ask" "${DEMO[@]}" -BlithTab ask -BlithAskScript YES
-    shoot "$UDID" "$NAME-$MODE-4-body" "${DEMO[@]}" -BlithTab body -BlithBodyFocus sample-ankle
-    if [ "$MODE" = light ]; then
-      shoot "$UDID" "$NAME-$MODE-5-body-front" "${DEMO[@]}" -BlithTab body
-      shoot "$UDID" "$NAME-$MODE-6-insight" "${DEMO[@]}" -BlithSheet insight
-      shoot "$UDID" "$NAME-$MODE-7-sleep" "${DEMO[@]}" -BlithSheet sleep
-      shoot "$UDID" "$NAME-$MODE-8-achievements" "${DEMO[@]}" -BlithSheet achievements
-      shoot "$UDID" "$NAME-$MODE-9-walk-day" "${DEMO[@]}" -BlithTab walk -BlithPeriod day
-      shoot "$UDID" "$NAME-$MODE-10-newuser" -BlithDemo newUser -BlithClockHour 15.5 -BlithTab today
-      shoot "$UDID" "$NAME-$MODE-11-onboarding" -BlithResetOnboarding YES
-    fi
-  done
+  xcrun simctl ui "$UDID" appearance dark
+  shoot "$UDID" "$NAME-01-today" "${DEMO[@]}" -BlithTab today
+  shoot "$UDID" "$NAME-02-today-monitor" "${DEMO[@]}" -BlithTab today -BlithScrollTo monitor
+  shoot "$UDID" "$NAME-03-today-movement" "${DEMO[@]}" -BlithTab today -BlithScrollTo movement
+  shoot "$UDID" "$NAME-04-activity" "${DEMO[@]}" -BlithTab walk -BlithPeriod month
+  shoot "$UDID" "$NAME-05-sleep" "${DEMO[@]}" -BlithTab sleep
+  shoot "$UDID" "$NAME-06-sleep-stages" "${DEMO[@]}" -BlithTab sleep -BlithScrollTo stages
+  shoot "$UDID" "$NAME-07-body" "${DEMO[@]}" -BlithTab body -BlithBodyYaw 28
+  shoot "$UDID" "$NAME-08-body-focus" "${DEMO[@]}" -BlithTab body -BlithBodyFocus sample-ankle
+  shoot "$UDID" "$NAME-09-body-muscle" "${DEMO[@]}" -BlithTab body -BlithBodyLayer muscle -BlithBodyYaw -20
+  shoot "$UDID" "$NAME-10-body-muscle-back" "${DEMO[@]}" -BlithTab body -BlithBodyLayer muscle -BlithBodyYaw 180
+  shoot "$UDID" "$NAME-11-readiness" "${DEMO[@]}" -BlithSheet readiness
+  shoot "$UDID" "$NAME-12-ask" "${DEMO[@]}" -BlithTab ask -BlithAskScript YES
+  if [ "$UDID" = "${SMALL%%|*}" ]; then
+    shoot "$UDID" "$NAME-13-vital" "${DEMO[@]}" -BlithSheet vital
+    shoot "$UDID" "$NAME-14-activity-day" "${DEMO[@]}" -BlithTab walk -BlithPeriod month -BlithWalkDaysAgo 40
+    shoot "$UDID" "$NAME-15-achievements" "${DEMO[@]}" -BlithSheet achievements
+    shoot "$UDID" "$NAME-16-newuser" -BlithDemo newUser -BlithClockHour 15.5 -BlithTab today
+    shoot "$UDID" "$NAME-17-onboarding" -BlithResetOnboarding YES
+  fi
   xcrun simctl shutdown "$UDID" || true
 done
 ls -1 "$OUT"

@@ -50,6 +50,9 @@ targets:
         excludes:
           - "**/.DS_Store"
           - "Resources/Info.plist"
+          - "Resources/Body3D/**"
+      - path: Blith/Resources/Body3D
+        buildPhase: resources
     dependencies:
       - package: BlithCore
         product: BlithCore

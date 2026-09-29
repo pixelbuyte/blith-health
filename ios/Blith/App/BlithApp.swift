@@ -12,6 +12,7 @@ struct BlithApp: App {
                 .environment(app)
                 .environment(app.router)
                 .tint(Palette.accent)
+                .preferredColorScheme(.dark)
                 .task { await app.start() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active, app.phase == .ready { app.checkIn(); Task { await app.refresh() } }
@@ -28,7 +29,7 @@ struct RootView: View {
         ZStack {
             switch app.phase {
             case .launching:
-                Palette.background.ignoresSafeArea()
+                Palette.canvas.ignoresSafeArea()
                     .overlay(ProgressView())
             case .onboarding:
                 OnboardingView()
@@ -55,8 +56,11 @@ struct MainTabView: View {
             Tab("Today", image: "bl.today", value: AppTab.today) {
                 TodayView()
             }
-            Tab("Walk", image: "bl.walk", value: AppTab.walk) {
+            Tab("Activity", image: "bl.activity", value: AppTab.walk) {
                 WalkView()
+            }
+            Tab("Sleep", image: "bl.sleep", value: AppTab.sleep) {
+                SleepView()
             }
             Tab("Body", image: "bl.body", value: AppTab.body) {
                 BodyView()
@@ -94,12 +98,17 @@ struct SheetHost: View {
         switch sheet {
         case .profile:
             ProfileView()
-        case .sleep(let date):
-            SleepDetailView(initialDate: date)
+        case .sleep:
+            SleepView(standalone: true)
         case .weight:
             WeightDetailView()
         case .sources:
             NavigationStack { SourcesView() }
+        case .readiness(let date):
+            ReadinessDetailView(date: date)
+        case .vital(let metric):
+            VitalDetailView(metric: metric)
+                .presentationDetents([.medium, .large])
         case .insight(let insight):
             InsightExplanationSheet(
                 insight: insight,

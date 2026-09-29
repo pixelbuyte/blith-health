@@ -40,6 +40,7 @@ struct ChatBlockView: View {
         case .insight?: "See why"
         case .sources?: "Open sources"
         case .body?: "Open on the body map"
+        case .readiness?: "Open readiness"
         case .today?, nil: "Open"
         }
     }
@@ -50,6 +51,7 @@ struct ChatBlockView: View {
         case .weightChart: Palette.weight
         case .bodyNote: Palette.note
         case .insight(let i): i.tint
+        case .scores(let b): b.band == nil ? Palette.cobalt : Palette.band(b.band)
         default: Palette.cobalt
         }
     }
@@ -178,6 +180,23 @@ struct ChatBlockView: View {
                     .chartYAxis(.hidden)
                     .frame(height: 44)
                 }
+            }
+        case .scores(let b):
+            VStack(alignment: .leading, spacing: Space.m) {
+                header("Scores · \(Fmt.dayLabel(b.date))", symbol: "bl.readiness", color: Palette.band(b.band))
+                HStack(spacing: 0) {
+                    ScoreDial(fraction: b.sleep.map { Double($0) / 100 }, valueText: b.sleep.map(String.init) ?? "–", unit: b.sleep == nil ? nil : "%",
+                              label: "Sleep", color: Palette.sleep, size: 76)
+                        .frame(maxWidth: .infinity)
+                    ScoreDial(fraction: b.readiness.map { Double($0) / 100 }, valueText: b.readiness.map(String.init) ?? "\(b.calibrationDays)",
+                              unit: b.readiness == nil ? "/\(ScoreEngine.calibrationDays)" : "%", label: b.readiness == nil ? "Calibrating" : "Readiness",
+                              color: b.readiness == nil ? Palette.secondaryInk : Palette.band(b.band), size: 104)
+                    ScoreDial(fraction: b.load.map { $0 / LoadResult.maximum }, valueText: b.load.map { Fmt.decimal($0) } ?? "–",
+                              label: "Load", color: Palette.cobalt, size: 76,
+                              usual: b.loadUsual.flatMap { $0.count == 2 ? ($0[0] / LoadResult.maximum)...($0[1] / LoadResult.maximum) : nil })
+                        .frame(maxWidth: .infinity)
+                }
+                ForEach(b.factors.prefix(3)) { FactorRow(factor: $0, color: Palette.band(b.band)) }
             }
         case .bodyNote(let n):
             VStack(alignment: .leading, spacing: Space.xs) {

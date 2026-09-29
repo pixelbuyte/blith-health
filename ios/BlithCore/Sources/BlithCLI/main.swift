@@ -39,6 +39,21 @@ case "ask":
     print("\n\(reply.text)\n")
     for block in reply.blocks { print("[widget] \(block.kind) → \(block.link.map { "\($0)" } ?? "-")") }
     for e in reply.evidence { print("[evidence] \(e.label): \(e.detail)") }
+case "scores":
+    let scenario = args.dropFirst().first.flatMap(DemoScenario.init(rawValue:)) ?? .balanced
+    let s = HealthSnapshot.build(history: try await loadHistory(scenario), profile: profile, now: now, calendar: calendar)
+    print("Readiness: \(s.readiness.score.map(String.init) ?? "–") \(s.readiness.band?.label ?? "") — \(s.readiness.summary)")
+    for f in s.readiness.factors { print("  \(f.title): \(f.value) (\(f.baseline)) effect \(Fmt.decimal(f.effect, digits: 2)) w \(Fmt.decimal(f.weight, digits: 2))") }
+    if let sl = s.sleepScore {
+        print("Sleep: \(sl.score)% · \(Fmt.duration(sl.asleep)) of \(Fmt.duration(sl.need)) · eff \(Fmt.percent(sl.efficiency)) · debt \(Fmt.duration(sl.debt)) · disturbances \(sl.disturbances)")
+    }
+    if let l = s.load { print("Load: \(l.value) usual \(l.usualRange.map { "\($0.lowerBound)–\($0.upperBound)" } ?? "-")") }
+    print("Monitor: \(s.monitor.within)/\(s.monitor.measured) within range")
+    for v in s.monitor.vitals { print("  \(v.metric.displayName): \(v.value.map { Fmt.value($0, metric: v.metric, units: .metric) } ?? "–") \(v.status)") }
+    let r = s.scoreHistory.compactMap(\.readiness)
+    print("Readiness last 91d: min \(r.min() ?? 0) max \(r.max() ?? 0) high \(r.filter { $0 >= 67 }.count) low \(r.filter { $0 < 34 }.count) of \(r.count)")
+    print("Loads: \(s.scoreHistory.suffix(14).map { $0.load.map { Fmt.decimal($0) } ?? "-" })")
+    print("Sleep: \(s.scoreHistory.suffix(14).map { $0.sleep.map(String.init) ?? "-" })")
 default:
     let scenario = args.dropFirst().first.flatMap(DemoScenario.init(rawValue:)) ?? .balanced
     let history = try await loadHistory(scenario)

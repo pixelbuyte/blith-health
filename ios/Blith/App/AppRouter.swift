@@ -2,7 +2,7 @@ import BlithCore
 import Observation
 import SwiftUI
 
-enum AppTab: Hashable { case today, walk, body, ask }
+enum AppTab: Hashable { case today, walk, sleep, body, ask }
 
 /// Navigation state shared by tabs, insight cards and chat widgets, so the assistant can
 /// "navigate the app with the user".
@@ -15,6 +15,8 @@ final class AppRouter {
         case weight
         case insight(Insight)
         case sources
+        case readiness(LocalDate?)
+        case vital(HealthMetric)
 
         var id: String {
             switch self {
@@ -23,6 +25,8 @@ final class AppRouter {
             case .weight: "weight"
             case .insight(let i): "insight-\(i.id)"
             case .sources: "sources"
+            case .readiness(let d): "readiness-\(d?.description ?? "today")"
+            case .vital(let m): "vital-\(m.rawValue)"
             }
         }
     }
@@ -31,6 +35,8 @@ final class AppRouter {
     var walkPeriod: WalkPeriod = .week
     /// Day shown in Walk's detail panel (set by chart taps and deep links).
     var walkSelectedDate: LocalDate?
+    /// Night shown on the Sleep tab (nil = last night).
+    var sleepDate: LocalDate?
     /// Note Body should rotate and zoom to.
     var bodyFocusNoteID: String?
     var sheet: Sheet?
@@ -46,7 +52,9 @@ final class AppRouter {
             walkPeriod = period
             tab = .walk
         case .sleep(let date):
-            sheet = .sleep(date)
+            sheet = nil
+            sleepDate = date
+            tab = .sleep
         case .weight:
             sheet = .weight
         case .insight(let id):
@@ -63,6 +71,8 @@ final class AppRouter {
             sheet = nil
             bodyFocusNoteID = id
             tab = .body
+        case .readiness(let date):
+            sheet = .readiness(date)
         }
     }
 
@@ -70,6 +80,7 @@ final class AppRouter {
         tab = .today
         walkPeriod = .week
         walkSelectedDate = nil
+        sleepDate = nil
         bodyFocusNoteID = nil
         sheet = nil
     }

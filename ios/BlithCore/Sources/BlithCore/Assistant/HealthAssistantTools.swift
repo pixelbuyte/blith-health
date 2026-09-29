@@ -83,6 +83,9 @@ public struct HealthAssistantTools: Sendable {
         ToolDefinition(name: "get_weight_trend",
                        description: "Weight: latest reading, smoothed trend, 30-day change, weekly rate, this week's reading range, goal distance.",
                        parameters: object([:])),
+        ToolDefinition(name: "get_readiness",
+                       description: "Blith's daily scores for a day (defaults to today): readiness 0-100 from overnight HRV and resting heart rate vs the user's 30-day baseline plus sleep performance; sleep performance 0-100 vs personal sleep need; load 0-10 from active energy and exercise; and the health monitor (resting HR, HRV, respiratory rate, blood oxygen, wrist temperature vs personal ranges). Scores describe signals relative to the user's usual, never a medical assessment.",
+                       parameters: object(["date": date])),
         ToolDefinition(name: "get_sleep_summary",
                        description: "Sleep for a night (defaults to last night): time asleep, stages, bed/wake times, vs the 28-night average.",
                        parameters: object(["date": ["type": "string", "description": "Wake-up date YYYY-MM-DD; omit for last night"]])),
@@ -115,7 +118,7 @@ public struct HealthAssistantTools: Sendable {
                        parameters: object(["metric": ["type": "string", "enum": metricEnum]], required: ["metric"])),
         ToolDefinition(name: "show_widget",
                        description: "Attach a native, tappable widget under your answer. Use it whenever a chart helps (at most 2 per answer). step_chart needs period; sleep_timeline takes an optional date; insight needs insight_id; comparison shows the most recent compare_periods result.",
-                       parameters: object(["type": ["type": "string", "enum": ["step_chart", "day_steps", "walking_summary", "weight_chart", "sleep_timeline", "workouts", "comparison", "insight", "sources", "metric_card", "body_note"]],
+                       parameters: object(["type": ["type": "string", "enum": ["scores", "step_chart", "day_steps", "walking_summary", "weight_chart", "sleep_timeline", "workouts", "comparison", "insight", "sources", "metric_card", "body_note"]],
                                            "note_id": ["type": "string"],
                                            "period": ["type": "string", "enum": ["day", "week", "month", "6m", "year", "all"]],
                                            "date": date, "insight_id": ["type": "string"],
@@ -155,6 +158,7 @@ public struct HealthAssistantTools: Sendable {
             guard let d = args["date"]?.stringValue.flatMap(LocalDate.init(string:)) else { return invalid("date is required") }
             return dayDetail(d)
         case "get_weight_trend": return weightTrend()
+        case "get_readiness": return readiness(args["date"]?.stringValue.flatMap(LocalDate.init(string:)) ?? ctx.today)
         case "get_sleep_summary": return sleep(args["date"]?.stringValue.flatMap(LocalDate.init(string:)))
         case "get_workout_history":
             return workouts(span(args["start_date"], args["end_date"]) ?? ctx.trailing(30, endingDaysAgo: 0))
@@ -442,6 +446,50 @@ public struct HealthAssistantTools: Sendable {
         ], evidence: [EvidenceItem(label: "Weight trend", detail: "\(w.sampleCount) readings · \(ctx.sourceLabel(.weight))")], suggestedBlock: weightBlock())
     }
 
+    func scoresBlock(_ date: LocalDate) -> ScoresBlock {
+        let e = ScoreEngine(ctx)
+        let r = e.readiness(on: date)
+        let l = e.load(on: date)
+        return ScoresBlock(date: date, readiness: r.score, band: r.band, calibrationDays: r.calibrationDays, sleep: e.sleep(on: date)?.score,
+                           load: l?.value, loadUsual: l?.usualRange.map { [$0.lowerBound, $0.upperBound] }, factors: r.factors, summary: r.summary)
+    }
+
+    func readiness(_ date: LocalDate) -> ToolOutput {
+        let e = ScoreEngine(ctx)
+        let r = e.readiness(on: date)
+        let sl = e.sleep(on: date)
+        let l = e.load(on: date)
+        let m = e.monitor(on: date)
+        var obj: [String: JSONValue] = [
+            "date": .string(date.description),
+            "readiness": .num(r.score.map(Double.init)),
+            "band": .str(r.band?.label),
+            "calibrating": .bool(r.isCalibrating),
+            "calibration_nights": .number(Double(r.calibrationDays)),
+            "summary": .string(r.summary),
+            "readiness_factors": .array(r.factors.map { f in
+                ["factor": .string(f.title), "value": .string(f.value), "usual": .string(f.baseline),
+                 "effect_minus1_to_1": .number((f.effect * 100).rounded() / 100), "share_of_score": .number((f.weight * 100).rounded() / 100)]
+            }),
+            "sleep_performance": .num(sl.map { Double($0.score) }),
+            "load_0_to_10": .num(l?.value, digits: 1),
+            "load_usual_range": .str(l?.usualRange.map { "\(Fmt.decimal($0.lowerBound))–\(Fmt.decimal($0.upperBound))" }),
+            "health_monitor": .array(m.vitals.map { v in
+                ["metric": .string(v.metric.displayName), "value": .str(v.value.map { Fmt.value($0, metric: v.metric, units: units) }),
+                 "status": .string(v.status.rawValue),
+                 "personal_range": .str(v.range.map { "\(Fmt.value($0.lowerBound, metric: v.metric, units: units)) – \(Fmt.value($0.upperBound, metric: v.metric, units: units))" })]
+            }),
+        ]
+        if let sl {
+            obj["sleep_asleep"] = .string(Fmt.duration(sl.asleep))
+            obj["sleep_need"] = .string(Fmt.duration(sl.need))
+            obj["sleep_debt_7_nights"] = .string(Fmt.duration(sl.debt))
+        }
+        return ToolOutput(result: .object(obj),
+                          evidence: [EvidenceItem(label: "Readiness", detail: "HRV and resting heart rate vs your 30-day baseline, plus sleep performance · \(r.calibrationDays) nights of baseline")],
+                          suggestedBlock: .scores(scoresBlock(date)))
+    }
+
     func sleepBlock(_ night: SleepNight) -> AssistantBlock {
         let s = snapshot.sleep
         let others = LocalDate.range(night.date.adding(days: -28), night.date.adding(days: -1)).compactMap { ctx.history.sleepNights[$0]?.asleepDuration }
@@ -571,6 +619,7 @@ public struct HealthAssistantTools: Sendable {
         let type = args["type"]?.stringValue ?? ""
         var block: AssistantBlock?
         switch type {
+        case "scores": block = readiness(args["date"]?.stringValue.flatMap(LocalDate.init(string:)) ?? ctx.today).suggestedBlock
         case "step_chart": block = stepChartBlock(WalkPeriod(token: args["period"]?.stringValue ?? "week") ?? .week)
         case "walking_summary": block = .walkingSummary(walkingBlock())
         case "weight_chart": block = weightBlock()

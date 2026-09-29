@@ -8,12 +8,13 @@ public struct LocalAssistant: AssistantEngine {
 
     public init(tools: HealthAssistantTools) { self.tools = tools }
 
-    enum Intent { case today, walking(WalkPeriod), bestWeek, weight, sleep, workouts, sources, insights, compareMonth, day(LocalDate), notes, unknown }
+    enum Intent { case readiness, today, walking(WalkPeriod), bestWeek, weight, sleep, workouts, sources, insights, compareMonth, day(LocalDate), notes, unknown }
 
     static func intent(for q: String, today: LocalDate = LocalDate(Date(), calendar: .current)) -> Intent {
         let t = q.lowercased()
         func has(_ words: String...) -> Bool { words.contains { t.contains($0) } }
         if has("note", "ankle", "knee", "injur", "hurt", "pain", "sprain", "body") && !has("walk", "step") { return .notes }
+        if has("readiness", "recovery", "recovered", "ready", "score", "hrv", "heart rate", "resting", "load", "strain", "vitals") { return .readiness }
         if let d = RelativeDates.day(in: t, today: today), d != today, !has("sleep", "slept", "weigh") { return .day(d) }
         if has("sleep", "slept", "bed", "night") { return .sleep }
         if has("weight", "weigh", "scale", "lose", "lost", "kg", "lb", "pound") { return .weight }
@@ -38,6 +39,18 @@ public struct LocalAssistant: AssistantEngine {
         var output: ToolOutput
 
         switch Self.intent(for: question, today: ctx.today) {
+        case .readiness:
+            output = tools.execute(name: "get_readiness", arguments: [:])
+            let r = s.readiness
+            if let score = r.score, let band = r.band {
+                text = "Your readiness today is \(score) (\(band.label.lowercased())). \(r.summary)"
+                if let top = r.factors.max(by: { abs($0.effect * $0.weight) < abs($1.effect * $1.weight) }) {
+                    text += " The biggest factor: \(top.title.lowercased()) at \(top.value) (\(top.baseline))."
+                }
+            } else {
+                text = r.summary
+            }
+            if let l = s.load { text += " Load so far today is \(Fmt.decimal(l.value)) of 10." }
         case .day(let d):
             output = tools.execute(name: "get_day_detail", arguments: ["date": .string(d.description)])
             let a = HealthAnalytics(ctx)

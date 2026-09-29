@@ -12,6 +12,8 @@ public enum DeepLink: Codable, Hashable, Sendable {
     case walkDay(LocalDate)
     /// Body tab, optionally focused on a note.
     case body(String?)
+    /// Readiness detail for a day (nil = today).
+    case readiness(LocalDate?)
 }
 
 public enum InsightKind: String, Codable, Sendable, CaseIterable {

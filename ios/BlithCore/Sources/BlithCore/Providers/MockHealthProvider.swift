@@ -87,6 +87,11 @@ public struct MockHealthProvider: HealthDataProvider {
         var doubleSupport: [DailyAggregate] = []
         var rhr: [DailyAggregate] = []
         var hrv: [DailyAggregate] = []
+        var walkingHR: [DailyAggregate] = []
+        var resp: [DailyAggregate] = []
+        var spo2: [DailyAggregate] = []
+        var temp: [DailyAggregate] = []
+        var vo2: [DailyAggregate] = []
 
         for date in request.span.days where date >= first && date <= today {
             var hours = hourly(for: date, today: today)
@@ -116,8 +121,27 @@ public struct MockHealthProvider: HealthDataProvider {
                 doubleSupport.append(DailyAggregate(date: date, metric: .walkingDoubleSupport, value: 0.275 + rng.gaussian() * 0.008, sampleCount: 4))
             }
             if scenario != .partialPermissions {
-                rhr.append(DailyAggregate(date: date, metric: .restingHeartRate, value: 58.5 + 2.5 * min(k, 120) / 120 + rng.gaussian() * 1.5, sampleCount: 1))
-                hrv.append(DailyAggregate(date: date, metric: .hrv, value: max(15, 44 + rng.gaussian() * 8), sampleCount: 5))
+                // Overnight vitals respond to the night's sleep and the previous day's load, so
+                // readiness moves for believable reasons.
+                var v = rngFor(date, salt: 8)
+                let sleepEffect = max(-1, min(1, ((sleepHours(for: date) ?? 7.1) - 7.1) / 1.4))
+                let loadEffect = max(-1, min(1, (hourly(for: date.adding(days: -1), today: today).total - 7_500) / 5_000))
+                let sinceAnkle = Self.ankleNoteDaysAgo - date.days(until: today)
+                let ankle = scenario == .balanced && (0...3).contains(sinceAnkle) ? 1.0 : 0
+                let restingHR = 58.5 + 2.5 * min(k, 120) / 120 - 1.3 * sleepEffect + 1.1 * loadEffect + 1.8 * ankle + v.gaussian() * 1.2
+                rhr.append(DailyAggregate(date: date, metric: .restingHeartRate, value: restingHR, sampleCount: 1))
+                let variability = 46 + 6.5 * sleepEffect - 4.5 * loadEffect - 5 * ankle + v.gaussian() * 6
+                hrv.append(DailyAggregate(date: date, metric: .hrv, value: max(15, variability), sampleCount: 5))
+                walkingHR.append(DailyAggregate(date: date, metric: .walkingHeartRate, value: 99 - 3 * min(1, max(0, 1 - k / 70)) + v.gaussian() * 3, sampleCount: 8))
+                resp.append(DailyAggregate(date: date, metric: .respiratoryRate, value: 14.6 + 0.35 * ankle + v.gaussian() * 0.35, sampleCount: 1))
+                spo2.append(DailyAggregate(date: date, metric: .oxygenSaturation, value: min(0.995, 0.966 + v.gaussian() * 0.006), sampleCount: 6))
+                if scenario != .missingSleep {
+                    temp.append(DailyAggregate(date: date, metric: .wristTemperature, value: 35.92 + 0.12 * ankle + v.gaussian() * 0.12, sampleCount: 1))
+                }
+                if v.uniform() < 0.22 {
+                    // Cardio fitness creeps up with the recent walking.
+                    vo2.append(DailyAggregate(date: date, metric: .vo2Max, value: 40.6 + 1.9 * max(0, 1 - k / 120) + v.gaussian() * 0.25, sampleCount: 1))
+                }
             }
         }
 
@@ -134,6 +158,11 @@ public struct MockHealthProvider: HealthDataProvider {
         put(.walkingDoubleSupport, doubleSupport)
         put(.restingHeartRate, rhr)
         put(.hrv, hrv)
+        put(.walkingHeartRate, walkingHR)
+        put(.respiratoryRate, resp)
+        put(.oxygenSaturation, spo2)
+        put(.wristTemperature, temp)
+        put(.vo2Max, vo2)
         if scenario == .noWalkingSpeed { batch.unsupported = [.walkingSpeed, .walkingStepLength, .walkingAsymmetry, .walkingDoubleSupport] }
 
         if request.includeBody && scenario != .missingWeight && scenario != .partialPermissions {

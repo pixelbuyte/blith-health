@@ -1,103 +1,45 @@
 import BlithCore
 import SwiftUI
 
-// MARK: - Region map
-
-/// Region anchors for the current body artwork (`Resources/body-regions.json`, generated with
-/// the figure by `design/body/generate_body.py`). Notes store a `BodyRegion`, never a screen
-/// point, so markers follow the region through rotation and zoom, and survive a new model as
-/// long as the new artwork ships its own anchor map.
-struct BodyRegionMap: Decodable {
-    struct Anchor: Decodable, Hashable {
-        let x: Double
-        let y: Double
-        let r: Double
-    }
-
-    let viewBox: [Double]
-    let front: [String: Anchor]
-    let back: [String: Anchor]
-
-    var width: Double { viewBox.first ?? 400 }
-    var height: Double { viewBox.count > 1 ? viewBox[1] : 1000 }
-
-    static let shared: BodyRegionMap = {
-        guard let url = Bundle.main.url(forResource: "body-regions", withExtension: "json"),
-              let data = try? Data(contentsOf: url),
-              let map = try? JSONDecoder().decode(BodyRegionMap.self, from: data) else {
-            return BodyRegionMap(viewBox: [400, 1000], front: [:], back: [:])
-        }
-        return map
-    }()
-
-    func anchor(_ region: BodyRegion, back isBack: Bool) -> Anchor? {
-        (isBack ? back : front)[region.rawValue]
-    }
-
-    /// The side to show a region on: the front when it exists there.
-    func preferredSideIsBack(_ region: BodyRegion) -> Bool { front[region.rawValue] == nil && back[region.rawValue] != nil }
-
-    func nearest(to p: CGPoint, back isBack: Bool, scale: CGFloat) -> BodyRegion? {
-        let anchors = isBack ? back : front
-        var best: (BodyRegion, CGFloat)?
-        for (key, a) in anchors {
-            guard let region = BodyRegion(rawValue: key) else { continue }
-            let d = hypot(CGFloat(a.x) * scale - p.x, CGFloat(a.y) * scale - p.y)
-            let limit = CGFloat(a.r) * scale * 1.5
-            if d <= limit, d < (best?.1 ?? .infinity) { best = (region, d) }
-        }
-        return best?.0
-    }
-}
-
 // MARK: - Body tab
 
 struct BodyView: View {
     @Environment(AppModel.self) private var app
     @Environment(AppRouter.self) private var router
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
-    @State private var angle: Double = 0
-    @State private var dragStart: Double?
-    @State private var zoom: CGFloat = 1
-    @State private var zoomStart: CGFloat?
+    @State private var controller: BodySceneController?
+    @State private var layer: BodyLayer = .skin
     @State private var selectedRegion: BodyRegion?
+    @State private var selectedMuscle: String?
     @State private var focusedNoteID: String?
     @State private var scrubDay: Double?
     @State private var editing: HealthEvent?
     @State private var showRegions = false
-    @State private var revealed = false
-
-    let map = BodyRegionMap.shared
+    @State private var visible = false
 
     var history: HealthHistory? { app.history }
     var notes: [HealthEvent] { history?.bodyNotes ?? [] }
     var today: LocalDate { LocalDate(AppClock.now(), calendar: .current) }
-    var isBack: Bool { abs(normalized(angle)) > 90 }
-
-    func normalized(_ a: Double) -> Double {
-        var x = a.truncatingRemainder(dividingBy: 360)
-        if x > 180 { x -= 360 }
-        if x <= -180 { x += 360 }
-        return x
-    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: Space.xl) {
+                VStack(alignment: .leading, spacing: Space.l) {
                     header
                     stage
                     regionPanel
                     timeline
                     historyList
-                    Text("Interim viewer: a front and back figure with region anchors. A licensed, rigged 3D model is needed for free rotation; the anchor map lets notes move to it unchanged.")
-                        .font(.caption).foregroundStyle(Palette.secondaryInk)
+                    Text("3D figure generated from MakeHuman's CC0 base mesh. The muscle layer is an illustrative map of the main surface muscle groups, not a medical atlas.")
+                        .font(.caption2).foregroundStyle(Palette.tertiaryInk)
                 }
                 .padding(.horizontal, Space.page)
                 .padding(.bottom, Space.section)
             }
-            .blithBackground(wash: Palette.note.opacity(0.10))
+            .scrollIndicators(.hidden)
+            .blithBackground(wash: Palette.cobalt.opacity(0.18))
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $editing) { note in
                 BodyNoteEditor(note: note, isNew: !notes.contains { $0.id == note.id }) { saved in
@@ -108,27 +50,29 @@ struct BodyView: View {
             }
             .sheet(isPresented: $showRegions) { regionList }
             .onAppear {
-                withAnimation(Motion.respecting(reduceMotion, Motion.reveal)) { revealed = true }
+                visible = true
+                setUp()
                 focusFromRouter()
             }
+            .onDisappear { visible = false }
             .onChange(of: router.bodyFocusNoteID) { _, _ in focusFromRouter() }
+            .onChange(of: markerKey) { _, _ in syncMarkers() }
         }
     }
 
     var header: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: Space.xs) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: Space.s) {
-                    Eyebrow(text: "Body history", icon: "bl.body", color: Palette.note)
+                    Eyebrow(text: "Body map · \(notes.filter { $0.isActive(on: today) }.count) open notes", icon: "bl.body", color: Palette.cyan)
                     if app.isDemo { SampleDataBanner() }
                 }
-                Text("Your body").font(Typo.display).foregroundStyle(Palette.ink)
-                Text("Tap a region to add a note or see its history.").font(.subheadline).foregroundStyle(Palette.secondaryInk)
+                Text("Body").font(Typo.display).foregroundStyle(Palette.ink)
             }
             Spacer()
             AvatarButton(name: app.profile.name) { router.sheet = .profile }
         }
-        .padding(.top, Space.l)
+        .padding(.top, Space.s)
     }
 
     // MARK: Stage
@@ -139,148 +83,121 @@ struct BodyView: View {
         return notes.filter { $0.bodyRegion != nil && ($0.isActive(on: day) || $0.id == focusedNoteID || ($0.date == day)) }
     }
 
-    var stage: some View {
-        GeometryReader { geo in
-            let figureHeight = geo.size.height - 24
-            let scale = figureHeight / CGFloat(map.height)
-            let figureWidth = CGFloat(map.width) * scale
-            ZStack {
-                RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
-                    .fill(RadialGradient(colors: [Color(hex: 0x16307F), Color(hex: 0x070D2B)], center: .center, startRadius: 10, endRadius: 360))
-                figure(width: figureWidth, height: figureHeight, scale: scale)
-                    .scaleEffect(zoom)
-                    .offset(focusOffset(scale: scale, width: figureWidth, height: figureHeight))
-                    .opacity(revealed ? 1 : 0)
-                    .scaleEffect(revealed ? 1 : 0.94)
-                    .offset(y: revealed ? 0 : 18)
-                    .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
-                controls
+    var markerKey: String { visibleNotes.map(\.id).joined(separator: ",") + "|" + (focusedNoteID ?? "") }
+
+    func setUp() {
+        if controller == nil, let model = Body3DModel.shared { controller = BodySceneController(model: model) }
+        guard let controller else { return }
+        controller.onSelect = { [weak controller] region, muscle in
+            withAnimation(Motion.respecting(reduceMotion, Motion.snappy)) {
+                selectedRegion = region
+                selectedMuscle = muscle?.name
+                focusedNoteID = nil
             }
-            .gesture(rotateGesture)
-            .simultaneousGesture(zoomGesture)
+            controller?.highlight(region)
+        }
+        controller.onMarker = { id in if let n = notes.first(where: { $0.id == id }) { focus(n) } }
+        if let l = UserDefaults.standard.string(forKey: "BlithBodyLayer").flatMap(BodyLayer.init(rawValue:)) { layer = l }
+        controller.setLayer(layer)
+        if UserDefaults.standard.object(forKey: "BlithBodyYaw") != nil {
+            controller.setYaw(Float(UserDefaults.standard.double(forKey: "BlithBodyYaw")) * .pi / 180, animated: false)
+        }
+        syncMarkers()
+    }
+
+    func syncMarkers() {
+        controller?.setMarkers(visibleNotes, focused: focusedNoteID, today: today)
+    }
+
+    @ViewBuilder
+    var stage: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                .fill(RadialGradient(colors: [Color(hex: 0x10214F), Color(hex: 0x05070D)], center: UnitPoint(x: 0.5, y: 0.42), startRadius: 10, endRadius: 380))
+            GridBackdrop().opacity(0.5).clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+            if let controller {
+                BodySceneView(controller: controller, animate: visible && !reduceMotion && scenePhase == .active)
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+                    .transition(.opacity)
+            } else {
+                EmptyStateView(symbol: "bl.body", title: "3D model unavailable", message: "The body model couldn't be loaded on this device.")
+                    .padding()
+            }
+            controls
         }
         .frame(height: 540)
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Palette.hairline, lineWidth: 1))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Body map, \(isBack ? "back" : "front") view")
-    }
-
-    /// Moves the selected region toward the middle of the stage as the view zooms in.
-    func focusOffset(scale: CGFloat, width: CGFloat, height: CGFloat) -> CGSize {
-        guard zoom > 1, let region = selectedRegion, let a = map.anchor(region, back: isBack) else { return .zero }
-        let factor = min(1, (zoom - 1) / 0.6)
-        let dx = (CGFloat(a.x) * scale - width / 2) * zoom * factor
-        let dy = (CGFloat(a.y) * scale - height / 2) * zoom * factor
-        return CGSize(width: -dx, height: -dy)
-    }
-
-    func figure(width: CGFloat, height: CGFloat, scale: CGFloat) -> some View {
-        let shown = normalized(angle)
-        let tilt = isBack ? (shown > 0 ? shown - 180 : shown + 180) : shown
-        return LivingFigure(back: isBack, width: width, height: height) {
-            ZStack(alignment: .topLeading) {
-                if let region = selectedRegion, let a = map.anchor(region, back: isBack) {
-                    Circle()
-                        .fill(RadialGradient(colors: [Palette.cyan.opacity(0.75), Palette.cyan.opacity(0)], center: .center, startRadius: 0, endRadius: CGFloat(a.r) * scale * 1.6))
-                        .frame(width: CGFloat(a.r) * scale * 3.2, height: CGFloat(a.r) * scale * 3.2)
-                        .position(x: CGFloat(a.x) * scale, y: CGFloat(a.y) * scale)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
-                ForEach(visibleNotes) { note in
-                    if let region = note.bodyRegion, let a = map.anchor(region, back: isBack) {
-                        NoteMarker(note: note, focused: note.id == focusedNoteID, today: today)
-                            .scaleEffect(1 / zoom)
-                            .position(x: CGFloat(a.x) * scale, y: CGFloat(a.y) * scale)
-                            .onTapGesture { focus(note) }
-                    }
-                }
-            }
-            .frame(width: width, height: height)
-            .contentShape(Rectangle())
-            .onTapGesture(coordinateSpace: .local) { p in
-                if let region = map.nearest(to: p, back: isBack, scale: scale) {
-                    withAnimation(Motion.respecting(reduceMotion, Motion.snappy)) {
-                        selectedRegion = region
-                        focusedNoteID = nil
-                    }
-                }
-            }
-        }
-        .rotation3DEffect(.degrees(tilt), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
+        .accessibilityLabel("3D body map")
     }
 
     var controls: some View {
         VStack {
-            HStack {
-                GlassEffectGroup {
-                    sideButton("Front", back: false)
-                    sideButton("Back", back: true)
+            HStack(alignment: .top) {
+                HStack(spacing: 2) {
+                    ForEach(BodyLayer.allCases) { l in
+                        Button {
+                            layer = l
+                            controller?.setLayer(l)
+                        } label: {
+                            Text(l.title.uppercased()).font(Typo.eyebrow).tracking(1)
+                                .padding(.horizontal, 11).padding(.vertical, 8)
+                                .foregroundStyle(layer == l ? Palette.canvas : Palette.ink)
+                                .background(Capsule().fill(layer == l ? (l == .muscle ? Palette.coral : Palette.cyan) : Color.clear))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(layer == l ? .isSelected : [])
+                    }
                 }
+                .padding(3)
+                .glassSurface(Capsule())
                 Spacer()
                 Button { showRegions = true } label: {
-                    Label("Regions", systemImage: "list.bullet").font(.caption.weight(.semibold)).padding(.horizontal, 10).padding(.vertical, 8)
+                    Image(systemName: "list.bullet").font(.subheadline.weight(.semibold)).frame(width: 38, height: 38)
                 }
-                .foregroundStyle(.white)
-                .glassSurface(Capsule(), interactive: true)
-                .accessibilityHint("Choose a body region from a list")
+                .foregroundStyle(Palette.ink)
+                .glassSurface(Circle(), interactive: true)
+                .accessibilityLabel("Body regions list")
             }
             Spacer()
-            HStack {
-                Text(isBack ? "BACK" : "FRONT").font(Typo.eyebrow).tracking(1.4).foregroundStyle(.white.opacity(0.6))
+            HStack(alignment: .bottom) {
+                HStack(spacing: 2) {
+                    viewButton("Front", yaw: 0)
+                    viewButton("Side", yaw: -.pi / 2)
+                    viewButton("Back", yaw: .pi)
+                }
+                .padding(3)
+                .glassSurface(Capsule())
                 Spacer()
                 HStack(spacing: 0) {
-                    Button { setZoom(zoom - 0.5) } label: { Image(systemName: "minus").frame(width: 40, height: 36) }
+                    Button { controller?.zoom(by: 1 / 1.35, animated: true) } label: { Image(systemName: "minus").frame(width: 38, height: 36) }
                         .accessibilityLabel("Zoom out")
-                    Button { setZoom(1); selectedRegion = nil } label: { Image(systemName: "arrow.counterclockwise").frame(width: 40, height: 36) }
+                    Button {
+                        controller?.reset()
+                        selectedRegion = nil
+                        selectedMuscle = nil
+                        focusedNoteID = nil
+                    } label: { Image(systemName: "scope").frame(width: 38, height: 36) }
                         .accessibilityLabel("Reset view")
-                    Button { setZoom(zoom + 0.5) } label: { Image(systemName: "plus").frame(width: 40, height: 36) }
+                    Button { controller?.zoom(by: 1.35, animated: true) } label: { Image(systemName: "plus").frame(width: 38, height: 36) }
                         .accessibilityLabel("Zoom in")
                 }
                 .font(.subheadline.weight(.bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Palette.ink)
                 .glassSurface(Capsule(), interactive: true)
             }
+            Text("DRAG TO TURN · PINCH TO ZOOM · TAP A REGION").font(Typo.eyebrow).tracking(1).foregroundStyle(Palette.tertiaryInk)
+                .padding(.top, 6)
         }
         .padding(Space.m)
     }
 
-    func sideButton(_ title: String, back: Bool) -> some View {
-        Button { rotate(toBack: back) } label: {
-            Text(title).font(.caption.weight(.semibold)).padding(.horizontal, 12).padding(.vertical, 8)
-                .foregroundStyle(isBack == back ? Palette.navy : .white)
-                .background(isBack == back ? Color.white : Color.clear, in: Capsule())
+    func viewButton(_ title: String, yaw: Float) -> some View {
+        Button { controller?.setYaw(yaw) } label: {
+            Text(title.uppercased()).font(Typo.eyebrow).tracking(1).padding(.horizontal, 10).padding(.vertical, 8)
+                .foregroundStyle(Palette.ink)
         }
-        .accessibilityAddTraits(isBack == back ? .isSelected : [])
-    }
-
-    var rotateGesture: some Gesture {
-        DragGesture(minimumDistance: 8)
-            .onChanged { v in
-                if dragStart == nil { dragStart = angle }
-                angle = (dragStart ?? 0) + Double(v.translation.width) * 0.6
-            }
-            .onEnded { _ in
-                dragStart = nil
-                rotate(toBack: isBack)
-            }
-    }
-
-    var zoomGesture: some Gesture {
-        MagnifyGesture()
-            .onChanged { v in
-                if zoomStart == nil { zoomStart = zoom }
-                zoom = min(3, max(1, (zoomStart ?? 1) * v.magnification))
-            }
-            .onEnded { _ in zoomStart = nil }
-    }
-
-    func setZoom(_ z: CGFloat) {
-        withAnimation(Motion.respecting(reduceMotion, Motion.standard)) { zoom = min(3, max(1, z)) }
-    }
-
-    func rotate(toBack: Bool) {
-        let target: Double = toBack ? (normalized(angle) >= 0 ? 180 : -180) : 0
-        withAnimation(Motion.respecting(reduceMotion, .spring(response: 0.6, dampingFraction: 0.85))) { angle = target }
+        .buttonStyle(.plain)
     }
 
     // MARK: Focus
@@ -291,17 +208,23 @@ struct BodyView: View {
         router.bodyFocusNoteID = nil
     }
 
-    /// Rotate gently toward the note's region, zoom to a useful framing, reveal marker and date.
+    /// Turn toward the note's region, zoom to a useful framing, reveal the marker's date.
     func focus(_ note: HealthEvent) {
+        if controller == nil { setUp() }
         focusedNoteID = note.id
         scrubDay = Double(note.date.dayNumber)
         guard let region = note.bodyRegion else { return }
-        let back = map.preferredSideIsBack(region)
-        withAnimation(Motion.respecting(reduceMotion, .spring(response: 0.8, dampingFraction: 0.88))) {
-            angle = back ? 180 : 0
-            selectedRegion = region
-            zoom = 2.1
-        }
+        selectedRegion = region
+        selectedMuscle = nil
+        syncMarkers()
+        controller?.focus(region, animated: !reduceMotion)
+    }
+
+    func focus(region: BodyRegion) {
+        selectedRegion = region
+        selectedMuscle = nil
+        focusedNoteID = nil
+        controller?.focus(region, animated: !reduceMotion)
     }
 
     // MARK: Region panel
@@ -311,16 +234,27 @@ struct BodyView: View {
         if let region = selectedRegion {
             let regionNotes = notes.filter { $0.bodyRegion == region }
             VStack(alignment: .leading, spacing: Space.m) {
-                HStack {
-                    Eyebrow(text: region.displayName, icon: "bl.bodynote", color: Palette.note)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Eyebrow(text: layer == .muscle && selectedMuscle != nil ? "Muscle group · \(region.displayName)" : "Region", icon: "bl.bodynote",
+                                color: layer == .muscle ? Palette.coral : Palette.cyan)
+                        Text(layer == .muscle ? (selectedMuscle ?? region.displayName) : region.displayName)
+                            .font(Typo.title).foregroundStyle(Palette.ink)
+                    }
                     Spacer()
-                    Button { selectedRegion = nil; focusedNoteID = nil; setZoom(1) } label: {
-                        Image(systemName: "xmark.circle.fill").font(.title3).foregroundStyle(Palette.baseline)
+                    Button {
+                        selectedRegion = nil
+                        selectedMuscle = nil
+                        focusedNoteID = nil
+                        controller?.reset()
+                    } label: {
+                        Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(Palette.secondaryInk)
+                            .frame(width: 30, height: 30).background(Circle().fill(Palette.raised))
                     }
                     .accessibilityLabel("Close region")
                 }
                 if regionNotes.isEmpty {
-                    Text("No notes here yet.").font(Typo.storySmall).foregroundStyle(Palette.ink)
+                    Text("No notes here yet.").font(.subheadline).foregroundStyle(Palette.secondaryInk)
                 } else {
                     ForEach(regionNotes) { note in
                         NoteRow(note: note, today: today, focused: note.id == focusedNoteID) { focus(note) } onEdit: { editing = note }
@@ -335,13 +269,13 @@ struct BodyView: View {
                     .glassButton(prominent: true)
                     if let focused = regionNotes.first(where: { $0.id == focusedNoteID }) {
                         Button { router.open(.walkDay(focused.date), snapshot: app.snapshot) } label: {
-                            Label("Walking that day", systemImage: "figure.walk").font(.subheadline.weight(.semibold))
+                            Label("Activity that day", systemImage: "chart.bar").font(.subheadline.weight(.semibold))
                         }
                         .glassButton()
                     }
                 }
             }
-            .card(tone: .tinted(Palette.note))
+            .card(tone: .tinted(layer == .muscle ? Palette.coral : Palette.cyan))
             .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }
@@ -357,21 +291,19 @@ struct BodyView: View {
             let day = LocalDate(dayNumber: Int((scrubDay ?? upper).rounded()))
             VStack(alignment: .leading, spacing: Space.s) {
                 HStack {
-                    Eyebrow(text: "Body history timeline", icon: "bl.calendar", color: Palette.note)
+                    Eyebrow(text: "Timeline", icon: "bl.calendar", color: Palette.note)
                     Spacer()
-                    Text(day == today ? "Today" : Fmt.dayLabel(day) + ", \(day.year)").font(.caption.weight(.semibold)).foregroundStyle(Palette.ink)
+                    Text(day == today ? "TODAY" : (Fmt.dayLabel(day) + ", \(day.year)").uppercased()).font(Typo.eyebrow).foregroundStyle(Palette.ink)
                 }
-                ZStack(alignment: .leading) {
-                    GeometryReader { geo in
-                        ForEach(notes) { n in
-                            let x = (Double(n.date.dayNumber) - lower) / max(1, upper - lower)
-                            Circle().fill(Palette.note).frame(width: 8, height: 8)
-                                .position(x: geo.size.width * CGFloat(x), y: geo.size.height / 2)
-                        }
+                GeometryReader { geo in
+                    ForEach(notes) { n in
+                        let x = (Double(n.date.dayNumber) - lower) / max(1, upper - lower)
+                        Capsule().fill(Palette.note).frame(width: 3, height: 12)
+                            .position(x: geo.size.width * CGFloat(x), y: geo.size.height / 2)
                     }
-                    .frame(height: 12)
-                    .allowsHitTesting(false)
                 }
+                .frame(height: 12)
+                .allowsHitTesting(false)
                 Slider(value: value, in: lower...upper, step: 1)
                     .tint(Palette.note)
                     .accessibilityValue(Fmt.dayLabel(day))
@@ -392,8 +324,7 @@ struct BodyView: View {
             }
             if notes.isEmpty {
                 EmptyStateView(symbol: "bl.bodynote", title: "No body notes yet",
-                               message: "Keep a short record of things like a sore knee or a rolled ankle, with the date it happened. Blith shows them beside your walking, never as a diagnosis.",
-                               mascot: .pointing)
+                               message: "Keep a short record of things like a sore knee or a rolled ankle, with the date it happened. Blith shows them beside your activity, never as a diagnosis.")
             } else {
                 VStack(spacing: Space.s) {
                     ForEach(notes) { note in
@@ -410,11 +341,7 @@ struct BodyView: View {
                 ForEach(BodyRegion.allCases.filter { $0 != .other }) { region in
                     Button {
                         showRegions = false
-                        withAnimation(Motion.respecting(reduceMotion, .spring(response: 0.7, dampingFraction: 0.88))) {
-                            angle = map.preferredSideIsBack(region) ? 180 : 0
-                            selectedRegion = region
-                            zoom = 1.8
-                        }
+                        focus(region: region)
                     } label: {
                         HStack {
                             Text(region.displayName)
@@ -426,6 +353,8 @@ struct BodyView: View {
                     .foregroundStyle(Palette.ink)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Palette.canvas)
             .navigationTitle("Body regions")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showRegions = false } } }
@@ -434,44 +363,21 @@ struct BodyView: View {
     }
 }
 
-/// Barely perceptible breathing and a slow moving light, paused off screen and with Reduce Motion.
-struct LivingFigure<Overlay: View>: View {
-    let back: Bool
-    let width: CGFloat
-    let height: CGFloat
-    @ViewBuilder var overlay: () -> Overlay
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var visible = false
-
+/// Faint instrument grid behind the figure.
+struct GridBackdrop: View {
     var body: some View {
-        let running = visible && !reduceMotion && scenePhase == .active
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !running)) { tl in
-            let t = running ? tl.date.timeIntervalSinceReferenceDate : 0
-            let breath = 1 + 0.004 * sin(t * 2 * .pi / 5.2)
-            let sweep = CGFloat(sin(t * 2 * .pi / 9)) * width * 0.6
-            ZStack {
-                Image(back ? "body.back" : "body.front")
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: width, height: height)
-                    .overlay {
-                        LinearGradient(colors: [.clear, .white.opacity(0.22), .clear], startPoint: .leading, endPoint: .trailing)
-                            .frame(width: width * 0.5)
-                            .offset(x: sweep)
-                            .blendMode(.plusLighter)
-                            .mask(Image(back ? "body.back" : "body.front").resizable().frame(width: width, height: height))
-                            .allowsHitTesting(false)
-                    }
-                    .shadow(color: Palette.cyan.opacity(0.35), radius: 18)
-                    .scaleEffect(x: 1, y: breath, anchor: .bottom)
-                    .accessibilityHidden(true)
-                overlay()
-            }
-            .frame(width: width, height: height)
+        Canvas { ctx, size in
+            let step: CGFloat = 28
+            var p = Path()
+            var x: CGFloat = 0
+            while x <= size.width { p.move(to: CGPoint(x: x, y: 0)); p.addLine(to: CGPoint(x: x, y: size.height)); x += step }
+            var y: CGFloat = 0
+            while y <= size.height { p.move(to: CGPoint(x: 0, y: y)); p.addLine(to: CGPoint(x: size.width, y: y)); y += step }
+            ctx.stroke(p, with: .color(Palette.cobalt.opacity(0.12)), lineWidth: 0.5)
         }
-        .onAppear { visible = true }
-        .onDisappear { visible = false }
+        .mask(RadialGradient(colors: [.white, .clear], center: .center, startRadius: 40, endRadius: 320))
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
@@ -483,41 +389,6 @@ struct GlassEffectGroup<Content: View>: View {
         HStack(spacing: 2) { content() }
             .padding(3)
             .glassSurface(Capsule())
-    }
-}
-
-struct NoteMarker: View {
-    let note: HealthEvent
-    let focused: Bool
-    let today: LocalDate
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var pulse = false
-
-    var body: some View {
-        ZStack {
-            Circle().fill(Palette.note.opacity(0.35)).frame(width: 30, height: 30)
-                .scaleEffect(pulse ? 1.35 : 0.9).opacity(pulse ? 0 : 0.8)
-            Circle().fill(Palette.note).frame(width: 16, height: 16)
-                .overlay(Circle().strokeBorder(.white, lineWidth: 2.5))
-            if focused {
-                Text(Fmt.shortDate(note.date))
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(Palette.note, in: Capsule())
-                    .fixedSize()
-                    .offset(y: -26)
-            }
-        }
-        .frame(width: 44, height: 44)
-        .contentShape(Circle())
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeOut(duration: 1.6).repeatForever(autoreverses: false)) { pulse = true }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(note.bodyRegion?.displayName ?? "Body") note: \(note.title), \(Fmt.dayLabel(note.date))")
-        .accessibilityAddTraits(.isButton)
     }
 }
 

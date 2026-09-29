@@ -21,6 +21,11 @@ public enum HealthMetric: String, Codable, CaseIterable, Sendable, CodingKeyRepr
     case restingHeartRate
     case walkingHeartRate
     case hrv
+    // Vitals
+    case respiratoryRate
+    case oxygenSaturation
+    case wristTemperature
+    case vo2Max
     // Sleep (derived from sleep stage segments)
     case sleepDuration
 
@@ -42,7 +47,7 @@ public enum HealthMetric: String, Codable, CaseIterable, Sendable, CodingKeyRepr
              .walkingSpeed, .walkingStepLength, .walkingAsymmetry, .walkingDoubleSupport:
             .movement
         case .weight, .bodyFat: .body
-        case .restingHeartRate, .walkingHeartRate, .hrv: .heart
+        case .restingHeartRate, .walkingHeartRate, .hrv, .respiratoryRate, .oxygenSaturation, .wristTemperature, .vo2Max: .heart
         case .sleepDuration: .sleep
         }
     }
@@ -59,6 +64,10 @@ public enum HealthMetric: String, Codable, CaseIterable, Sendable, CodingKeyRepr
         case .weight: "kg"
         case .restingHeartRate, .walkingHeartRate: "bpm"
         case .hrv: "ms"
+        case .respiratoryRate: "breaths/min"
+        case .oxygenSaturation: "fraction"
+        case .wristTemperature: "degC"
+        case .vo2Max: "ml/kg/min"
         case .sleepDuration: "s"
         }
     }
@@ -79,6 +88,10 @@ public enum HealthMetric: String, Codable, CaseIterable, Sendable, CodingKeyRepr
         case .restingHeartRate: "Resting heart rate"
         case .walkingHeartRate: "Walking heart rate"
         case .hrv: "Heart rate variability"
+        case .respiratoryRate: "Respiratory rate"
+        case .oxygenSaturation: "Blood oxygen"
+        case .wristTemperature: "Wrist temperature"
+        case .vo2Max: "Cardio fitness (VO₂ max)"
         case .sleepDuration: "Sleep"
         }
     }
@@ -88,6 +101,7 @@ public enum HealthMetric: String, Codable, CaseIterable, Sendable, CodingKeyRepr
         switch self {
         case .weight, .bodyFat: 45
         case .walkingSpeed, .walkingStepLength, .walkingAsymmetry, .walkingDoubleSupport: 21
+        case .vo2Max: 90
         default: 7
         }
     }
@@ -97,6 +111,7 @@ public enum HealthMetric: String, Codable, CaseIterable, Sendable, CodingKeyRepr
         .steps, .distanceWalkingRunning, .activeEnergy, .exerciseMinutes, .flightsClimbed,
         .walkingSpeed, .walkingStepLength, .walkingAsymmetry, .walkingDoubleSupport,
         .restingHeartRate, .walkingHeartRate, .hrv,
+        .respiratoryRate, .oxygenSaturation, .wristTemperature, .vo2Max,
     ]
 }
 
@@ -111,7 +126,7 @@ public enum HealthCategory: String, Codable, CaseIterable, Sendable, Identifiabl
         case .movement: "Movement"
         case .sleep: "Sleep"
         case .body: "Body"
-        case .heart: "Heart"
+        case .heart: "Heart and vitals"
         }
     }
 
@@ -120,7 +135,7 @@ public enum HealthCategory: String, Codable, CaseIterable, Sendable, Identifiabl
         case .movement: "Steps, distance, walking speed and workouts"
         case .sleep: "Sleep duration and stages"
         case .body: "Weight and body fat"
-        case .heart: "Resting heart rate and heart rate variability"
+        case .heart: "Heart rate, HRV, respiratory rate, blood oxygen, wrist temperature and cardio fitness"
         }
     }
 

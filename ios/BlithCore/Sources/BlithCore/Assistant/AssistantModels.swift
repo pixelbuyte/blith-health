@@ -103,6 +103,19 @@ public struct MetricCardBlock: Codable, Hashable, Sendable {
     public var caption: String
 }
 
+/// Readiness, sleep performance and load for a day, with the readiness factors.
+public struct ScoresBlock: Codable, Hashable, Sendable {
+    public var date: LocalDate
+    public var readiness: Int?
+    public var band: ScoreBand?
+    public var calibrationDays: Int
+    public var sleep: Int?
+    public var load: Double?
+    public var loadUsual: [Double]?
+    public var factors: [ScoreFactor]
+    public var summary: String
+}
+
 /// One day's steps compared with the usual for that weekday.
 public struct DayStepsBlock: Codable, Hashable, Sendable {
     public var date: LocalDate
@@ -129,6 +142,7 @@ public enum AssistantBlock: Codable, Hashable, Sendable, Identifiable {
     case sources(SourcesBlock)
     case daySteps(DayStepsBlock)
     case bodyNote(HealthEvent)
+    case scores(ScoresBlock)
 
     public var kind: String {
         switch self {
@@ -143,6 +157,7 @@ public enum AssistantBlock: Codable, Hashable, Sendable, Identifiable {
         case .sources: "sources"
         case .daySteps: "daySteps"
         case .bodyNote: "bodyNote"
+        case .scores: "scores"
         }
     }
 
@@ -156,6 +171,7 @@ public enum AssistantBlock: Codable, Hashable, Sendable, Identifiable {
         case .sources(let b): "sources-\(b.metric.rawValue)"
         case .daySteps(let b): "day-\(b.date)"
         case .bodyNote(let n): "note-\(n.id)"
+        case .scores(let b): "scores-\(b.date)"
         default: kind
         }
     }
@@ -184,6 +200,7 @@ public enum AssistantBlock: Codable, Hashable, Sendable, Identifiable {
         case .sources: .sources
         case .daySteps(let b): .walkDay(b.date)
         case .bodyNote(let n): .body(n.id)
+        case .scores(let b): .readiness(b.date)
         }
     }
 }

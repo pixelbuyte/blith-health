@@ -120,6 +120,12 @@ public struct HealthSnapshot: Sendable {
     public var patterns: [PatternObservation]
     public var walkingSpeed: PeriodSummary
     public var availability: [HealthMetric: MetricAvailability]
+    public var readiness: ReadinessResult
+    public var sleepScore: SleepPerformance?
+    public var load: LoadResult?
+    public var monitor: HealthMonitor
+    /// Daily readiness, sleep and load for the last 91 days, oldest first.
+    public var scoreHistory: [DayScores]
 
     public static func build(history: HealthHistory, profile: UserProfile, now: Date, calendar: Calendar) -> HealthSnapshot {
         let ctx = AnalyticsContext(history: history, profile: profile, now: now, calendar: calendar)
@@ -138,6 +144,7 @@ public struct HealthSnapshot: Sendable {
         for p in WalkPeriod.allCases { periods[p] = a.periodSummary(.steps, period: p) }
         var availability: [HealthMetric: MetricAvailability] = [:]
         for m in HealthMetric.allCases { availability[m] = history.availability(m, today: ctx.today, calendar: calendar) }
+        let scores = ScoreEngine(ctx)
         return HealthSnapshot(
             ctx: ctx,
             headline: TodayHeadline.make(ctx, pace: pace, feed: feed),
@@ -158,7 +165,12 @@ public struct HealthSnapshot: Sendable {
             timeOfDay: a.timeOfDayProfile(in: ctx.trailing(28)),
             patterns: WalkPatterns.observations(ctx),
             walkingSpeed: a.periodSummary(.walkingSpeed, period: .sixMonths),
-            availability: availability
+            availability: availability,
+            readiness: scores.readiness(on: ctx.today),
+            sleepScore: scores.sleep(on: ctx.today),
+            load: scores.load(on: ctx.today),
+            monitor: scores.monitor(on: ctx.today),
+            scoreHistory: scores.history(days: 91)
         )
     }
 
