@@ -9,6 +9,15 @@ native charts right in the conversation.
 **Walk** · everything about your walking and movement
 **Ask** · an assistant that understands your health data
 
+<p>
+<img src="design/screenshots/iPhone17e-light-1-today.png" width="200">
+<img src="design/screenshots/iPhone17e-light-2-walk.png" width="200">
+<img src="design/screenshots/iPhone17e-light-3-ask.png" width="200">
+<img src="design/screenshots/iPhone17ProMax-dark-1-today.png" width="200">
+</p>
+
+_Simulator screenshots from CI using labelled sample data._
+
 ## Repository
 
 ```
