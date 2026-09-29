@@ -103,6 +103,15 @@ public struct MetricCardBlock: Codable, Hashable, Sendable {
     public var caption: String
 }
 
+/// One day's steps compared with the usual for that weekday.
+public struct DayStepsBlock: Codable, Hashable, Sendable {
+    public var date: LocalDate
+    public var steps: Double?
+    public var usual: Double?
+    public var usualObservations: Int
+    public var hourly: [Double]?
+}
+
 public struct SourcesBlock: Codable, Hashable, Sendable {
     public var metric: HealthMetric
     public var sources: [SourceShare]
@@ -118,6 +127,8 @@ public enum AssistantBlock: Codable, Hashable, Sendable, Identifiable {
     case metricCard(MetricCardBlock)
     case insight(Insight)
     case sources(SourcesBlock)
+    case daySteps(DayStepsBlock)
+    case bodyNote(HealthEvent)
 
     public var kind: String {
         switch self {
@@ -130,6 +141,8 @@ public enum AssistantBlock: Codable, Hashable, Sendable, Identifiable {
         case .metricCard: "metricCard"
         case .insight: "insight"
         case .sources: "sources"
+        case .daySteps: "daySteps"
+        case .bodyNote: "bodyNote"
         }
     }
 
@@ -141,6 +154,8 @@ public enum AssistantBlock: Codable, Hashable, Sendable, Identifiable {
         case .metricCard(let b): "metric-\(b.metric.rawValue)-\(b.title)"
         case .insight(let i): "insight-\(i.id)"
         case .sources(let b): "sources-\(b.metric.rawValue)"
+        case .daySteps(let b): "day-\(b.date)"
+        case .bodyNote(let n): "note-\(n.id)"
         default: kind
         }
     }
@@ -167,6 +182,8 @@ public enum AssistantBlock: Codable, Hashable, Sendable, Identifiable {
             }
         case .insight(let i): .insight(i.id)
         case .sources: .sources
+        case .daySteps(let b): .walkDay(b.date)
+        case .bodyNote(let n): .body(n.id)
         }
     }
 }

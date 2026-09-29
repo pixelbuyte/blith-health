@@ -8,11 +8,15 @@ public enum DeepLink: Codable, Hashable, Sendable {
     case weight
     case insight(String)
     case sources
+    /// Walk tab, month range, with this day selected.
+    case walkDay(LocalDate)
+    /// Body tab, optionally focused on a note.
+    case body(String?)
 }
 
 public enum InsightKind: String, Codable, Sendable, CaseIterable {
     case baselineChange, consistency, momentum, dayOfWeek, weekdayDecline, timing, personalBest
-    case longTermChange, pace, weightTrend, weightActivity, rebound, sleepMovement
+    case longTermChange, pace, weightTrend, weightActivity, rebound, sleepMovement, sleepTiming, noteContext
 
     /// Insights in the same family never appear together on Today.
     var family: String {
@@ -33,6 +37,21 @@ public enum InsightConfidence: String, Codable, Sendable {
         case .moderate: "Moderate"
         case .high: "Consistent data"
         }
+    }
+}
+
+/// A labelled value for the small evidence chart on an insight card.
+public struct EvidencePoint: Codable, Hashable, Sendable, Identifiable {
+    public var label: String
+    public var value: Double
+    /// Marks the value the insight is about (drawn in the accent color).
+    public var highlighted: Bool
+    public var id: String { label }
+
+    public init(_ label: String, _ value: Double, highlighted: Bool = false) {
+        self.label = label
+        self.value = value
+        self.highlighted = highlighted
     }
 }
 
@@ -74,6 +93,8 @@ public struct Insight: Identifiable, Codable, Hashable, Sendable {
     public var score: Double
     public var createdAt: Date
     public var link: DeepLink
+    /// Numbers behind the insight, for its evidence chart.
+    public var points: [EvidencePoint] = []
 
     public init(id: String, kind: InsightKind, headline: String, explanation: String, metric: HealthMetric,
                 secondaryMetric: HealthMetric? = nil, currentValue: Double? = nil, comparisonValue: Double? = nil,
@@ -117,5 +138,13 @@ public struct PatternObservation: Codable, Hashable, Sendable, Identifiable {
         self.symbol = symbol
         self.text = text
         self.detail = detail
+    }
+}
+
+extension Insight {
+    func with(points: [EvidencePoint]) -> Insight {
+        var copy = self
+        copy.points = points
+        return copy
     }
 }

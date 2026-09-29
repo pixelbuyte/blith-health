@@ -293,3 +293,76 @@ struct HuaweiTests {
         #expect(huawei.authorizationURL(state: "x")?.absoluteString.contains("client_id=id") == true)
     }
 }
+
+@Suite("Notes, streaks and achievements")
+struct EngagementTests {
+    @Test func streakCountsConsecutiveDaysAndKeepsTotals() {
+        let days: Set<LocalDate> = [T.today, T.today.adding(days: -1), T.today.adding(days: -2), T.today.adding(days: -5), T.today.adding(days: -6)]
+        let s = CheckInStreak.compute(days, today: T.today)
+        #expect(s.current == 3 && s.best == 3 && s.total == 5 && s.checkedInToday)
+        // Not checked in yet today: yesterday's run still counts.
+        let y = CheckInStreak.compute(days.subtracting([T.today]), today: T.today)
+        #expect(y.current == 2 && !y.checkedInToday)
+    }
+
+    @Test func achievementsCarryTheDayTheyBecameTrue() {
+        var steps = T.constant(6000, days: 1...40)
+        steps[12] = 10_400
+        let h = T.history(steps: steps)
+        let list = AchievementEngine.evaluate(history: h, engagement: Engagement(checkIns: [T.today], questionsAsked: 0),
+                                              today: T.today, threshold: 5100)
+        #expect(list.first { $0.id == "tenk" }?.unlockedOn == T.today.adding(days: -12))
+        #expect(list.first { $0.id == "baseline" }?.unlockedOn == T.today.adding(days: -34))
+        #expect(list.first { $0.id == "checkin3" }?.isUnlocked == false)
+        #expect(list.first { $0.id == "firstask" }?.isUnlocked == false)
+    }
+
+    @Test func relativeDatesResolveToThePast() {
+        #expect(RelativeDates.day(in: "why was my walking lower last tuesday?", today: T.today) == T.today.adding(days: -7))
+        #expect(RelativeDates.day(in: "what about monday", today: T.today) == T.today.adding(days: -1))
+        #expect(RelativeDates.day(in: "yesterday", today: T.today) == T.today.adding(days: -1))
+        #expect(RelativeDates.day(in: "on Sep 3", today: T.today) == LocalDate(year: 2026, month: 9, day: 3))
+        #expect(RelativeDates.day(in: "Dec 3", today: T.today) == LocalDate(year: 2025, month: 12, day: 3))
+        #expect(RelativeDates.day(in: "how have I been walking", today: T.today) == nil)
+    }
+
+    func historyWithAnkleNote() -> (HealthHistory, HealthEvent) {
+        var steps = T.constant(6400, days: 1...70)
+        steps[7] = 3100 // last Tuesday
+        var h = T.history(steps: steps)
+        let note = HealthEvent(id: "n1", date: T.today.adding(days: -7), kind: .injury, title: "Rolled right ankle",
+                               bodyRegion: .rightAnkle, createdAt: T.now)
+        h.events = [note]
+        return (h, note)
+    }
+
+    @Test func noteContextShowsRecordsSideBySideWithoutCausation() {
+        let (h, _) = historyWithAnkleNote()
+        let i = InsightEngine(T.ctx(h)).noteContext()!
+        #expect(i.currentValue == 3100 && i.comparisonValue == 6400)
+        #expect(i.caveat?.contains("can't establish") == true)
+        #expect(i.link == .body("n1"))
+        #expect(!i.explanation.lowercased().contains("because"))
+    }
+
+    @Test func localAssistantAnswersWhyALowerDay() async throws {
+        let (h, _) = historyWithAnkleNote()
+        let s = HealthSnapshot.build(history: h, profile: UserProfile(), now: T.now, calendar: T.calendar)
+        let r = try await LocalAssistant(tools: HealthAssistantTools(snapshot: s)).respond(to: "Why was my walking lower last Tuesday?", history: []) { _ in }
+        #expect(r.text.contains("3,100") && r.text.contains("6,400"))
+        #expect(r.text.contains("can't establish what caused"))
+        #expect(r.blocks.map(\.kind) == ["daySteps", "bodyNote"])
+        #expect(r.blocks.first?.link == .walkDay(T.today.adding(days: -7)))
+    }
+
+    @Test func notesAreActiveOnlyUntilResolved() {
+        let n = HealthEvent(date: T.today.adding(days: -10), kind: .pain, title: "Knee", resolvedDate: T.today.adding(days: -3))
+        #expect(n.isActive(on: T.today.adding(days: -5)))
+        #expect(!n.isActive(on: T.today))
+        #expect(!n.isActive(on: T.today.adding(days: -11)))
+        // Unknown stored regions decode as .other rather than dropping the note.
+        let json = #"{"id":"x","date":"2026-09-01","title":"t","bodyRegion":"leftPinky"}"#.data(using: .utf8)!
+        let decoded = try? JSONDecoder().decode(HealthEvent.self, from: json)
+        #expect(decoded?.bodyRegion == .other && decoded?.kind == .note)
+    }
+}

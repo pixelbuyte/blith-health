@@ -18,12 +18,16 @@ public struct ToolOutput: Sendable {
     public var evidence: [EvidenceItem]
     /// A widget the app can show if the model doesn't explicitly ask for one.
     public var suggestedBlock: AssistantBlock?
+    /// Shown alongside the suggested block when the model doesn't pick widgets itself.
+    public var extraBlocks: [AssistantBlock]
 
-    public init(result: JSONValue, blocks: [AssistantBlock] = [], evidence: [EvidenceItem] = [], suggestedBlock: AssistantBlock? = nil) {
+    public init(result: JSONValue, blocks: [AssistantBlock] = [], evidence: [EvidenceItem] = [], suggestedBlock: AssistantBlock? = nil,
+                extraBlocks: [AssistantBlock] = []) {
         self.result = result
         self.blocks = blocks
         self.evidence = evidence
         self.suggestedBlock = suggestedBlock
+        self.extraBlocks = extraBlocks
     }
 }
 
@@ -97,6 +101,9 @@ public struct HealthAssistantTools: Sendable {
                        description: "Correlation between two metrics (metric_a on a day vs metric_b lag_days later). Correlation is not causation; always say so.",
                        parameters: object(["metric_a": ["type": "string", "enum": metricEnum], "metric_b": ["type": "string", "enum": metricEnum],
                                            "lag_days": ["type": "integer"], "start_date": date, "end_date": date], required: ["metric_a", "metric_b"])),
+        ToolDefinition(name: "get_body_notes",
+                       description: "The user's own body notes (event date, date entered, region, their words, resolved or not). Notes are the user's descriptions, not diagnoses; an unresolved note is not proof of a current condition.",
+                       parameters: object(["start_date": date, "end_date": date])),
         ToolDefinition(name: "get_insights",
                        description: "The insights currently generated for the user (id, headline, explanation).",
                        parameters: object([:])),
@@ -108,7 +115,8 @@ public struct HealthAssistantTools: Sendable {
                        parameters: object(["metric": ["type": "string", "enum": metricEnum]], required: ["metric"])),
         ToolDefinition(name: "show_widget",
                        description: "Attach a native, tappable widget under your answer. Use it whenever a chart helps (at most 2 per answer). step_chart needs period; sleep_timeline takes an optional date; insight needs insight_id; comparison shows the most recent compare_periods result.",
-                       parameters: object(["type": ["type": "string", "enum": ["step_chart", "walking_summary", "weight_chart", "sleep_timeline", "workouts", "comparison", "insight", "sources", "metric_card"]],
+                       parameters: object(["type": ["type": "string", "enum": ["step_chart", "day_steps", "walking_summary", "weight_chart", "sleep_timeline", "workouts", "comparison", "insight", "sources", "metric_card", "body_note"]],
+                                           "note_id": ["type": "string"],
                                            "period": ["type": "string", "enum": ["day", "week", "month", "6m", "year", "all"]],
                                            "date": date, "insight_id": ["type": "string"],
                                            "metric": ["type": "string", "enum": metricEnum]], required: ["type"])),
@@ -160,6 +168,7 @@ public struct HealthAssistantTools: Sendable {
         case "find_correlation":
             guard let ma = metric(args["metric_a"]), let mb = metric(args["metric_b"]) else { return invalid("metric_a and metric_b are required") }
             return correlation(ma, mb, lag: Int(args["lag_days"]?.doubleValue ?? 0), span: span(args["start_date"], args["end_date"]) ?? ctx.trailing(90))
+        case "get_body_notes": return bodyNotes(span(args["start_date"], args["end_date"]))
         case "get_insights": return insights()
         case "explain_insight": return explain(args["insight_id"]?.stringValue ?? "")
         case "get_data_sources":
@@ -370,9 +379,36 @@ public struct HealthAssistantTools: Sendable {
         obj["weight"] = fmt(h.value(.weight, on: d), .weight)
         let ws = h.workouts.filter { LocalDate($0.start, calendar: ctx.calendar) == d }
         obj["workouts"] = .array(ws.map { .string("\($0.activity), \(Fmt.duration($0.duration))") })
-        let isRecent = d.days(until: ctx.today) < 7
-        return ToolOutput(result: .object(obj), evidence: [EvidenceItem(label: Fmt.dayLabel(d), detail: ctx.sourceLabel(.steps))],
-                          suggestedBlock: h.value(.steps, on: d).map { .metricCard(MetricCardBlock(metric: .steps, title: Fmt.dayLabel(d), value: $0, caption: isRecent ? "Steps" : "Steps that day")) })
+        let notes = h.notes(on: d) + h.events.filter { $0.date < d && $0.isActive(on: d) }
+        obj["body_notes"] = .array(notes.map { n in
+            ["id": .string(n.id), "title": .string(n.title), "region": .str(n.bodyRegion?.displayName),
+             "event_date": .string(n.date.description), "status_on_that_day": .string(n.date == d ? "noted that day" : "unresolved since \(n.date)")]
+        })
+        var blocks: [AssistantBlock] = []
+        if let n = h.notes(on: d).first { blocks.append(.bodyNote(n)) }
+        return ToolOutput(result: .object(obj), blocks: [], evidence: [EvidenceItem(label: Fmt.dayLabel(d), detail: ctx.sourceLabel(.steps))]
+                          + notes.map { EvidenceItem(label: "Body note", detail: "\($0.title) · \(Fmt.dayLabel($0.date))") },
+                          suggestedBlock: .daySteps(dayBlock(d)), extraBlocks: blocks)
+    }
+
+    func dayBlock(_ d: LocalDate) -> DayStepsBlock {
+        let usual = a.usualBefore(d)
+        return DayStepsBlock(date: d, steps: ctx.history.value(.steps, on: d), usual: usual?.median,
+                             usualObservations: usual?.observations ?? 0, hourly: ctx.history.hourlySteps[d]?.values)
+    }
+
+    func bodyNotes(_ span: DateSpan?) -> ToolOutput {
+        let notes = span.map { ctx.history.notes(in: $0) } ?? ctx.history.bodyNotes
+        return ToolOutput(result: [
+            "notes": .array(notes.prefix(20).map { n in
+                ["id": .string(n.id), "title": .string(n.title), "details": .str(n.note), "region": .str(n.bodyRegion?.displayName),
+                 "kind": .string(n.kindLabel), "event_date": .string(n.date.description),
+                 "entered_on": .string(LocalDate(n.createdAt, calendar: ctx.calendar).description),
+                 "resolved_on": .str(n.resolvedDate?.description), "active_today": .bool(n.isActive(on: ctx.today))]
+            }),
+            "reminder": "These are the user's own notes. Don't diagnose from them or treat old notes as current.",
+        ], evidence: notes.prefix(3).map { EvidenceItem(label: "Body note", detail: "\($0.title) · \(Fmt.dayLabel($0.date))") },
+           suggestedBlock: notes.first.map(AssistantBlock.bodyNote))
     }
 
     func weightBlock() -> AssistantBlock? {
@@ -544,6 +580,8 @@ public struct HealthAssistantTools: Sendable {
         case "workouts": block = workouts(ctx.trailing(30, endingDaysAgo: 0)).suggestedBlock
         case "comparison": block = session.lastComparison.map(AssistantBlock.comparison)
         case "insight": block = args["insight_id"]?.stringValue.flatMap { snapshot.insight(id: $0) }.map(AssistantBlock.insight)
+        case "day_steps": block = args["date"]?.stringValue.flatMap(LocalDate.init(string:)).map { .daySteps(dayBlock($0)) }
+        case "body_note": block = args["note_id"]?.stringValue.flatMap { id in ctx.history.events.first { $0.id == id } }.map(AssistantBlock.bodyNote)
         case "sources": block = sources(metric(args["metric"]) ?? .steps).suggestedBlock
         case "metric_card":
             if let m = metric(args["metric"]), let avg = a.rollingAverage(m, days: 7) {

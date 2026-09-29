@@ -8,11 +8,13 @@ public struct LocalAssistant: AssistantEngine {
 
     public init(tools: HealthAssistantTools) { self.tools = tools }
 
-    enum Intent { case today, walking(WalkPeriod), bestWeek, weight, sleep, workouts, sources, insights, compareMonth, unknown }
+    enum Intent { case today, walking(WalkPeriod), bestWeek, weight, sleep, workouts, sources, insights, compareMonth, day(LocalDate), notes, unknown }
 
-    static func intent(for q: String) -> Intent {
+    static func intent(for q: String, today: LocalDate = LocalDate(Date(), calendar: .current)) -> Intent {
         let t = q.lowercased()
         func has(_ words: String...) -> Bool { words.contains { t.contains($0) } }
+        if has("note", "ankle", "knee", "injur", "hurt", "pain", "sprain", "body") && !has("walk", "step") { return .notes }
+        if let d = RelativeDates.day(in: t, today: today), d != today, !has("sleep", "slept", "weigh") { return .day(d) }
         if has("sleep", "slept", "bed", "night") { return .sleep }
         if has("weight", "weigh", "scale", "lose", "lost", "kg", "lb", "pound") { return .weight }
         if has("workout", "exercise", "run", "training") && !has("walk") { return .workouts }
@@ -35,7 +37,37 @@ public struct LocalAssistant: AssistantEngine {
         var text: String
         var output: ToolOutput
 
-        switch Self.intent(for: question) {
+        switch Self.intent(for: question, today: ctx.today) {
+        case .day(let d):
+            output = tools.execute(name: "get_day_detail", arguments: ["date": .string(d.description)])
+            let a = HealthAnalytics(ctx)
+            let steps = ctx.history.value(.steps, on: d)
+            let notes = ctx.history.notes(on: d)
+            if let steps {
+                text = "On \(Fmt.dayLabel(d)) you recorded \(Fmt.int(steps)) steps"
+                if let usual = a.usualBefore(d) {
+                    text += ", compared with about \(Fmt.int(usual.median)) on your usual \(Fmt.weekday(d)) (median of the \(usual.observations) before it)."
+                } else {
+                    text += ". There aren't enough earlier \(Fmt.weekday(d))s to say what's usual."
+                }
+            } else {
+                text = "There are no steps recorded for \(Fmt.dayLabel(d)), so I can't compare that day."
+            }
+            if let n = notes.first {
+                text += " You also added a note that day: “\(n.title)”\(n.bodyRegion.map { " (\($0.displayName.lowercased()))" } ?? ""). I can show both records, but the data can't establish what caused the change."
+            }
+            let blocks = [output.suggestedBlock].compactMap { $0 } + output.extraBlocks
+            return ChatMessage(role: .assistant, text: text, blocks: blocks, evidence: output.evidence, toolsUsed: [], isLocal: true)
+        case .notes:
+            output = tools.execute(name: "get_body_notes", arguments: [:])
+            let notes = ctx.history.bodyNotes
+            if let latest = notes.first {
+                let active = notes.filter { $0.isActive(on: ctx.today) }
+                text = "You have \(notes.count) body \(notes.count == 1 ? "note" : "notes"). The most recent is “\(latest.title)” from \(Fmt.dayLabel(latest.date))\(latest.resolvedDate.map { ", marked resolved \(Fmt.shortDate($0))" } ?? "")."
+                text += active.isEmpty ? " None are marked unresolved." : " \(active.count) \(active.count == 1 ? "is" : "are") still unresolved."
+            } else {
+                text = "You haven't added any body notes yet. Tap a spot on the body in the Body tab to add one."
+            }
         case .today:
             output = tools.execute(name: "get_today_summary", arguments: [:])
             if let pace = s.pace, let usual = pace.usualByNow, let change = pace.change {

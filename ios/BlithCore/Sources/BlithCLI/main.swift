@@ -14,7 +14,9 @@ func loadHistory(_ scenario: DemoScenario) async throws -> HealthHistory {
     let engine = SyncEngine(provider: provider, calendar: calendar, now: { now })
     var h = HealthHistory(origin: .demo(scenario))
     h.requestedCategories = Set(HealthCategory.allCases)
-    return try await engine.initialImport(into: h)
+    h = try await engine.initialImport(into: h)
+    if scenario == .balanced { h.events = DemoNotes.make(today: LocalDate(now, calendar: calendar), now: now) }
+    return h
 }
 
 let profile = UserProfile(name: "Zen", goals: [.walkMore, .weightManagement], units: .metric, goalWeightKg: 78)

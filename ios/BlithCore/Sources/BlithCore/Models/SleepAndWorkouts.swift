@@ -118,34 +118,3 @@ public struct WorkoutRecord: Codable, Hashable, Sendable, Identifiable {
     public var isWalking: Bool { activity.lowercased().contains("walk") || activity.lowercased().contains("hik") }
 }
 
-/// Reserved for future body / life events ("Twisted right ankle"). Schema only — there is no
-/// UI for this yet, but insights and the assistant can reference events once they exist.
-public struct HealthEvent: Codable, Hashable, Sendable, Identifiable {
-    public enum Kind: String, Codable, Sendable { case injury, illness, note, milestone }
-    public enum BodyRegion: String, Codable, Sendable {
-        case head, neck, chest, back, leftArm, rightArm, leftHand, rightHand, hips
-        case leftKnee, rightKnee, leftAnkle, rightAnkle, leftFoot, rightFoot, other
-    }
-
-    public var id: String
-    public var date: LocalDate
-    public var kind: Kind
-    public var title: String
-    public var note: String?
-    public var bodyRegion: BodyRegion?
-    /// 1 (mild) … 5 (severe)
-    public var severity: Int?
-    public var relatedMetrics: [HealthMetric]
-
-    public init(id: String = UUID().uuidString, date: LocalDate, kind: Kind, title: String, note: String? = nil,
-                bodyRegion: BodyRegion? = nil, severity: Int? = nil, relatedMetrics: [HealthMetric] = []) {
-        self.id = id
-        self.date = date
-        self.kind = kind
-        self.title = title
-        self.note = note
-        self.bodyRegion = bodyRegion
-        self.severity = severity
-        self.relatedMetrics = relatedMetrics
-    }
-}

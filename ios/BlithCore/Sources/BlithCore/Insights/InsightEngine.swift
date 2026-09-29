@@ -20,7 +20,7 @@ public struct InsightEngine: Sendable {
     public func allInsights() -> [Insight] {
         let detectors: [() -> Insight?] = [
             baselineChange, consistency, momentum, dayOfWeek, weekdayDecline, timing, personalBest,
-            longTermChange, pace, weightTrend, weightActivity, rebound, sleepMovement,
+            longTermChange, pace, weightTrend, weightActivity, rebound, sleepMovement, sleepTiming, noteContext,
         ]
         return detectors.compactMap { $0() }.sorted { $0.score > $1.score }
     }
@@ -86,7 +86,7 @@ public struct InsightEngine: Sendable {
             emphasis: Fmt.signedPercent(change), emphasisCaption: "vs your 4-week baseline",
             score: min(1, abs(change) / 0.3) * 0.7 + 0.15 + goalBoost([.walkMore, .consistency, .buildStamina]),
             createdAt: ctx.now, link: .walk(.week)
-        )
+        ).with(points: [EvidencePoint("Previous 4 wks", base.value), EvidencePoint("Last 7 days", cur.value, highlighted: true)])
     }
 
     /// Days at/above the user's threshold: last 7 days vs the prior 4 weeks' weekly rate.
@@ -140,7 +140,7 @@ public struct InsightEngine: Sendable {
             emphasis: "\(hits)/7", emphasisCaption: "days near your usual",
             score: min(1, abs(Double(hits) - priorRate) / 4) * 0.6 + (bestInWeeks >= 5 ? 0.2 : 0.1) + goalBoost([.consistency, .walkMore]),
             createdAt: ctx.now, link: .walk(.week)
-        )
+        ).with(points: current.days.map { d in EvidencePoint(Fmt.weekdayShort[d.weekday - 1], cur[d] ?? 0, highlighted: (cur[d] ?? 0) >= threshold) })
     }
 
     /// Weekly averages rising (or falling) for 3+ consecutive complete weeks.
@@ -172,7 +172,9 @@ public struct InsightEngine: Sendable {
             emphasis: Fmt.signedPercent(change), emphasisCaption: "over \(run) weeks",
             score: min(1, abs(change) / 0.3) * 0.5 + 0.1 * Double(run - 2) + 0.2 + goalBoost([.walkMore, .buildStamina]),
             createdAt: ctx.now, link: .walk(.sixMonths)
-        )
+        ).with(points: weeks.suffix(run + 1).enumerated().map { i, w in
+            EvidencePoint(Fmt.shortDate(w.start), w.average, highlighted: i == run)
+        })
     }
 
     func dayOfWeek() -> Insight? {
@@ -191,7 +193,7 @@ public struct InsightEngine: Sendable {
             evidence: (1...7).compactMap { wd in p.medians[wd - 1].map { EvidenceRow("Typical \(Fmt.weekdayNames[wd - 1])", Fmt.int($0)) } },
             emphasis: Fmt.weekdayShort[busiest - 1], emphasisCaption: "busiest day",
             score: 0.32, createdAt: ctx.now, link: .walk(.month)
-        )
+        ).with(points: (1...7).compactMap { wd in p.medians[wd - 1].map { EvidencePoint(Fmt.weekdayShort[wd - 1], $0, highlighted: wd == busiest) } })
     }
 
     /// The same weekday falling four occurrences in a row.
@@ -219,7 +221,7 @@ public struct InsightEngine: Sendable {
                 evidence: last4.map { EvidenceRow(Fmt.dayLabel($0.0), Fmt.int($0.1)) },
                 emphasis: Fmt.signedPercent(change), emphasisCaption: "over 4 \(name)s",
                 score: 0.3 + min(0.3, abs(change) / 2), createdAt: ctx.now, link: .walk(.month)
-            )
+            ).with(points: last4.enumerated().map { EvidencePoint(Fmt.shortDate($0.element.0), $0.element.1, highlighted: $0.offset == 3) })
             if (best?.score ?? 0) < insight.score { best = insight }
         }
         return best
@@ -321,7 +323,7 @@ public struct InsightEngine: Sendable {
             emphasis: Fmt.signedPercent(change), emphasisCaption: "30-day average since \(month)",
             score: min(1, abs(change) / 0.35) * 0.6 + 0.1 + goalBoost([.walkMore, .buildStamina, .understandHealth]),
             createdAt: ctx.now, link: .walk(.sixMonths)
-        )
+        ).with(points: [EvidencePoint(month, e.value), EvidencePoint("Last 30 days", r.value, highlighted: true)])
     }
 
     func pace() -> Insight? {
@@ -468,6 +470,70 @@ public struct InsightEngine: Sendable {
             emphasis: "\(Fmt.int(diff))", emphasisCaption: "steps after short nights",
             score: min(1, abs(change) / 0.25) * 0.4 + 0.15 + goalBoost([.recovery, .understandHealth]),
             createdAt: ctx.now, link: .sleep(nil)
+        ).with(points: [EvidencePoint("Other days", other), EvidencePoint("After < 6h", short, highlighted: true)])
+    }
+
+    /// Bedtime over the last 7 nights vs the 3 weeks before.
+    func sleepTiming() -> Insight? {
+        let points = SleepAnalytics.timing(ctx, nights: 28)
+        let recentStart = ctx.today.adding(days: -6)
+        let recent = points.filter { $0.date >= recentStart }
+        let before = points.filter { $0.date < recentStart }
+        guard recent.count >= 5, before.count >= 12,
+              let r = Stats.median(recent.map(\.bedMinutes)), let b = Stats.median(before.map(\.bedMinutes)) else { return nil }
+        let shift = r - b
+        guard abs(shift) >= 30 else { return nil }
+        let later = shift > 0
+        return Insight(
+            id: id(.sleepTiming), kind: .sleepTiming,
+            headline: later ? "Your sleep timing shifted later this week" : "You've been going to sleep earlier this week",
+            explanation: "Over the last \(recent.count) nights you usually fell asleep around \(SleepAnalytics.clock(r)), about \(Int(abs(shift).rounded())) minutes \(later ? "later" : "earlier") than the 3 weeks before (\(SleepAnalytics.clock(b))).",
+            metric: .sleepDuration, currentValue: r, comparisonValue: b, change: nil,
+            currentRange: DateSpan(recentStart, ctx.today), comparisonRange: DateSpan(ctx.today.adding(days: -27), recentStart.adding(days: -1)),
+            confidence: recent.count >= 6 && before.count >= 18 ? .high : .moderate,
+            sampleCount: recent.count + before.count, source: ctx.sourceLabel(.sleepDuration),
+            evidence: recent.map { EvidenceRow("Night ending \(Fmt.dayLabel($0.date))", "\(SleepAnalytics.clock($0.bedMinutes)) – \(SleepAnalytics.clock($0.wakeMinutes))") }
+                + [EvidenceRow("Typical bedtime, 3 weeks before", SleepAnalytics.clock(b))],
+            emphasis: "\(later ? "+" : "\u{2212}")\(Int(abs(shift).rounded())) min", emphasisCaption: "bedtime vs your usual",
+            score: min(1, abs(shift) / 90) * 0.45 + 0.2 + goalBoost([.recovery, .understandHealth]),
+            createdAt: ctx.now, link: .sleep(nil)
         )
+    }
+
+    /// Steps on and after a recent body note, compared with the usual for those weekdays.
+    /// Shows the records side by side; never claims the note explains the change.
+    func noteContext() -> Insight? {
+        let window = DateSpan(ctx.today.adding(days: -60), ctx.yesterday)
+        var best: Insight?
+        for note in ctx.history.events where window.contains(note.date) {
+            guard let steps = ctx.history.value(.steps, on: note.date) else { continue }
+            let prior = (1...8).compactMap { ctx.history.value(.steps, on: note.date.adding(days: -7 * $0)) }
+            guard prior.count >= 3, let usual = Stats.median(prior), usual > 0 else { continue }
+            let change = (steps - usual) / usual
+            guard change <= -0.2 else { continue }
+            let after = (1...3).compactMap { ctx.history.value(.steps, on: note.date.adding(days: $0)) }
+            let weekday = Fmt.weekday(note.date)
+            var explanation = "On \(Fmt.dayLabel(note.date)), the day of your note “\(note.title)”, you recorded \(Fmt.int(steps)) steps; a typical \(weekday) for you is about \(Fmt.int(usual))."
+            if let a = Stats.mean(after), after.count >= 2 { explanation += " The next \(after.count) days averaged \(Fmt.int(a))." }
+            let insight = Insight(
+                id: id(.noteContext, note.id), kind: .noteContext,
+                headline: "Fewer steps around your \(note.bodyRegion?.displayName.lowercased() ?? "body") note",
+                explanation: explanation, metric: .steps, currentValue: steps, comparisonValue: usual, change: change,
+                currentRange: DateSpan(note.date, note.date.adding(days: 3)),
+                confidence: prior.count >= 6 ? .moderate : .low, sampleCount: prior.count + 1 + after.count,
+                source: ctx.sourceLabel(.steps),
+                caveat: "Your note and your steps are shown side by side. The data can't establish what caused the change.",
+                evidence: [EvidenceRow("Note", "\(note.title) · \(Fmt.dayLabel(note.date))"),
+                           EvidenceRow("Steps that day", Fmt.int(steps)),
+                           EvidenceRow("Typical \(weekday) (\(prior.count) before)", Fmt.int(usual))]
+                    + after.enumerated().map { EvidenceRow(Fmt.dayLabel(note.date.adding(days: $0.offset + 1)), Fmt.int($0.element)) },
+                emphasis: Fmt.signedPercent(change), emphasisCaption: "vs a typical \(weekday)",
+                score: 0.4 + min(0.3, abs(change) / 2) + (note.date.days(until: ctx.today) <= 14 ? 0.1 : 0),
+                createdAt: ctx.now, link: .body(note.id)
+            ).with(points: [EvidencePoint("Usual \(Fmt.weekdayShort[note.date.weekday - 1])", usual), EvidencePoint("Note day", steps, highlighted: true)]
+                   + after.enumerated().map { EvidencePoint("+\($0.offset + 1)d", $0.element) })
+            if (best?.score ?? 0) < insight.score { best = insight }
+        }
+        return best
     }
 }

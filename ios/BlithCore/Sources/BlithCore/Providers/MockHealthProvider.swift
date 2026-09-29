@@ -59,6 +59,9 @@ public struct MockHealthProvider: HealthDataProvider {
 
     var historyDays: Int { scenario == .newUser ? 3 : 420 }
 
+    /// The sample ankle note's date; walking dips for a few days after it.
+    public static let ankleNoteDaysAgo = 40
+
     public func requestAuthorization(for categories: Set<HealthCategory>) async throws {}
 
     public func earliestDataDate() async -> Date? {
@@ -182,6 +185,9 @@ public struct MockHealthProvider: HealthDataProvider {
         if rng.uniform() < 0.05 { total *= 0.4 } // an occasional quiet day
         // The night before being short trims the next day (lets the sleep insight emerge honestly).
         if let asleep = sleepHours(for: date), asleep < 6 { total *= 0.83 }
+        // Around the sample ankle note: a clear dip, recovering over ~5 days.
+        let sinceAnkle = Self.ankleNoteDaysAgo - date.days(until: today)
+        if scenario == .balanced, (0...5).contains(sinceAnkle) { total *= [0.42, 0.48, 0.58, 0.7, 0.82, 0.92][sinceAnkle] }
         let k = date.days(until: today)
         // This week the balanced user walks later in the day.
         let shiftLater = (scenario == .balanced || scenario == .improving) && k < 7

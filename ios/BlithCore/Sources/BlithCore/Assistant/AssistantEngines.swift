@@ -52,6 +52,9 @@ public enum ProfileContext {
         if let avg = s.sleep.average28 { lines.append("Sleep: 28-night average \(Fmt.duration(avg)).") }
         let unavailable = [HealthMetric.weight, .sleepDuration, .walkingSpeed].filter { s.availability[$0] != .available }
         if !unavailable.isEmpty { lines.append("Not available: " + unavailable.map { "\($0.displayName) (\(s.availability[$0]?.rawValue ?? "noData"))" }.joined(separator: ", ") + ".") }
+        if !ctx.history.events.isEmpty {
+            lines.append("The user keeps \(ctx.history.events.count) body notes (their own words, with dates). Fetch them with get_body_notes only when relevant; never assume an old note describes today.")
+        }
         if !s.feed.isEmpty {
             lines.append("Current insights: " + s.feed.map { "[\($0.id)] \($0.headline)" }.joined(separator: "; ") + ".")
         }
@@ -82,6 +85,8 @@ public struct LLMAssistant: AssistantEngine {
     - You are not a clinician. Don't diagnose, don't interpret symptoms from wearable data, and suggest talking to a doctor when something sounds medical. For urgent symptoms, tell them to contact emergency services.
     - If data is missing, say what's missing and how to connect it; don't guess.
     - Avoid empty praise ("Great job!") unless the data supports it, and never shame.
+    - Body notes are the person's own words with an event date. Show them with dates, never diagnose from them, and never treat a resolved or old note as a current condition. When a note sits beside a change in the data, say the data can't show the cause.
+    - For a question about one day, call get_day_detail and attach show_widget day_steps (and body_note when a note exists that day).
     - Dates: resolve relative dates ("last Tuesday", "August") from today's date given below, using YYYY-MM-DD in tool calls.
     """
 
@@ -98,6 +103,7 @@ public struct LLMAssistant: AssistantEngine {
         var evidence: [EvidenceItem] = []
         var used: [String] = []
         var suggested: AssistantBlock?
+        var extras: [AssistantBlock] = []
 
         for round in 0..<maxRounds {
             progress(round == 0 ? "Thinking" : "Reading your data")
@@ -106,7 +112,7 @@ public struct LLMAssistant: AssistantEngine {
             guard let calls = reply.tool_calls, !calls.isEmpty else {
                 let text = (reply.content ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !text.isEmpty else { throw AssistantError.emptyResponse }
-                if blocks.isEmpty, let suggested { blocks.append(suggested) }
+                if blocks.isEmpty, let suggested { blocks.append(suggested); blocks.append(contentsOf: extras) }
                 return ChatMessage(role: .assistant, text: text, blocks: Self.dedupe(blocks), evidence: Self.dedupe(evidence), toolsUsed: used)
             }
             messages.append(LLMMessage(role: "assistant", content: reply.content, tool_calls: calls))
@@ -117,7 +123,10 @@ public struct LLMAssistant: AssistantEngine {
                 used.append(call.function.name)
                 blocks.append(contentsOf: out.blocks)
                 evidence.append(contentsOf: out.evidence)
-                if suggested == nil, call.function.name != "show_widget" { suggested = out.suggestedBlock }
+                if suggested == nil, call.function.name != "show_widget" {
+                    suggested = out.suggestedBlock
+                    extras = out.extraBlocks
+                }
                 var json = out.result.jsonString()
                 if json.count > 8000 { json = String(json.prefix(8000)) }
                 messages.append(LLMMessage(role: "tool", content: json, tool_call_id: call.id))

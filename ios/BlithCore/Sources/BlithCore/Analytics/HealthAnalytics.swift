@@ -264,6 +264,13 @@ public struct HealthAnalytics: Sendable {
         return (med, vals.count)
     }
 
+    /// Median steps on the same weekday in the 8 weeks before `date` (≥3 observations).
+    public func usualBefore(_ date: LocalDate, metric: HealthMetric = .steps) -> (median: Double, observations: Int)? {
+        let vals = (1...8).compactMap { history.value(metric, on: date.adding(days: -7 * $0)) }
+        guard vals.count >= 3, let m = Stats.median(vals) else { return nil }
+        return (m, vals.count)
+    }
+
     // MARK: Today
 
     public func todayPace() -> TodayPace? {
