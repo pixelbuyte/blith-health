@@ -91,6 +91,48 @@ workflows:
       - build/xcodebuild.log
       - core-tests.log
 
+  # Release configuration for a real device, unsigned: catches Release-only compile, asset and
+  # entitlement problems without touching any Apple account.
+  ios-release-check:
+    name: iOS Release Check - unsigned device archive
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+      groups:
+        - blith_ai
+    scripts:
+      - name: Install XcodeGen
+        script: command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Write build configuration
+        script: |
+          set -euo pipefail
+          SECRETS="$CM_BUILD_DIR/ios/Config/Secrets.xcconfig"
+          : > "$SECRETS"
+          [ -n "${OPENROUTER_API_KEY:-}" ] && echo "OPENROUTER_API_KEY = ${OPENROUTER_API_KEY}" >> "$SECRETS" || true
+      - name: Generate Xcode project
+        script: cd "$CM_BUILD_DIR/ios" && xcodegen generate
+      - name: Archive (Release, iPhoneOS, unsigned)
+        script: |
+          set -euo pipefail
+          mkdir -p "$CM_BUILD_DIR/build"
+          cd "$CM_BUILD_DIR/ios"
+          if ! xcodebuild archive -project Blith.xcodeproj -scheme Blith -configuration Release \
+              -sdk iphoneos -destination "generic/platform=iOS" \
+              -archivePath "$CM_BUILD_DIR/build/Blith.xcarchive" \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CURRENT_PROJECT_VERSION=1 \
+              > "$CM_BUILD_DIR/build/archive.log" 2>&1; then
+            grep -E "error:" "$CM_BUILD_DIR/build/archive.log" | sort -u | head -60
+            exit 1
+          fi
+          APP="$CM_BUILD_DIR/build/Blith.xcarchive/Products/Applications/Blith.app"
+          ls "$APP" | head -30
+          plutil -p "$APP/Info.plist" | grep -E "CFBundle(Identifier|ShortVersionString|Version|IconName)|MinimumOSVersion|ITSAppUses|UIDeviceFamily|DTPlatform" || true
+          codesign -d --entitlements - "$APP" 2>&1 | head -12 || true
+          du -sh "$APP"
+    artifacts:
+      - build/archive.log
+
   # One-time / idempotent: registers com.blith.health with the HealthKit capability using the team's
   # App Store Connect integration and reports what exists in the account. Safe to re-run.
   ios-setup:
