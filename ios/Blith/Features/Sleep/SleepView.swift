@@ -86,7 +86,8 @@ private struct SleepContent: View {
     // MARK: Night picker
 
     var nightPicker: some View {
-        HStack(alignment: .bottom, spacing: 6) {
+        let need = engine.sleep(on: date)?.need
+        return HStack(alignment: .bottom, spacing: 6) {
             ForEach(nights) { n in
                 let isSel = n.date == date
                 let score = engine.sleep(on: n.date)?.score
@@ -94,7 +95,7 @@ private struct SleepContent: View {
                     VStack(spacing: 5) {
                         RoundedRectangle(cornerRadius: 4, style: .continuous)
                             .fill(isSel ? AnyShapeStyle(LinearGradient(colors: [Palette.sleepREM, Palette.sleep], startPoint: .top, endPoint: .bottom))
-                                        : AnyShapeStyle(Palette.sleep.opacity(0.18 + 0.5 * Double(score ?? 0) / 100)))
+                                        : AnyShapeStyle(Palette.sleep.opacity(0.22 + 0.33 * Double(score ?? 0) / 100)))
                             .frame(height: max(10, CGFloat(n.asleepDuration / 3600) * 9))
                         Text(String(Fmt.weekdayShort[n.date.weekday - 1].prefix(1))).font(Typo.eyebrow)
                             .foregroundStyle(isSel ? Palette.ink : Palette.tertiaryInk)
@@ -107,6 +108,20 @@ private struct SleepContent: View {
             }
         }
         .frame(height: 100, alignment: .bottom)
+        .overlay(alignment: .bottom) {
+            // Your personal need, as a dashed line across every night (bars grow 9 pt per hour).
+            if let need {
+                ZStack(alignment: .trailing) {
+                    Rectangle().fill(.clear).frame(height: 1)
+                        .overlay(Line().stroke(Palette.ink.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
+                    Text("NEED \(Fmt.duration(need))").font(Typo.mono(9, .medium)).foregroundStyle(Palette.secondaryInk)
+                        .padding(.horizontal, 4).background(Palette.surface).offset(y: -9)
+                }
+                .padding(.bottom, 17 + CGFloat(need / 3600) * 9)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+        }
         .card(padding: Space.m)
     }
 
@@ -282,5 +297,12 @@ struct HoursVsNeedBar: View {
         .frame(height: 8)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Asleep \(Fmt.duration(asleep)) of \(Fmt.duration(need)) need")
+    }
+}
+
+/// A horizontal line across the full width, for dashed reference marks.
+private struct Line: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path { p in p.move(to: CGPoint(x: 0, y: rect.midY)); p.addLine(to: CGPoint(x: rect.width, y: rect.midY)) }
     }
 }
