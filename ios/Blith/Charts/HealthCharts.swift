@@ -263,7 +263,11 @@ struct StepHistoryChart: View {
             return AnyShapeStyle(pinned == b.start ? Palette.signalBright : Palette.signal.opacity(0.35))
         }
         if b.isPartial { return AnyShapeStyle(Palette.signal.opacity(0.45)) }
-        return AnyShapeStyle(LinearGradient(colors: [Palette.signal, Palette.signal.opacity(0.7)], startPoint: .top, endPoint: .bottom))
+        // History is quieter than the most recent week, so the current stretch reads first.
+        if unit == .day, buckets.count > 10, let last = buckets.last?.start, last.dayNumber - b.start.dayNumber >= 7 {
+            return AnyShapeStyle(Palette.signal.opacity(0.42))
+        }
+        return AnyShapeStyle(LinearGradient(colors: [Palette.signalBright, Palette.signal], startPoint: .top, endPoint: .bottom))
     }
 
     var axisFormat: Date.FormatStyle {

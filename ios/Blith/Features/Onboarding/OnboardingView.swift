@@ -171,7 +171,7 @@ struct OnboardingView: View {
 
     func bullet(_ symbol: String, _ text: String) -> some View {
         Label {
-            Text(text).font(Typo.geist(15, .medium, relativeTo: .subheadline))
+            Text(text).font(Typo.geist(15, .medium, relativeTo: .subheadline)).fixedSize(horizontal: false, vertical: true)
         } icon: {
             Image(systemName: symbol).foregroundStyle(Palette.signal)
         }
