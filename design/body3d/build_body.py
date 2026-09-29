@@ -1,56 +1,65 @@
 #!/usr/bin/env python3
-"""Builds Blith's 3D body assets (mesh, region map, anatomy-line and muscle textures, previews).
+"""Builds Blith's 3D body assets: a skin layer and an anatomical muscle layer that share one
+coordinate space, per-triangle BodyRegion labels, named muscles, anchors and CPU-rendered previews.
 
-Source: the MakeHuman 1.x base mesh (hm08), macro-detail targets, default skeleton and skin weights,
-downloaded from github.com/makehumancommunity/makehuman. Those assets were released under CC0 1.0
-(see LICENSE.md sections C/D in that repository), so the generated files carry no attribution
-requirement; we credit MakeHuman anyway in body3d.json ("source").
+Sources (downloaded and cached outside the repo, never committed):
+  * Skin: BodyParts3D 4.0 "Skin" (FMA7163, file FJ2810), IS-A tree OBJ archive, polygon reduction 99%.
+    BodyParts3D, (c) The Database Center for Life Science. https://dbarchive.biosciencedbc.jp/en/bodyparts3d/
+  * Muscles/tendons: Z-Anatomy "MuscularSystem100.fbx" (a completed derivative of BodyParts3D).
+    Z-Anatomy - The open source atlas of anatomy. https://github.com/LluisV/Z-Anatomy
+  Both are CC BY-SA (see LICENSE-ASSETS.md); the generated meshes are CC BY-SA 4.0.
 
-Pipeline: base mesh -> male/young/muscular/ideal-proportion targets -> linear-blend-skinned relaxed
-pose (arms lowered, elbows and fingers relaxed) -> body + eyeballs only -> one Catmull-Clark pass ->
-metres, y up, feet on y=0, facing +z, person's left at +x -> per-triangle BodyRegion + muscle ids ->
-textures baked per texel from 3D position (seam-free) -> body.bin / body3d.json / PNG / JPG -> previews.
+Pipeline
+  1. skin: outer shell of FJ2810, welded; genitals replaced by a smooth neutral membrane; holes
+     (eyes, armpits, fingertips) closed; decimated with quadric error metrics.
+  2. Z-Anatomy muscles are mapped into the BodyParts3D frame (a similarity transform fitted once
+     by ICP between Z-Anatomy's own skin and FJ2810), vertices poking out of the skin are pulled
+     just under it, deep/hidden parts are dropped by a multi-view visibility test and the rest are
+     decimated to a triangle budget proportional to their visible area.
+  3. an "underlayer" (the skin pushed inward beneath the muscles) keeps the red figure continuous
+     where no muscle covers the body (shin, knee, hands, face gaps).
+  4. everything: metres, y up, feet on y = 0, facing +z, person's left at +x, 1.80 m tall.
+  5. per-triangle BodyRegion labels (33 regions) from joint landmarks taken from BodyParts3D bones.
 
-    pip install numpy scipy Pillow
-    MH_CACHE=/some/cache/dir python3 design/body3d/build_body.py
+    pip install numpy scipy Pillow pyfqmr
+    python3 design/body3d/build_body.py          # caches downloads in $BLITH_BODY_CACHE (~/.cache/blith-body)
 
-Everything is deterministic (fixed noise seeds); downloads are cached in $MH_CACHE.
+Deterministic: no randomness except fixed-seed tone jitter.
 """
 import json
 import os
 import struct
 import sys
 import urllib.request
+import zipfile
 
 import numpy as np
 from PIL import Image
-from scipy import ndimage
+from scipy import ndimage, sparse
+from scipy.sparse.csgraph import connected_components
 from scipy.spatial import cKDTree
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fbxbin  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 OUT = os.path.join(ROOT, 'ios', 'Blith', 'Resources', 'Body3D')
 DESIGN = os.path.join(ROOT, 'design', 'body3d')
-CACHE = os.environ.get('MH_CACHE', os.path.join(os.path.expanduser('~'), '.cache', 'blith-makehuman'))
-BASE_URL = 'https://raw.githubusercontent.com/makehumancommunity/makehuman/master/makehuman/'
+CACHE = os.environ.get('BLITH_BODY_CACHE', os.path.join(os.path.expanduser('~'), '.cache', 'blith-body'))
 
-# ----------------------------------------------------------------------------------------------
-# Figure parameters
-HEIGHT = 1.80            # metres
-MUSCLE = 0.80            # 0 = average, 1 = MakeHuman max muscle
-WEIGHT = 0.40            # 0.5 = average (slightly lean for definition)
-EXTRA_TARGETS = [        # (target, weight) — subtle athletic shaping
-    ('data/targets/torso/torso-vshape-incr.target', 0.5),
-    ('data/targets/torso/torso-muscle-dorsi-incr.target', 0.3),
-    ('data/targets/torso/torso-muscle-pectoral-incr.target', 0.2),
-    ('data/targets/stomach/stomach-pregnant-decr.target', 0.5),
-    ('data/targets/neck/neck-scale-horiz-incr.target', 0.2),
-    ('data/targets/hip/hip-scale-horiz-decr.target', 0.2),
-]
-ARM_LOWER_DEG = 20.0     # rotate arms down from MakeHuman's A-pose (~42deg -> ~22deg from torso)
-ELBOW_STRAIGHTEN_DEG = 28.0
-FINGER_CURL_DEG = 20.0
-FINGER_CLOSE_DEG = 10.0
-TEX = 2048
+BP3D_ZIP = 'https://dbarchive.biosciencedbc.jp/data/bodyparts3d/LATEST/isa_BP3D_4.0_obj_99.zip'
+ZA_RAW = 'https://raw.githubusercontent.com/LluisV/Z-Anatomy/PC-Version/Resources/Models/FBX/'
+
+HEIGHT = 1.80            # metres, final figure height
+SKIN_TRIS = 58000
+MUSCLE_TRIS = 128000     # muscles + tendons
+UNDER_TRIS = 18000       # continuous underlayer
+
+SOURCE = ('Skin: BodyParts3D 4.0 (FJ2810). Muscles: Z-Anatomy MuscularSystem100 (derived from BodyParts3D). '
+          'Mapped to one frame, decimated, genital area smoothed to a neutral form.')
+LICENSE = 'CC BY-SA 4.0'
+ATTRIBUTION = ('"BodyParts3D, (c) The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 '
+               'Japan"; "Z-Anatomy - The open source atlas of anatomy - CC-BY-SA 4.0". Derived meshes: CC BY-SA 4.0.')
 
 REGION_IDS = ['head', 'neck', 'rightShoulder', 'leftShoulder', 'chest', 'abdomen', 'upperBack', 'lowerBack',
               'rightUpperArm', 'leftUpperArm', 'rightElbow', 'leftElbow', 'rightForearm', 'leftForearm',
@@ -59,230 +68,73 @@ REGION_IDS = ['head', 'neck', 'rightShoulder', 'leftShoulder', 'chest', 'abdomen
               'rightAnkle', 'leftAnkle', 'rightFoot', 'leftFoot']
 RI = {r: i for i, r in enumerate(REGION_IDS)}
 
-MUSCLES = [
-    ('neck', 'Neck (sternocleidomastoid)'),
-    ('trapezius', 'Upper back (trapezius)'),
-    ('deltoids', 'Shoulders (deltoids)'),
-    ('pectorals', 'Chest (pectorals)'),
-    ('biceps', 'Front of upper arm (biceps)'),
-    ('triceps', 'Back of upper arm (triceps)'),
-    ('forearmFlexors', 'Inner forearm (flexors)'),
-    ('forearmExtensors', 'Outer forearm (extensors)'),
-    ('abdominals', 'Abs (rectus abdominis)'),
-    ('obliques', 'Sides of waist (obliques)'),
-    ('serratus', 'Side of ribs (serratus anterior)'),
-    ('lats', 'Mid back (latissimus dorsi)'),
-    ('erectors', 'Lower back (spinal erectors)'),
-    ('glutes', 'Buttocks (glutes)'),
-    ('quadriceps', 'Front of thigh (quadriceps)'),
-    ('adductors', 'Inner thigh (adductors)'),
-    ('hamstrings', 'Back of thigh (hamstrings)'),
-    ('calves', 'Calves (gastrocnemius & soleus)'),
-    ('tibialis', 'Front of shin (tibialis anterior)'),
-]
-MI = {m: i for i, (m, _) in enumerate(MUSCLES)}
-NONE = 255
-
 
 # ----------------------------------------------------------------------------------------------
-# MakeHuman data
-def fetch(rel):
-    dst = os.path.join(CACHE, rel)
+# Sources
+def fetch(url, name):
+    dst = os.path.join(CACHE, name)
     if not os.path.exists(dst):
-        os.makedirs(os.path.dirname(dst), exist_ok=True)
-        print('  downloading', rel)
-        with urllib.request.urlopen(BASE_URL + rel, timeout=120) as r:
-            data = r.read()
-        with open(dst + '.part', 'wb') as f:
-            f.write(data)
+        os.makedirs(CACHE, exist_ok=True)
+        print('  downloading', url)
+        with urllib.request.urlopen(url, timeout=600) as r, open(dst + '.part', 'wb') as f:
+            while True:
+                b = r.read(1 << 20)
+                if not b:
+                    break
+                f.write(b)
         os.replace(dst + '.part', dst)
     return dst
 
 
-def load_obj():
-    V, VT, F, FT, G = [], [], [], [], []
-    g = None
-    for line in open(fetch('data/3dobjs/base.obj')):
-        if line.startswith('v '):
-            V.append([float(x) for x in line.split()[1:4]])
-        elif line.startswith('vt '):
-            VT.append([float(x) for x in line.split()[1:3]])
-        elif line.startswith('g '):
-            g = line.split()[1]
-        elif line.startswith('f '):
-            p = line.split()[1:]
-            F.append([int(x.split('/')[0]) - 1 for x in p])
-            FT.append([int(x.split('/')[1]) - 1 for x in p])
-            G.append(g)
-    return np.array(V), np.array(VT), np.array(F), np.array(FT), np.array(G)
+def bp3d_obj(fid):
+    """(V, F) of a BodyParts3D element, metres, frame: x = person's left, y = up, z = front."""
+    npz = os.path.join(CACHE, 'bp3d', fid + '.npz')
+    if not os.path.exists(npz):
+        zf = zipfile.ZipFile(fetch(BP3D_ZIP, 'isa_BP3D_4.0_obj_99.zip'))
+        V, F = [], []
+        for line in zf.read(f'isa_BP3D_4.0_obj_99/{fid}.obj').decode().splitlines():
+            if line.startswith('v '):
+                V.append([float(x) for x in line.split()[1:4]])
+            elif line.startswith('f '):
+                p = [int(x.split('/')[0]) - 1 for x in line.split()[1:]]
+                F += [[p[0], p[i], p[i + 1]] for i in range(1, len(p) - 1)]
+        V = np.array(V) * 0.001
+        os.makedirs(os.path.dirname(npz), exist_ok=True)
+        np.savez(npz, V=np.stack([V[:, 0], V[:, 2], -V[:, 1]], 1), F=np.array(F))   # LPS mm -> x, up, front
+    d = np.load(npz)
+    return d['V'], d['F']
 
 
-def load_target(rel):
-    idx, d = [], []
-    for line in open(fetch(rel)):
-        s = line.split()
-        if len(s) == 4 and not line.startswith('#'):
-            idx.append(int(s[0]))
-            d.append([float(x) for x in s[1:]])
-    return np.array(idx, int), np.array(d).reshape(-1, 3)
+def za_parts(name):
+    return fbxbin.meshes(fetch(ZA_RAW + name.replace(' ', '%20') + '.fbx', name.replace(' ', '_') + '.fbx'))
 
 
-def morph(V):
-    md = 'data/targets/macrodetails/'
-    spec = [(md + f'{r}-male-young.target', 1 / 3) for r in ('caucasian', 'african', 'asian')]
-    mw = {'max': MUSCLE, 'average': 1 - MUSCLE}
-    ww = {'min': max(0.0, (0.5 - WEIGHT) * 2), 'average': 1 - abs(WEIGHT - 0.5) * 2, 'max': max(0.0, (WEIGHT - 0.5) * 2)}
-    for m in mw:
-        for w in ww:
-            if mw[m] * ww[w] > 0:
-                spec.append((md + f'universal-male-young-{m}muscle-{w}weight.target', mw[m] * ww[w]))
-                if w != 'max':
-                    spec.append((md + f'proportions/male-young-{m}muscle-{w}weight-idealproportions.target', mw[m] * ww[w]))
-    spec += EXTRA_TARGETS
-    V = V.copy()
-    for rel, w in spec:
-        i, d = load_target(rel)
-        if len(i):
-            np.add.at(V, i, w * d)
-    return V
-
-
-def skeleton(V):
-    sk = json.load(open(fetch('data/rigs/default.mhskel')))
-    J = {n: V[ids].mean(0) for n, ids in sk['joints'].items()}
-    return {b: dict(head=J[i['head']], tail=J[i['tail']], parent=i['parent']) for b, i in sk['bones'].items()}
-
-
-def skin_weights(nv):
-    w = json.load(open(fetch('data/rigs/default_weights.mhw')))['weights']
-    names = sorted(w.keys())
-    Wm = np.zeros((nv, len(names)), np.float32)
-    for j, b in enumerate(names):
-        a = np.array(w[b])
-        if len(a):
-            Wm[a[:, 0].astype(int), j] = a[:, 1]
-    s = Wm.sum(1, keepdims=True)
-    return names, np.where(s > 0, Wm / np.maximum(s, 1e-9), Wm)
-
-
-def rot(axis, ang):
-    axis = np.asarray(axis, float)
-    x, y, z = axis / np.linalg.norm(axis)
-    c, s = np.cos(ang), np.sin(ang)
-    C = 1 - c
-    return np.array([[c + x * x * C, x * y * C - z * s, x * z * C + y * s],
-                     [y * x * C + z * s, c + y * y * C, y * z * C - x * s],
-                     [z * x * C - y * s, z * y * C + x * s, c + z * z * C]])
-
-
-def pose(V, bones, names, Wm):
-    """Relaxed stance via linear-blend skinning: arms down, elbows/fingers relaxed."""
-    local = {}
-    for s, sg in (('L', 1), ('R', -1)):
-        sh = bones[f'upperarm01.{s}']['head']; el = bones[f'lowerarm01.{s}']['head']; wr = bones[f'wrist.{s}']['head']
-        local[f'shoulder01.{s}'] = (rot([0, 0, 1], -sg * np.radians(ARM_LOWER_DEG * 0.3)), bones[f'shoulder01.{s}']['head'])
-        local[f'upperarm01.{s}'] = (rot([0, 0, 1], -sg * np.radians(ARM_LOWER_DEG * 0.7)), sh)
-        local[f'lowerarm01.{s}'] = (rot(np.cross(el - sh, wr - el), -np.radians(ELBOW_STRAIGHTEN_DEG)), el)
-        I = bones[f'finger2-1.{s}']['head']; K = bones[f'finger5-1.{s}']['head']; M = bones[f'finger3-1.{s}']['head']
-        pn = np.cross(K - I, M - wr)
-        for fi in range(2, 6):
-            for seg in range(1, 4):
-                b = f'finger{fi}-{seg}.{s}'
-                R = rot(K - I, sg * np.radians(FINGER_CURL_DEG * (0.6 if seg == 1 else 1.0)))
-                if seg == 1:
-                    R = rot(pn, sg * np.radians({2: 1.0, 3: 0.2, 4: -0.5, 5: -1.0}[fi] * FINGER_CLOSE_DEG)) @ R
-                local[b] = (R, bones[b]['head'])
-    Gx = {}
-
-    def glob(b):
-        if b not in Gx:
-            par = bones[b]['parent']
-            Rp, tp = glob(par) if par else (np.eye(3), np.zeros(3))
-            R, p = local.get(b, (np.eye(3), np.zeros(3)))
-            Gx[b] = (Rp @ R, Rp @ (p - R @ p) + tp)
-        return Gx[b]
-
-    out = np.zeros_like(V)
-    for j, b in enumerate(names):
-        nz = Wm[:, j] > 0
-        if nz.any():
-            R, t = glob(b)
-            out[nz] += Wm[nz, j, None] * (V[nz] @ R.T + t)
-    joints = {}
-    for b in bones:
-        R, t = glob(b)
-        joints[b] = (R @ bones[b]['head'] + t, R @ bones[b]['tail'] + t)
-    return out, joints
-
-
-BONE_GROUPS = ['head', 'neck', 'torso', 'pelvis.L', 'pelvis.R'] + [f'{g}.{s}' for s in 'LR' for g in ('shoulder', 'uarm', 'farm', 'hand', 'thigh', 'shank', 'foot')]
-GI = {g: i for i, g in enumerate(BONE_GROUPS)}
-
-
-def bone_group(b):
-    s = b[-1] if b[-2:] in ('.L', '.R') else None
-    base = b[:-2] if s else b
-    if base.startswith(('neck',)):
-        return 'neck'
-    if base.startswith(('spine', 'root', 'clavicle', 'breast')):
-        return 'torso'
-    if base == 'pelvis':
-        return f'pelvis.{s}'
-    if base == 'shoulder01':
-        return f'shoulder.{s}'
-    if base.startswith('upperarm'):
-        return f'uarm.{s}'
-    if base.startswith('lowerarm'):
-        return f'farm.{s}'
-    if base.startswith(('wrist', 'metacarpal', 'finger')):
-        return f'hand.{s}'
-    if base.startswith('upperleg'):
-        return f'thigh.{s}'
-    if base.startswith('lowerleg'):
-        return f'shank.{s}'
-    if base.startswith(('foot', 'toe')):
-        return f'foot.{s}'
-    return 'head'
+def za_to_bp():
+    """Similarity transform Z-Anatomy world (cm, y up) -> BodyParts3D frame (m), fitted by ICP
+    between Z-Anatomy's own skin ("Regions of human body") and BodyParts3D FJ2810."""
+    cf = os.path.join(CACHE, 'za_to_bp.json')
+    if not os.path.exists(cf):
+        R = np.concatenate([p['V'] for p in za_parts('Regions of human body100')]) * 0.01
+        S = outer_shell(*bp3d_obj('FJ2810'))[0][::5]
+        tree = cKDTree(R)
+        s, t = 1.0, R.mean(0) - S.mean(0)
+        for _ in range(40):
+            d, i = tree.query(s * S + t)
+            k = d < np.percentile(d, 90)
+            A, B = S[k], R[i[k]]
+            Am, Bm = A - A.mean(0), B - B.mean(0)
+            s = (Am * Bm).sum() / (Am * Am).sum()
+            t = B.mean(0) - s * A.mean(0)
+        json.dump({'s': s, 't': list(t)}, open(cf, 'w'))
+    j = json.load(open(cf))
+    s, t = j['s'], np.array(j['t'])
+    return lambda V: (V * 0.01 - t) / s
 
 
 # ----------------------------------------------------------------------------------------------
-# Geometry helpers
-def catmull_clark(P, Q, UV, QT, W):
-    """One Catmull-Clark step on a quad mesh. UVs are subdivided linearly on their own topology;
-    per-vertex attributes W are averaged linearly."""
-    nF, nV = len(Q), len(P)
-    E, FE = np.unique(np.sort(np.stack([Q, np.roll(Q, -1, 1)], 2).reshape(-1, 2), 1), axis=0, return_inverse=True)
-    FE = FE.reshape(nF, 4)
-    nE = len(E)
-    fp = P[Q].mean(1)
-    cnt = np.bincount(FE.ravel(), minlength=nE)
-    fsum = np.zeros((nE, 3)); np.add.at(fsum, FE.ravel(), np.repeat(fp, 4, 0))
-    mid = (P[E[:, 0]] + P[E[:, 1]]) / 2
-    bnd = cnt == 1
-    ep = mid.copy()
-    ep[~bnd] = (P[E[~bnd, 0]] + P[E[~bnd, 1]] + fsum[~bnd]) / 4
-    val = np.bincount(Q.ravel(), minlength=nV).astype(float)
-    Fav = np.zeros((nV, 3)); np.add.at(Fav, Q.ravel(), np.repeat(fp, 4, 0)); Fav /= np.maximum(val, 1)[:, None]
-    ec = np.bincount(E.ravel(), minlength=nV).astype(float)
-    Rav = np.zeros((nV, 3)); np.add.at(Rav, E[:, 0], mid); np.add.at(Rav, E[:, 1], mid); Rav /= np.maximum(ec, 1)[:, None]
-    vp = (Fav + 2 * Rav + (val - 3)[:, None] * P) / np.maximum(val, 1)[:, None]
-    be = E[bnd]
-    isb = np.zeros(nV, bool); isb[be.ravel()] = True
-    nb = np.zeros((nV, 3)); np.add.at(nb, be[:, 0], P[be[:, 1]]); np.add.at(nb, be[:, 1], P[be[:, 0]])
-    vp[isb] = (6 * P[isb] + nb[isb]) / 8
-    newP = np.concatenate([vp, ep, fp])
-    newW = np.concatenate([W, (W[E[:, 0]] + W[E[:, 1]]) / 2, W[Q].mean(1)])
-    ei = nV + FE
-    fi = nV + nE + np.arange(nF)
-    newQ = np.stack([np.stack([Q[:, i], ei[:, i], fi, ei[:, (i - 1) % 4]], 1) for i in range(4)], 1).reshape(-1, 4)
-    ET, FET = np.unique(np.sort(np.stack([QT, np.roll(QT, -1, 1)], 2).reshape(-1, 2), 1), axis=0, return_inverse=True)
-    FET = FET.reshape(nF, 4)
-    nT = len(UV)
-    newUV = np.concatenate([UV, (UV[ET[:, 0]] + UV[ET[:, 1]]) / 2, UV[QT].mean(1)])
-    eti = nT + FET
-    fti = nT + len(ET) + np.arange(nF)
-    newQT = np.stack([np.stack([QT[:, i], eti[:, i], fti, eti[:, (i - 1) % 4]], 1) for i in range(4)], 1).reshape(-1, 4)
-    return newP, newQ, newUV, newQT, newW
+# Mesh helpers
+def unit(v):
+    return v / np.maximum(np.linalg.norm(v, axis=-1, keepdims=True), 1e-12)
 
 
 def vertex_normals(P, T):
@@ -290,16 +142,198 @@ def vertex_normals(P, T):
     N = np.zeros_like(P)
     for i in range(3):
         np.add.at(N, T[:, i], fn)
-    return N / np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-12)
+    return unit(N)
 
 
+def compact(V, F):
+    used, inv = np.unique(F, return_inverse=True)
+    return V[used], inv.reshape(-1, 3)
+
+
+def weld(V, F, eps=1e-6):
+    key, first, inv = np.unique(np.round(V / eps).astype(np.int64), axis=0, return_index=True, return_inverse=True)
+    F = inv.ravel()[F]
+    F = F[(F[:, 0] != F[:, 1]) & (F[:, 1] != F[:, 2]) & (F[:, 0] != F[:, 2])]
+    return compact(V[first], F)
+
+
+def components(nV, F):
+    A = sparse.coo_matrix((np.ones(len(F) * 3), (F.ravel(), np.roll(F, 1, 1).ravel())), shape=(nV, nV))
+    return connected_components(A, directed=False)[1]
+
+
+def signed_volume(V, F):
+    return np.einsum('ij,ij->i', V[F[:, 0]], np.cross(V[F[:, 1]], V[F[:, 2]])).sum() / 6
+
+
+def outer_shell(V, F):
+    """FJ2810 is a skin *shell* (outer and inner surface); keep the largest outward-facing piece."""
+    lab = components(len(V), F)          # before welding: the two shells share rim positions
+    tl = lab[F[:, 0]]
+    best = max((c for c in np.unique(tl) if signed_volume(V, F[tl == c]) > 0), key=lambda c: (tl == c).sum())
+    return weld(*compact(V, F[tl == best]))
+
+
+def adjacency(nV, F):
+    e = np.concatenate([F[:, [0, 1]], F[:, [1, 2]], F[:, [2, 0]]])
+    A = sparse.csr_matrix((np.ones(len(e) * 2), (np.concatenate([e[:, 0], e[:, 1]]), np.concatenate([e[:, 1], e[:, 0]]))),
+                          shape=(nV, nV))
+    A.data[:] = 1
+    return A
+
+
+def boundary_loops(F):
+    he = np.concatenate([F[:, [0, 1]], F[:, [1, 2]], F[:, [2, 0]]])
+    n = int(F.max()) + 1
+    key, rkey = he[:, 0] * n + he[:, 1], he[:, 1] * n + he[:, 0]
+    b = he[~np.isin(key, rkey)]
+    nxt = dict(zip(b[:, 0].tolist(), b[:, 1].tolist()))
+    seen, loops = set(), []
+    for s in list(nxt):
+        if s in seen:
+            continue
+        loop, c = [s], nxt[s]
+        seen.add(s)
+        while c != s and c not in seen and c in nxt:
+            loop.append(c)
+            seen.add(c)
+            c = nxt[c]
+        loops.append(np.array(loop))
+    return loops
+
+
+def clean_boundary(V, F):
+    """Remove faces at bow-tie vertices (a boundary passing through a vertex twice) and keep the
+    largest piece, so every boundary is a simple loop."""
+    while True:
+        he = np.concatenate([F[:, [0, 1]], F[:, [1, 2]], F[:, [2, 0]]])
+        n = int(F.max()) + 1
+        b = he[~np.isin(he[:, 0] * n + he[:, 1], he[:, 1] * n + he[:, 0])]
+        bad = np.nonzero(np.bincount(b[:, 0], minlength=n) > 1)[0]
+        if not len(bad):
+            break
+        F = F[~np.isin(F, bad).any(1)]
+        tl = components(n, F)[F[:, 0]]
+        F = F[tl == np.bincount(tl).argmax()]
+    return compact(V, F)
+
+
+def taubin(V, F, iters=4, lam=0.5, mu=-0.53):
+    A = adjacency(len(V), F)
+    deg = np.asarray(A.sum(1)).ravel()[:, None]
+    for _ in range(iters):
+        for k in (lam, mu):
+            V = V + k * ((A @ V) / deg - V)
+    return V
+
+
+def fill_hole(V, F, loop, bulge=0.0, rings=None):
+    """Close a boundary loop with concentric rings, relaxed to a harmonic membrane, optionally
+    bulged along the mean normal. The loop follows the boundary half-edge direction."""
+    n = len(loop)
+    rings = rings if rings is not None else int(np.clip(n // 8, 1, 8))
+    P = V[loop]
+    c = P.mean(0)
+    base = len(V)
+    ring_ids = [loop]
+    newV = []
+    for k in range(1, rings):
+        f = 1 - k / rings
+        newV.append(c + (P - c) * f)
+        ring_ids.append(base + (k - 1) * n + np.arange(n))
+    cid = base + (rings - 1) * n
+    newV.append(c[None])
+    tris = []
+    for k in range(rings - 1):
+        o, i = ring_ids[k], ring_ids[k + 1]
+        o1, i1 = np.roll(o, -1), np.roll(i, -1)
+        tris += [np.stack([o1, o, i], 1), np.stack([o1, i, i1], 1)]
+    r = ring_ids[-1]
+    tris.append(np.stack([np.roll(r, -1), r, np.full(n, cid)], 1))
+    V2 = np.concatenate([V] + newV)
+    F2 = np.concatenate([F] + tris)
+    inner = np.arange(base, len(V2))
+    A = adjacency(len(V2), F2)
+    Ai = A[inner]
+    deg = np.asarray(Ai.sum(1)).ravel()
+    for _ in range(300):
+        V2[inner] = (Ai @ V2) / deg[:, None]
+    if bulge:
+        nrm = unit(vertex_normals(V2, F2)[loop].mean(0))
+        rr = np.linalg.norm(V2[inner] - c, axis=1) / max(np.linalg.norm(P - c, axis=1).mean(), 1e-9)
+        V2[inner] += nrm * bulge * np.clip(1 - rr ** 2, 0, 1)[:, None]
+    return V2, F2, inner
+
+
+def smooth_region(V, F, verts, iters=20, lam=0.5):
+    A = adjacency(len(V), F)
+    Ai = A[verts]
+    deg = np.asarray(Ai.sum(1)).ravel()
+    for _ in range(iters):
+        V[verts] = V[verts] * (1 - lam) + lam * (Ai @ V) / deg[:, None]
+    return V
+
+
+def decimate(V, F, target, preserve_border=True, aggressiveness=7.0):
+    if len(F) <= target:
+        return V, F
+    import pyfqmr
+    s = pyfqmr.Simplify()
+    s.setMesh(np.ascontiguousarray(V, np.float64), np.ascontiguousarray(F, np.int32))
+    s.simplify_mesh(target_count=int(target), aggressiveness=aggressiveness, preserve_border=preserve_border, verbose=False)
+    v, f, _ = s.getMesh()
+    return compact(np.asarray(v, np.float64), np.asarray(f, np.int64))
+
+
+# ----------------------------------------------------------------------------------------------
+# Skin
+GENITAL_CENTRE = np.array([0.0, 0.735, 0.158])   # BodyParts3D frame, from the midsagittal profile
+GENITAL_RADII = np.array([0.043, 0.056, 0.066])
+CROTCH_Y = 0.712                                  # perineum height on the midline
+
+
+def build_skin():
+    V, F = outer_shell(*bp3d_obj('FJ2810'))
+    # neutral groin: drop everything inside the genital ellipsoid, keep the main piece, membrane-fill
+    q = (V - GENITAL_CENTRE) / GENITAL_RADII
+    inside = (q ** 2).sum(1) < 1
+    F = F[~inside[F].any(1)]
+    lab = components(len(V), F)
+    tl = lab[F[:, 0]]
+    F = F[tl == np.bincount(tl).argmax()]
+    V, F = clean_boundary(V, F)
+    loops = boundary_loops(F)
+    groin = min(loops, key=lambda l: np.linalg.norm(V[l].mean(0) - GENITAL_CENTRE))
+    V, F, inner = fill_hole(V, F, groin, bulge=0.004, rings=10)
+    # blend the seam: relax a band around the patch
+    ring = np.unique(F[np.isin(F, groin).any(1)])
+    band = np.nonzero(np.linalg.norm((V - GENITAL_CENTRE) / (GENITAL_RADII * 1.35), axis=1) < 1)[0]
+    patch = np.union1d(inner, np.union1d(ring, band))
+    # the membrane webs down between the thighs; lift it to the natural crotch line
+    low = patch[(V[patch, 1] < CROTCH_Y) & (np.abs(V[patch, 0]) < 0.05)]
+    V[low, 1] = CROTCH_Y - (CROTCH_Y - V[low, 1]) * 0.2
+    V = smooth_region(V, F, patch, iters=40, lam=0.5)
+    # close the remaining holes (eyes get a gentle closed-lid bulge)
+    for loop in boundary_loops(F):
+        P = V[loop]
+        eye = abs(abs(P[:, 0].mean()) - 0.031) < 0.01 and abs(P[:, 1].mean() - 1.518) < 0.01
+        V, F, _ = fill_hole(V, F, loop, bulge=0.003 if eye else 0.0)
+    V = taubin(V, F, iters=4)
+    V, F = decimate(V, F, SKIN_TRIS)
+    assert not boundary_loops(F), 'skin must be closed'
+    return V, F
+
+
+# ----------------------------------------------------------------------------------------------
+# CPU renderer (previews and visibility)
 def rasterize(P2, Z, tris, W, H, chunk=60000):
-    """Vectorised triangle rasteriser. P2 (N,2) pixel coords (x right, y down); Z (N,) depth, smaller wins
-    (None = no depth test). Returns triangle id per pixel (-1 = empty) and barycentrics."""
+    """Vectorised z-buffer rasteriser. P2 (N,2) pixel coords, Z (N,) depth (smaller wins).
+    Returns the triangle id per pixel (-1 = empty) and barycentrics."""
     A, B, C = P2[tris[:, 0]], P2[tris[:, 1]], P2[tris[:, 2]]
     lo = np.maximum(np.floor(np.minimum(np.minimum(A, B), C) - 0.5).astype(np.int64), 0)
     hi = np.ceil(np.maximum(np.maximum(A, B), C) - 0.5).astype(np.int64)
-    hi[:, 0] = np.minimum(hi[:, 0], W - 1); hi[:, 1] = np.minimum(hi[:, 1], H - 1)
+    hi[:, 0] = np.minimum(hi[:, 0], W - 1)
+    hi[:, 1] = np.minimum(hi[:, 1], H - 1)
     size = np.maximum(hi - lo + 1, 0).max(1)
     den = (B[:, 0] - A[:, 0]) * (C[:, 1] - A[:, 1]) - (B[:, 1] - A[:, 1]) * (C[:, 0] - A[:, 0])
     ok = (size > 0) & (np.abs(den) > 1e-12)
@@ -325,7 +359,7 @@ def rasterize(P2, Z, tris, W, H, chunk=60000):
                 continue
             ti = np.broadcast_to(idx[:, None, None], m.shape)[m]
             bc = np.stack([w0[m], w1[m], w2[m]], 1)
-            dep = (bc * Z[tris[ti]]).sum(1) if Z is not None else np.zeros(len(ti))
+            dep = (bc * Z[tris[ti]]).sum(1)
             out.append((gy[m] * W + gx[m], dep, ti, bc))
         prev, k = k, k * 2
     tid = np.full(H * W, -1, np.int64)
@@ -334,107 +368,174 @@ def rasterize(P2, Z, tris, W, H, chunk=60000):
         pix, dep, ti, bc = (np.concatenate(x) for x in zip(*out))
         order = np.lexsort((dep, pix))
         ps = pix[order]
-        first = np.ones(len(ps), bool); first[1:] = ps[1:] != ps[:-1]
+        first = np.ones(len(ps), bool)
+        first[1:] = ps[1:] != ps[:-1]
         sel = order[first]
         tid[ps[first]] = ti[sel]
         bary[ps[first]] = bc[sel]
     return tid.reshape(H, W), bary.reshape(H, W, 3)
 
 
-def smoothstep(e0, e1, x):
-    t = np.clip((x - e0) / (e1 - e0), 0, 1)
-    return t * t * (3 - 2 * t)
-
-
-def unit(v):
-    return v / np.maximum(np.linalg.norm(v, axis=-1, keepdims=True), 1e-12)
-
-
-# ----------------------------------------------------------------------------------------------
-# Mesh
-class Body:
+class G:
     pass
 
 
-def build_mesh():
-    V0, VT, F, FT, G = load_obj()
-    V = morph(V0)
-    bones = skeleton(V)
-    names, Wm = skin_weights(len(V))
-    V, joints = pose(V, bones, names, Wm)
-    GW = np.zeros((len(V), len(BONE_GROUPS)), np.float32)
-    for j, b in enumerate(names):
-        GW[:, GI[bone_group(b)]] += Wm[:, j]
-    eye = (G == 'helper-l-eye') | (G == 'helper-r-eye')
-    keep = (G == 'body') | eye
-    iseye = np.zeros((len(V), 1), np.float32)
-    iseye[F[eye].ravel()] = 1
-    P, Q, UV, QT, A = catmull_clark(V, F[keep], VT, FT[keep], np.concatenate([GW, iseye], 1))
-    used = np.unique(Q)
-    remap = np.full(len(P), -1); remap[used] = np.arange(len(used))
-    P, A, Q = P[used], A[used], remap[Q]
-    # units: decimetres -> metres, feet on y=0, HEIGHT tall, centred on x/z
-    Pd = P * 0.1
-    y0 = Pd[:, 1].min()
-    k = HEIGHT / (Pd[:, 1].max() - y0)
-    c = np.array([(Pd[:, 0].max() + Pd[:, 0].min()) / 2, y0, (Pd[:, 2].max() + Pd[:, 2].min()) / 2])
-    tf = lambda p: (np.asarray(p) * 0.1 - c) * k
-    P = tf(P)
-    b = Body()
-    b.P = P                                   # geometric vertices
-    b.GW = A[:, :-1]
-    b.Q = Q
-    b.joints = {n: (tf(h), tf(t)) for n, (h, t) in joints.items()}
-    # render vertices = unique (position, uv) pairs
-    corners = np.stack([Q.ravel(), QT.ravel()], 1)
-    rv, inv = np.unique(corners, axis=0, return_inverse=True)
-    inv = inv.reshape(-1, 4)
-    b.rv_pos = rv[:, 0]
-    b.uv = np.stack([UV[rv[:, 1], 0], 1.0 - UV[rv[:, 1], 1]], 1)      # v = 0 at the top image row
-    b.T = np.concatenate([inv[:, [0, 1, 2]], inv[:, [0, 2, 3]]])       # render-vertex triangles (CCW outside)
-    b.TG = b.rv_pos[b.T]                                              # geometric triangles
-    b.N = vertex_normals(P, b.TG)                                     # smooth across UV seams
-    b.tri_eye = A[b.TG, -1].mean(1) > 0.5
-    return b
+def project(P, N, T, yaw, W, H, fov=21.0, dist=5.6, cy=0.90, cx=0.0):
+    """Perspective camera looking at the figure from +z; turntable yaw in degrees."""
+    a = np.radians(yaw)
+    Ry = np.array([[np.cos(a), 0, np.sin(a)], [0, 1, 0], [-np.sin(a), 0, np.cos(a)]])
+    Pc = P @ Ry.T
+    Nc = N @ Ry.T
+    z = dist - Pc[:, 2]
+    f = (H / 2) / np.tan(np.radians(fov / 2))
+    X = W / 2 + f * (Pc[:, 0] - cx) / z
+    Y = H / 2 - f * (Pc[:, 1] - cy) / z
+    tid, bc = rasterize(np.stack([X, Y], 1), z, T, W, H)
+    m = tid >= 0
+    t = T[tid[m]]
+    w = bc[m][..., None]
+    g = G()
+    g.mask, g.tid, g.W, g.H = m, tid[m], W, H
+    g.pos = (Pc[t] * w).sum(1)
+    g.nrm = unit((Nc[t] * w).sum(1))
+    g.view = unit(np.array([cx, cy, dist]) - g.pos)
+    return g
+
+
+BG = np.array([8, 11, 16]) / 255.0      # canvas #080B10
+
+
+def compose(g, col, glow=None, glow_sigma=6.0):
+    img = np.tile(BG, (g.H, g.W, 1)).reshape(-1, 3)
+    flat = np.nonzero(g.mask.ravel())[0]
+    img[flat] = col
+    img = img.reshape(g.H, g.W, 3)
+    if glow is not None:
+        gl = np.zeros((g.H, g.W, 3))
+        gl.reshape(-1, 3)[flat] = glow
+        img = img + ndimage.gaussian_filter(gl, (glow_sigma, glow_sigma, 0))
+    return (np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8)
+
+
+def hexc(h):
+    return np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)]) / 255.0
+
+
+LIGHT = unit(np.array([-0.45, 0.55, 0.70]))
+
+
+def debug_render(P, T, name, yaws=(0, 180, -35), cy=None, dist=5.6, fov=21.0, W=600, H=1000):
+    N = vertex_normals(P, T)
+    cy = cy if cy is not None else (P[:, 1].max() + P[:, 1].min()) / 2
+    ims = []
+    for yaw in yaws:
+        g = project(P, N, T, yaw, W, H, fov=fov, dist=dist, cy=cy)
+        lam = np.clip(g.nrm @ LIGHT, 0, 1)
+        ims.append(compose(g, np.array([0.82, 0.82, 0.86]) * (0.3 + 0.7 * lam)[:, None]))
+    Image.fromarray(np.concatenate(ims, 1)).save(name)
+
+
 
 
 # ----------------------------------------------------------------------------------------------
-# Landmarks and body coordinates
-def landmarks(b):
-    J = b.joints
-    L = Body()
-    P, GW = b.P, b.GW
-    for s, sg in (('L', 1), ('R', -1)):
-        setattr(L, 'arm' + s, [J[f'upperarm01.{s}'][0], J[f'lowerarm01.{s}'][0], J[f'wrist.{s}'][0], J[f'finger3-3.{s}'][1]])
-        setattr(L, 'leg' + s, [J[f'upperleg01.{s}'][0], J[f'lowerleg01.{s}'][0], J[f'foot.{s}'][0], J[f'toe3-3.{s}'][1]])
-    torso = GW[:, [GI['torso'], GI['pelvis.L'], GI['pelvis.R']]].sum(1) > 0.5
-    L.y_crotch = P[torso & (np.abs(P[:, 0]) < 0.012), 1].min()
-    # torso centre line z_c(y): midpoint of front/back extent on the midline
-    ys = np.arange(0.70, 1.62, 0.01)
-    zc = []
-    mid = np.abs(P[:, 0]) < 0.02
-    for y in ys:
-        m = mid & (np.abs(P[:, 1] - y) < 0.01) & (GW[:, GI['torso']] + GW[:, GI['neck']] + GW[:, GI['pelvis.L']] + GW[:, GI['pelvis.R']] > 0.3)
-        zc.append((P[m, 2].max() + P[m, 2].min()) / 2 if m.sum() > 2 else np.nan)
+# Bones -> body parts and joint landmarks (BodyParts3D bones share the skin's frame exactly)
+BONE_INDEX = 'isa_BP3D_4.0_obj_99/'
+HEAD_BONES = ('ethmoid', 'frontal bone', 'occipital', 'parietal', 'temporal bone', 'sphenoid', 'vomer', 'mandible',
+              'maxilla', 'nasal bone', 'lacrimal', 'palatine', 'zygomatic', 'concha', 'tooth', 'incisor', 'molar',
+              'canine', 'premolar')
+NECK_BONES = ('atlas', 'axis', 'cervical vertebra', 'hyoid')
+ARM_BONES = ('humerus', 'radius', 'ulna', 'capitate', 'hamate', 'lunate', 'pisiform', 'scaphoid', 'trapezium',
+             'trapezoid', 'triquetral', 'metacarpal', 'finger', 'thumb', 'of hand')
+LEG_BONES = ('femur', 'patella', 'tibia', 'fibula', 'calcaneus', 'talus', 'cuboid', 'cuneiform', 'of foot', 'metatarsal',
+             'toe', 'hallux')
+PARTS = ['head', 'neck', 'trunk', 'armL', 'armR', 'legL', 'legR']
+
+
+def bone_files():
+    """[(file id, English name)] of every BodyParts3D bone element."""
+    cf = os.path.join(CACHE, 'bp3d', 'bones.json')
+    if not os.path.exists(cf):
+        zf = zipfile.ZipFile(fetch(BP3D_ZIP, 'isa_BP3D_4.0_obj_99.zip'))
+        els = urllib.request.urlopen('https://dbarchive.biosciencedbc.jp/data/bodyparts3d/LATEST/isa_element_parts.txt',
+                                     timeout=120).read().decode('utf-8').splitlines()[1:]
+        ids = sorted({l.split('\t')[2] for l in els if l.split('\t')[1] == 'bone organ'})
+        out = []
+        for fid in ids:
+            head = zf.read(f'{BONE_INDEX}{fid}.obj')[:1200].decode('utf-8', 'replace')
+            name = [l.split(' : ', 1)[1].strip() for l in head.splitlines() if l.startswith('# English name')]
+            if name and name[0]:
+                out.append((fid, name[0]))
+        os.makedirs(os.path.dirname(cf), exist_ok=True)
+        json.dump(out, open(cf, 'w'))
+    return json.load(open(cf))
+
+
+def bone_part(name):
+    n = name.lower()
+    side = 'L' if 'left' in n else ('R' if 'right' in n else '')
+    if any(k in n for k in HEAD_BONES):
+        return 'head'
+    if any(k in n for k in NECK_BONES):
+        return 'neck'
+    if side and any(k in n for k in ARM_BONES):
+        return 'arm' + side
+    if side and any(k in n for k in LEG_BONES):
+        return 'leg' + side
+    return 'trunk'
+
+
+def load_bones():
+    pts, part, named = [], [], {}
+    for fid, name in bone_files():
+        V, _ = bp3d_obj(fid)
+        named[name.lower()] = V
+        pts.append(V[::2])
+        part += [PARTS.index(bone_part(name))] * len(V[::2])
+    return np.concatenate(pts), np.array(part), named
+
+
+class Landmarks:
+    pass
+
+
+def landmarks(skin_V, skin_part, named):
+    L = Landmarks()
+    top = lambda V, d: V[V[:, 1] > V[:, 1].max() - d].mean(0)
+    bot = lambda V, d: V[V[:, 1] < V[:, 1].min() + d].mean(0)
+    for s, side in (('L', 'left'), ('R', 'right')):
+        hum, rad = named[f'{side} humerus'], named[f'{side} radius']
+        fem, tib = named[f'{side} femur'], named[f'{side} tibia']
+        arm = skin_V[skin_part == PARTS.index('arm' + s)]
+        leg = skin_V[skin_part == PARTS.index('leg' + s)]
+        setattr(L, 'arm' + s, [top(hum, 0.04), bot(hum, 0.025), bot(rad, 0.015), arm[arm[:, 1].argmin()]])
+        foot = leg[leg[:, 1] < leg[:, 1].min() + 0.1]
+        setattr(L, 'leg' + s, [top(fem, 0.03), (bot(fem, 0.02) + top(tib, 0.02)) / 2, named[f'{side} talus'].mean(0),
+                               foot[foot[:, 2].argmax()]])
+    L.y_crest = named['right hip bone'][:, 1].max()
+    L.y_crotch = CROTCH_Y
+    ster = [v for k, v in named.items() if 'sternum' in k or 'xiphoid' in k]
+    L.y_xiph = min(v[:, 1].min() for v in ster) if ster else None
+    # torso centre line z_c(y) from the midline front/back extents of trunk skin
+    mid = (np.abs(skin_V[:, 0]) < 0.02) & (skin_part == PARTS.index('trunk'))
+    ys = np.arange(L.y_crotch, 1.40, 0.01)
+    zc = [np.nan] * len(ys)
+    for i, y in enumerate(ys):
+        m = mid & (np.abs(skin_V[:, 1] - y) < 0.01)
+        if m.sum() > 2:
+            zc[i] = (skin_V[m, 2].max() + skin_V[m, 2].min()) / 2
     zc = np.array(zc)
     ok = ~np.isnan(zc)
-    zc = np.interp(ys, ys[ok], zc[ok])
-    zc = ndimage.gaussian_filter1d(zc, 3, mode='nearest')
-    L.zc_y, L.zc = ys, zc
-    # navel: deepest point of the front midline profile between 0.95 and 1.15 m
-    front = mid & (P[:, 2] > np.interp(P[:, 1], ys, zc))
-    # navel: the densest cluster of front-midline vertices between 1.0 and 1.2 m (the umbilicus ring)
-    fm = front & (P[:, 1] > 0.55 * HEIGHT) & (P[:, 1] < 0.67 * HEIGHT) & (np.abs(P[:, 0]) < 0.01)
-    hist, edges = np.histogram(P[fm, 1], bins=np.arange(0.55 * HEIGHT, 0.67 * HEIGHT, 0.01))
-    hist = ndimage.uniform_filter1d(hist.astype(float), 3)
-    L.y_navel = float(edges[np.argmax(hist)] + 0.005)
-    for s, sg in (('L', 1), ('R', -1)):
-        I = J[f'finger2-1.{s}'][0]; K = J[f'finger5-1.{s}'][0]
-        fdir = J[f'finger3-1.{s}'][1] - J[f'finger3-1.{s}'][0]
-        setattr(L, 'palm' + s, unit(sg * np.cross(K - I, fdir)))
-    L.nipple = J['breast.L'][1] if np.linalg.norm(J['breast.L'][1] - J['breast.L'][0]) > 0 else J['breast.L'][0]
-    L.neck_base = J['neck01'][0]
-    L.head_base = J['head'][0]
+    L.zc_y, L.zc = ys, ndimage.gaussian_filter1d(np.interp(ys, ys[ok], zc[ok]), 3, mode='nearest')
+    # navel: deepest local dip of the front midline profile, 0.18-0.34 m above the crotch
+    fm = (np.abs(skin_V[:, 0]) < 0.006) & (skin_V[:, 2] > np.interp(skin_V[:, 1], L.zc_y, L.zc))
+    fm &= (skin_V[:, 1] > L.y_crotch + 0.18) & (skin_V[:, 1] < L.y_crotch + 0.34)
+    yy = np.arange(L.y_crotch + 0.18, L.y_crotch + 0.34, 0.004)
+    prof = np.array([skin_V[fm & (np.abs(skin_V[:, 1] - y) < 0.004), 2].max() if (fm & (np.abs(skin_V[:, 1] - y) < 0.004)).any() else np.nan for y in yy])
+    ok = ~np.isnan(prof)
+    prof = np.interp(yy, yy[ok], prof[ok])
+    L.y_navel = float(yy[np.argmax(ndimage.gaussian_filter1d(prof, 6) - prof)])
+    if L.y_xiph is None:
+        L.y_xiph = L.y_navel + 0.17
     return L
 
 
@@ -443,826 +544,272 @@ def zc_at(L, y):
 
 
 def limb_coords(p, pts, lateral_sign, front=np.array([0, 0, 1.0])):
-    """Arclength s along a joint polyline, angle theta around it (0 = front, +90 = lateral, -90 = medial,
-    +-180 = back) and radius."""
+    """Arclength s along a joint polyline and angle theta around it (0 front, +90 lateral, 180 back)."""
     pts = [np.asarray(q, float) for q in pts]
     nseg = len(pts) - 1
-    best_d = np.full(len(p), np.inf)
-    s = np.zeros(len(p)); th = np.zeros(len(p)); rad = np.zeros(len(p))
+    best = np.full(len(p), np.inf)
+    s, th = np.zeros(len(p)), np.zeros(len(p))
     acc = 0.0
     for i in range(nseg):
         a0, a1 = pts[i], pts[i + 1]
-        seg = a1 - a0
-        ln = np.linalg.norm(seg)
-        ax = seg / ln
+        ln = np.linalg.norm(a1 - a0)
+        ax = (a1 - a0) / ln
         t = (p - a0) @ ax
-        tc = np.clip(t, 0, ln)
-        d = np.linalg.norm(p - (a0 + tc[:, None] * ax), axis=1)
+        d = np.linalg.norm(p - (a0 + np.clip(t, 0, ln)[:, None] * ax), axis=1)
         te = t.copy()
         if i > 0:
             te = np.maximum(te, 0)
         if i < nseg - 1:
             te = np.minimum(te, ln)
         r = p - (a0 + te[:, None] * ax)
-        f = front - (front @ ax) * ax
-        f /= np.linalg.norm(f)
-        l = np.cross(ax, f)
-        if l[0] * lateral_sign < 0:
-            l = -l
-        upd = d < best_d
-        best_d[upd] = d[upd]
-        s[upd] = acc + te[upd]
-        th[upd] = np.degrees(np.arctan2(r[upd] @ l, r[upd] @ f))
-        rad[upd] = np.linalg.norm(r[upd], axis=1)
+        f = unit(front - (front @ ax) * ax)
+        lat = np.cross(ax, f)
+        if lat[0] * lateral_sign < 0:
+            lat = -lat
+        u = d < best
+        best[u] = d[u]
+        s[u] = acc + te[u]
+        th[u] = np.degrees(np.arctan2(r[u] @ lat, r[u] @ f))
         acc += ln
-    return s, th, rad
+    return s, th
 
 
 def seg_lengths(pts):
     return [float(np.linalg.norm(np.asarray(pts[i + 1]) - np.asarray(pts[i]))) for i in range(len(pts) - 1)]
 
 
-def chains(gw):
-    g = lambda *n: sum(gw[:, GI[x]] for x in n)
-    return {
-        'head': g('head'), 'neck': g('neck'),
-        'torso': g('torso'),
-        'pelvisL': g('pelvis.L'), 'pelvisR': g('pelvis.R'),
-        'armL': g('shoulder.L', 'uarm.L', 'farm.L', 'hand.L'), 'armR': g('shoulder.R', 'uarm.R', 'farm.R', 'hand.R'),
-        'legL': g('thigh.L', 'shank.L', 'foot.L'), 'legR': g('thigh.R', 'shank.R', 'foot.R'),
-    }
-
-
-# ----------------------------------------------------------------------------------------------
-# Regions
-def gluteal_fold(ax, L):
-    return L.y_crotch - 0.035 + 0.3 * np.maximum(ax - 0.05, 0)
-
-
-def hip_zone(p, th, L):
-    """Leg-dominant skin that belongs to the lateral hip / buttock."""
-    ax, y = np.abs(p[:, 0]), p[:, 1]
-    glute = (np.abs(th) > 100) & (y > gluteal_fold(ax, L))
-    lateral = (th > 55) & (th <= 100) & (y > L.y_crotch + 0.01 - 0.25 * (th - 55) / 45 * 0.0)
-    return glute | lateral
-
-
-def classify_regions(p, gw, L):
+def classify_regions(p, part, L):
+    """BodyRegion index per point (BodyParts3D frame) given its nearest-bone body part."""
     x, y, z = p[:, 0], p[:, 1], p[:, 2]
     ax = np.abs(x)
     left = x >= 0
-    ch = chains(gw)
-    arm = np.where(left, ch['armL'], ch['armR'])
-    leg = np.where(left, ch['legL'], ch['legR'])
-    trunk = ch['torso'] + ch['pelvisL'] + ch['pelvisR']
-    hn = ch['head'] + ch['neck']
-    dom = np.argmax(np.stack([hn, trunk, arm, leg], 1), 1)
-    front = z > zc_at(L, y)
     side = lambda l, r: np.where(left, RI[l], RI[r])
-    reg = np.full(len(p), -1)
-
-    # head & neck
-    m = dom == 0
-    reg[m & (ch['head'] >= ch['neck'])] = RI['head']
-    reg[m & (ch['head'] < ch['neck'])] = RI['neck']
-
+    reg = np.full(len(p), RI['chest'])
+    reg[part == PARTS.index('head')] = RI['head']
+    reg[part == PARTS.index('neck')] = RI['neck']
     # trunk
+    tr = part == PARTS.index('trunk')
+    front = z > zc_at(L, y)
     yn = L.y_navel
-    y_chest = yn + 0.125 - 0.5 * np.minimum(ax, 0.16)          # costal arch
-    y_hipf = yn - 0.075                                       # lower belly / ASIS line
-    y_back = yn + 0.07                                        # lower ribs at the back
-    y_crest = yn - 0.08                                       # iliac crest at the back
-    m = np.ones(len(p), bool)          # trunk labels for every point (also the fallback near the armpit)
-    f = m & front
+    y_chest = L.y_xiph + 0.01 - 0.55 * np.minimum(ax, 0.15)      # costal arch
+    y_hipf = yn - 0.075
+    y_back, y_crest = yn + 0.07, L.y_crest - 0.01
+    f = tr & front
     reg[f & (y >= y_chest)] = RI['chest']
     reg[f & (y < y_chest) & (y >= y_hipf)] = RI['abdomen']
     low = f & (y < y_hipf)
     reg[low & (ax < 0.095)] = RI['hips']
     reg[low & (ax >= 0.095)] = side('leftHip', 'rightHip')[low & (ax >= 0.095)]
-    bk = m & ~front
-    reg[bk & (y >= y_back)] = RI['upperBack']
-    reg[bk & (y < y_back) & (y >= y_crest)] = RI['lowerBack']
-    low = bk & (y < y_crest)
-    sac = ax < np.interp(y, [L.y_crotch, y_crest], [0.01, 0.055])
+    b = tr & ~front
+    reg[b & (y >= y_back)] = RI['upperBack']
+    reg[b & (y < y_back) & (y >= y_crest)] = RI['lowerBack']
+    low = b & (y < y_crest)
+    sac = ax < np.interp(y, [L.y_crotch, y_crest], [0.012, 0.05])
     reg[low & sac] = RI['hips']
     reg[low & ~sac] = side('leftHip', 'rightHip')[low & ~sac]
-    # skin over the shoulder joint (trunk or arm) -> shoulder cap, bounded by a sphere
+    # shoulder cap (trunk or arm skin over the shoulder joint)
     S = np.where(left[:, None], L.armL[0], L.armR[0])
-    Cc = S + np.stack([np.sign(x + 1e-9) * 0.012, np.full(len(x), 0.012), np.zeros(len(x))], 1)
-    cap = (np.linalg.norm(p - Cc, axis=1) < 0.098) & (ax > np.abs(S[:, 0]) - 0.075)
+    cap = (np.linalg.norm(p - S - np.stack([np.sign(x + 1e-9) * 0.012, np.full(len(x), 0.012), np.zeros(len(x))], 1), axis=1) < 0.098)
+    cap &= (ax > np.abs(S[:, 0]) - 0.07) & (tr | (part == PARTS.index('armL')) | (part == PARTS.index('armR')))
     reg[cap] = side('leftShoulder', 'rightShoulder')[cap]
-    trunk_reg = reg.copy()
-    reg[dom == 0] = -1
-    m = dom == 0
-    reg[m & (ch['head'] >= ch['neck'])] = RI['head']
-    reg[m & (ch['head'] < ch['neck'])] = RI['neck']
-
     # arms
-    for s_, sg in (('L', 1), ('R', -1)):
-        m = (dom == 2) & (left if sg > 0 else ~left)
+    for s_, sg, nm in (('L', 1, 'left'), ('R', -1, 'right')):
+        m = part == PARTS.index('arm' + s_)
         pts = getattr(L, 'arm' + s_)
-        lu, lf, lh = seg_lengths(pts)
-        s, th, _ = limb_coords(p[m], pts, sg)
-        r = np.full(m.sum(), RI['leftHand' if sg > 0 else 'rightHand'])
-        nm = lambda k: RI[('left' if sg > 0 else 'right') + k]
-        r[s < lu + lf + 0.025] = nm('Wrist')
-        r[s < lu + lf - 0.025] = nm('Forearm')
-        r[s < lu + 0.035] = nm('Elbow')
-        r[s < lu - 0.035] = nm('UpperArm')
-        Cm = pts[0] + np.array([sg * 0.012, 0.012, 0])
-        dC = np.linalg.norm(p[m] - Cm, axis=1)
-        r[s < 0.3 * lu] = trunk_reg[m][s < 0.3 * lu]            # near the torso: trunk rules decide
-        r[((s < 0.3 * lu) & (s > 0.0)) | ((dC < 0.098) & (s < 0.45 * lu))] = nm('Shoulder')
+        lu, lf, _ = seg_lengths(pts)
+        s, _ = limb_coords(p[m], pts, sg)
+        r = np.full(m.sum(), RI[nm + 'Hand'])
+        r[s < lu + lf + 0.02] = RI[nm + 'Wrist']
+        r[s < lu + lf - 0.025] = RI[nm + 'Forearm']
+        r[s < lu + 0.04] = RI[nm + 'Elbow']
+        r[s < lu - 0.035] = RI[nm + 'UpperArm']
+        r[(s < 0.3 * lu) | cap[m]] = RI[nm + 'Shoulder']
         reg[m] = r
     # legs
-    for s_, sg in (('L', 1), ('R', -1)):
-        m = (dom == 3) & (left if sg > 0 else ~left)
+    for s_, sg, nm in (('L', 1, 'left'), ('R', -1, 'right')):
+        m = part == PARTS.index('leg' + s_)
         pts = getattr(L, 'leg' + s_)
         lt, ls, _ = seg_lengths(pts)
-        s, th, _ = limb_coords(p[m], pts, sg)
-        yy, zz = y[m], z[m]
+        s, th = limb_coords(p[m], pts, sg)
+        yy, zz, aa = y[m], z[m], ax[m]
         A = pts[2]
-        nm = lambda k: RI[('left' if sg > 0 else 'right') + k]
-        r = np.where(np.abs(th) < 90, nm('Shin'), nm('Calf'))
-        r[s < lt + 0.05] = nm('Knee')
-        r[s < lt - 0.05] = nm('Thigh')
-        r[(s < lt - 0.05) & hip_zone(p[m], th, L)] = nm('Hip')
-        r[yy < A[1] + 0.055] = nm('Ankle')
-        foot = yy < A[1] - 0.018 + 0.45 * np.maximum(zz - A[2] - 0.02, 0)
-        r[foot] = nm('Foot')
+        r = np.where(np.abs(th) < 90, RI[nm + 'Shin'], RI[nm + 'Calf'])
+        r[s < lt + 0.05] = RI[nm + 'Knee']
+        r[s < lt - 0.05] = RI[nm + 'Thigh']
+        glute = (np.abs(th) > 100) & (yy > L.y_crotch - 0.035 + 0.3 * np.maximum(aa - 0.05, 0))
+        lateral = (th > 55) & (th <= 100) & (yy > L.y_crotch + 0.01)
+        r[(s < lt - 0.05) & (glute | lateral)] = RI[nm + 'Hip']
+        r[yy < A[1] + 0.05] = RI[nm + 'Ankle']
+        r[yy < A[1] - 0.018 + 0.45 * np.maximum(zz - A[2] - 0.02, 0)] = RI[nm + 'Foot']
         reg[m] = r
     return reg
 
 
-def smooth_labels(TG, labels, nlab, iters=3, keep=None):
-    """Majority filter over the triangle mesh (via shared vertices) to remove speckles."""
-    from scipy import sparse
-    nT = len(TG)
-    nV = TG.max() + 1
-    VT = sparse.csr_matrix((np.ones(nT * 3), (TG.ravel(), np.repeat(np.arange(nT), 3))), shape=(nV, nT))
-    lab = labels.copy()
-    for _ in range(iters):
-        valid = lab < nlab
-        oh = sparse.csr_matrix((np.ones(valid.sum()), (np.nonzero(valid)[0], lab[valid])), shape=(nT, nlab))
-        vh = VT @ oh
-        th = (VT.T @ vh).toarray()
-        new = np.argmax(th, 1)
-        if keep is not None:
-            new[keep] = lab[keep]
-        lab = np.where(valid, new, lab)
-    return lab
+def label_skin(V, F, part, L):
+    lab = classify_regions(V, part, L)
+    A = adjacency(len(V), F) + sparse.identity(len(V), format='csr')
+    for _ in range(2):
+        oh = sparse.csr_matrix((np.ones(len(lab)), (np.arange(len(lab)), lab)), shape=(len(lab), len(REGION_IDS)))
+        lab = np.asarray((A @ oh).argmax(1)).ravel()
+    L3 = lab[F]
+    tri = np.where(L3[:, 1] == L3[:, 2], L3[:, 1], L3[:, 0])
+    return lab, tri
 
 
 # ----------------------------------------------------------------------------------------------
-# Software renderer for previews
-BG = np.array([7, 8, 11]) / 255.0
+# Muscles (Z-Anatomy)
+SKIP_PATH = ('Bursae', 'Tendon sheaths', 'Fasciae.g', 'Extra-ocular', 'Muscles of tongue', 'Muscles of soft palate',
+             'Pharyngeal', 'Laryngeal', 'Pelvic diaphragm', 'Levator ani', 'Perineal', 'Rotatores', 'Multifidus',
+             'Interspinales', 'Intertransversarii', 'Suboccipital', 'Levatores costarum', 'Auditory ossicles',
+             'Intrinsic auricular', 'Endo-abdominal')
+SKIP_NAME = ('Cross Section', 'intercostal', 'Diaphragm', 'Transversus thoracis', 'tarsus', 'pterygoid', 'Longus colli',
+             'Longus capitis', 'Rectus anterior capitis', 'Rectus lateralis capitis', 'Psoas', 'Iliacus', 'Quadratus lumborum',
+             'Transversus abdominis', 'Obturator', 'gemellus', 'Piriformis', 'Quadratus femoris', 'Subclavius', 'Popliteus',
+             'Tibialis posterior', 'Flexor digitorum longus', 'Flexor hallucis longus', 'Pronator quadratus', 'Supinator',
+             'Coracobrachialis', 'Serratus posterior', 'Semispinalis', 'Spinalis', 'Longissimus colli',
+             'Iliocostalis colli', 'Subscapularis', 'Transverse arytenoid', 'Deep part of masseter', 'Palatopharyngeus',
+             'Genioglossus', 'Hyoglossus', 'Stylopharyngeus', 'Stylohyoid', 'Geniohyoid', 'Mylohyoid', 'Pyramidalis',
+             'Vastus intermedius', 'Adductor brevis', 'Adductor minimus', 'Pectoralis minor', 'Rhomboid minor',
+             'Flexor digitorum profundus', 'Flexor pollicis longus', 'Extensor indicis')
+TENDON_WORDS = ('tendon', 'aponeurosis', 'Linea alba', 'tract', 'ligament', 'retinaculum')
+MIDLINE_NAMES = ('Linea alba',)
 
 
-def hexc(h):
-    return np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)]) / 255.0
+def pretty(name):
+    """Z-Anatomy object name -> (display name, side, kind)."""
+    import re
+    side = 'right' if name.endswith('.r') else ('left' if name.endswith('.l') else 'midline')
+    n = re.sub(r'\.[rl]$', '', name).strip().strip('()').strip()
+    n = re.sub(r'\bmuscles?\b', '', n)
+    n = re.sub(r'\s+', ' ', n).strip()
+    m = re.match(r'^(.*?)\b(head|part|belly|portion|layer)s? of (.*)$', n, re.I)
+    if m:
+        n = f'{m.group(3)} ({m.group(1).strip().lower()} {m.group(2).lower()})'.replace('( ', '(')
+    m = re.match(r'^Tendon of (.*)$', n, re.I)
+    if m:
+        n = f'{m.group(1)} tendon'
+    n = n.replace('Bucinator', 'Buccinator').replace('Lumbrical of', 'Lumbricals of')
+    kind = 'tendon' if any(w.lower() in name.lower() for w in TENDON_WORDS) else 'muscle'
+    return n[0].upper() + n[1:], side, kind
 
 
-def project(b, yaw, W, H, fov=21.0, dist=5.6, cy=0.90, cx=0.0):
-    a = np.radians(yaw)
-    Ry = np.array([[np.cos(a), 0, np.sin(a)], [0, 1, 0], [-np.sin(a), 0, np.cos(a)]])
-    P = b.P[b.rv_pos] @ Ry.T
-    N = b.N[b.rv_pos] @ Ry.T
-    z = dist - P[:, 2]
-    f = (H / 2) / np.tan(np.radians(fov / 2))
-    X = W / 2 + f * (P[:, 0] - cx) / z
-    Y = H / 2 - f * (P[:, 1] - cy) / z
-    tid, bc = rasterize(np.stack([X, Y], 1), z, b.T, W, H)
-    m = tid >= 0
-    t = b.T[tid[m]]
-    w = bc[m][..., None]
-    g = Body()
-    g.mask, g.tid = m, tid[m]
-    g.pos = (P[t] * w).sum(1)
-    g.nrm = unit((N[t] * w).sum(1))
-    g.uv = (b.uv[t] * w).sum(1)
-    g.view = unit(np.array([cx, 0, dist]) + np.array([0, cy, 0]) - g.pos)
-    g.W, g.H = W, H
-    return g
-
-
-def sample(tex, uv):
-    """Bilinear texture lookup (uv v=0 at the top row)."""
-    h, w = tex.shape[:2]
-    x = np.clip(uv[:, 0] * w - 0.5, 0, w - 1.001)
-    y = np.clip(uv[:, 1] * h - 0.5, 0, h - 1.001)
-    x0, y0 = np.floor(x).astype(int), np.floor(y).astype(int)
-    fx, fy = x - x0, y - y0
-    if tex.ndim == 3:
-        fx, fy = fx[:, None], fy[:, None]
-    return (tex[y0, x0] * (1 - fx) * (1 - fy) + tex[y0, x0 + 1] * fx * (1 - fy)
-            + tex[y0 + 1, x0] * (1 - fx) * fy + tex[y0 + 1, x0 + 1] * fx * fy)
-
-
-def compose(g, col, alpha=None, glow=None):
-    img = np.tile(BG, (g.H, g.W, 1)).reshape(-1, 3)
-    flat = np.nonzero(g.mask.ravel())[0]
-    if alpha is None:
-        img[flat] = col
-    else:
-        img[flat] = img[flat] * (1 - alpha[:, None]) + col * alpha[:, None]
-    img = img.reshape(g.H, g.W, 3)
-    if glow is not None:
-        gl = np.zeros((g.H, g.W, 3))
-        gl.reshape(-1, 3)[flat] = glow
-        img += ndimage.gaussian_filter(gl, (6, 6, 0)) * 0.9
-    return (np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8)
-
-
-LIGHT = unit(np.array([-0.45, 0.55, 0.70]))   # upper front-left (viewer's left), camera space
-
-
-def shade_regions(b, g, tri_region):
-    rng = np.random.RandomState(3)
-    pal = rng.uniform(0.25, 1.0, (len(REGION_IDS), 3))
-    for i, r in enumerate(REGION_IDS):   # make left/right pairs clearly different
-        if r.startswith('left'):
-            pal[i] = pal[i] * 0.55 + np.array([0.45, 0.45, 0.45]) * 0.45
-    col = pal[tri_region[g.tid]]
-    lam = np.clip(g.nrm @ LIGHT, 0, 1)
-    return col * (0.45 + 0.55 * lam)[:, None]
-
-
-# ----------------------------------------------------------------------------------------------
-# Clean label boundaries: per-vertex labels, majority smoothing, then split triangles along the
-# label boundary (crossing points found by sampling the classifier along each edge).
-def vertex_adjacency(TG, nV):
-    from scipy import sparse
-    e = np.concatenate([TG[:, [0, 1]], TG[:, [1, 2]], TG[:, [2, 0]]])
-    A = sparse.csr_matrix((np.ones(len(e) * 2), (np.concatenate([e[:, 0], e[:, 1]]), np.concatenate([e[:, 1], e[:, 0]]))), shape=(nV, nV))
-    A.data[:] = 1
-    return A + sparse.identity(nV, format='csr')
-
-
-def smooth_vertex_labels(A, lab, nlab, iters=2, fixed=None):
-    from scipy import sparse
-    lab = lab.copy()
-    for _ in range(iters):
-        oh = sparse.csr_matrix((np.ones(len(lab)), (np.arange(len(lab)), lab)), shape=(len(lab), nlab))
-        new = np.asarray((A @ oh).argmax(1)).ravel()
-        if fixed is not None:
-            new[fixed] = lab[fixed]
-        lab = new
-    return lab
-
-
-def split_by_labels(b, label_fn, nlab, fixed_fn=None, iters=2):
-    """label_fn(pos, gw) -> int labels in [0, nlab). Returns per-triangle labels and updates b in place."""
-    nV = len(b.P)
-    lab = label_fn(b.P, b.GW)
-    fixed = fixed_fn(b) if fixed_fn else None
-    lab = smooth_vertex_labels(vertex_adjacency(b.TG, nV), lab, nlab, iters, fixed)
-    TG, T = b.TG, b.T
-    L3 = lab[TG]
-    diff = ~((L3[:, 0] == L3[:, 1]) & (L3[:, 1] == L3[:, 2]))
-    # unique geometric edges needing a crossing
-    ce = []
-    for i, j in ((0, 1), (1, 2), (2, 0)):
-        m = diff & (L3[:, i] != L3[:, j])
-        ce.append(np.sort(TG[m][:, [i, j]], 1))
-    ce = np.unique(np.concatenate(ce), axis=0)
-    e0, e1 = ce[:, 0], ce[:, 1]
-    ts = np.linspace(0, 1, 17)[1:-1]
-    labs = np.stack([label_fn(b.P[e0] * (1 - t) + b.P[e1] * t, b.GW[e0] * (1 - t) + b.GW[e1] * t) for t in ts], 1)
-    ne = labs != lab[e0][:, None]
-    first = np.where(ne.any(1), ne.argmax(1), len(ts) // 2)
-    tcross = np.where(ne.any(1), (np.concatenate([[0.0], ts])[first] + ts[first]) / 2, 0.5)
-    # new geometric vertices
-    newP = b.P[e0] * (1 - tcross[:, None]) + b.P[e1] * tcross[:, None]
-    newW = b.GW[e0] * (1 - tcross[:, None]) + b.GW[e1] * tcross[:, None]
-    newN = unit(b.N[e0] * (1 - tcross[:, None]) + b.N[e1] * tcross[:, None])
-    ekey = {(int(a), int(c)): k for k, (a, c) in enumerate(ce)}
-    P = [b.P, newP]; GW = [b.GW, newW]; N = [b.N, newN]
-    nG = nV + len(ce)
-    rv_pos = [b.rv_pos]; uv = [b.uv]
-    rkey = {}
-    nR = len(b.rv_pos)
-    extra_pos, extra_uv = [], []
-
-    def cross_rv(ga, gb, ra, rb):
-        nonlocal nR
-        if ga > gb:
-            ga, gb, ra, rb = gb, ga, rb, ra
-        k = ekey[(ga, gb)]
-        key = (k, ra, rb)
-        if key not in rkey:
-            t = tcross[k]
-            extra_pos.append(nV + k)
-            extra_uv.append(b.uv[ra] * (1 - t) + b.uv[rb] * t)
-            rkey[key] = nR
-            nR += 1
-        return rkey[key]
-
-    newT, newL, parent = [], [], []
-    centers_P, centers_W, centers_N = [], [], []
-    keepi = np.nonzero(~diff)[0]
-    for ti in np.nonzero(diff)[0]:
-        g = TG[ti]; r = T[ti]; l = L3[ti]
-        if l[0] != l[1] and l[1] != l[2] and l[0] != l[2]:
-            ab = cross_rv(g[0], g[1], r[0], r[1]); bc = cross_rv(g[1], g[2], r[1], r[2]); ca = cross_rv(g[2], g[0], r[2], r[0])
-            wts = np.ones(3) / 3
-            centers_P.append(b.P[g].mean(0)); centers_W.append(b.GW[g].mean(0)); centers_N.append(unit(b.N[g].mean(0)))
-            extra_pos.append(nG + len(centers_P) - 1)
-            extra_uv.append(b.uv[r].mean(0))
-            c = nR; nR += 1
-            tris = [(r[0], ab, c, l[0]), (r[0], c, ca, l[0]), (r[1], bc, c, l[1]), (r[1], c, ab, l[1]), (r[2], ca, c, l[2]), (r[2], c, bc, l[2])]
-        else:
-            k = 0 if l[1] == l[2] else (1 if l[0] == l[2] else 2)   # odd vertex
-            a_, b_, c_ = k, (k + 1) % 3, (k + 2) % 3
-            ab = cross_rv(g[a_], g[b_], r[a_], r[b_]); ac = cross_rv(g[a_], g[c_], r[a_], r[c_])
-            tris = [(r[a_], ab, ac, l[a_]), (ab, r[b_], r[c_], l[b_]), (ab, r[c_], ac, l[b_])]
-        for t0, t1, t2, ll in tris:
-            newT.append((t0, t1, t2)); newL.append(ll); parent.append(ti)
-    if centers_P:
-        P.append(np.array(centers_P)); GW.append(np.array(centers_W)); N.append(np.array(centers_N))
-    b.P = np.concatenate(P); b.GW = np.concatenate(GW).astype(np.float32); b.N = np.concatenate(N)
-    b.rv_pos = np.concatenate([b.rv_pos, np.array(extra_pos, int)])
-    b.uv = np.concatenate([b.uv, np.array(extra_uv).reshape(-1, 2)])
-    b.T = np.concatenate([T[keepi], np.array(newT, int).reshape(-1, 3)])
-    b.TG = b.rv_pos[b.T]
-    parent = np.concatenate([keepi, np.array(parent, int)])
-    tri_lab = np.concatenate([L3[keepi, 0], np.array(newL, int)])
-    for attr in getattr(b, 'tri_attrs', []):
-        setattr(b, attr, getattr(b, attr)[parent])
-    return tri_lab
-
-
-# ----------------------------------------------------------------------------------------------
-# Muscles: "bellies" are the texture-level units (each has its own fibre focus and grooves around it);
-# every belly maps to one of the public muscle ids (or none).
-BELLIES = [  # name, muscle id
-    ('pec_clav', 'pectorals'), ('pec_stern', 'pectorals'),
-    ('delt_ant', 'deltoids'), ('delt_lat', 'deltoids'), ('delt_post', 'deltoids'),
-    ('trap', 'trapezius'), ('lat', 'lats'), ('infra', 'lats'), ('serratus', 'serratus'),
-    ('oblique', 'obliques'), ('rectus', 'abdominals'), ('erector', 'erectors'),
-    ('glute_max', 'glutes'), ('glute_med', 'glutes'),
-    ('rectus_fem', 'quadriceps'), ('vast_lat', 'quadriceps'), ('vast_med', 'quadriceps'),
-    ('sartorius', 'adductors'), ('adductor', 'adductors'),
-    ('biceps_fem', 'hamstrings'), ('semi', 'hamstrings'),
-    ('gastro_med', 'calves'), ('gastro_lat', 'calves'), ('soleus', 'calves'),
-    ('tib_ant', 'tibialis'), ('peroneus', 'tibialis'),
-    ('biceps', 'biceps'), ('brachialis', 'biceps'), ('tri_lat', 'triceps'), ('tri_long', 'triceps'),
-    ('flexors', 'forearmFlexors'), ('extensors', 'forearmExtensors'), ('brachiorad', 'forearmExtensors'),
-    ('scm', 'neck'), ('neck_front', 'neck'),
-    ('head', None), ('hand', None), ('foot', None), ('tibia', None), ('patella', None), ('wristband', None), ('groin', None),
-]
-BI = {n: i for i, (n, _) in enumerate(BELLIES)}
-BELLY_MUSCLE = np.array([MI[m] if m else NONE for _, m in BELLIES])
-
-
-def torso_angle(p, L):
-    return np.degrees(np.arctan2(np.abs(p[:, 0]), p[:, 2] - zc_at(L, p[:, 1])))
-
-
-def pchip(xs, ys):
-    from scipy.interpolate import PchipInterpolator
-    f = PchipInterpolator(np.asarray(xs, float), np.asarray(ys, float), extrapolate=False)
-    lo, hi = xs[0], xs[-1]
-    return lambda v: f(np.clip(v, lo, hi))
-
-
-def trunk_curves(L):
-    yn = L.y_navel
-    c = Body()
-    c.y_clav = pchip([0.015, 0.06, 0.12, 0.19], [1.446, 1.452, 1.459, 1.476])
-    c.y_pec_low = pchip([0, 0.05, 0.10, 0.14, 0.17, 0.195], [yn + 0.140, yn + 0.143, yn + 0.157, yn + 0.186, yn + 0.226, yn + 0.28])
-    c.x_dp = pchip([1.33, 1.38, 1.42, 1.47], [0.192, 0.18, 0.165, 0.15])
-    c.w_trap = pchip([1.12, 1.25, 1.36, 1.42, 1.50], [0.0, 0.045, 0.085, 0.125, 0.21])
-    c.y_lat_top = pchip([0, 0.07, 0.13, 0.17, 0.2], [1.20, 1.245, 1.30, 1.345, 1.385])
-    c.tt_lat = pchip([c_ for c_ in (yn - 0.09, yn + 0.02, yn + 0.14, 1.34)], [118, 108, 92, 80])   # lat anterior border
-    c.y_spine = pchip([0.055, 0.12, 0.2], [1.378, 1.415, 1.462])
-    c.y_pubis = L.y_crotch + 0.045
-    c.w_rect = pchip([c.y_pubis, yn - 0.05, yn, yn + 0.15], [0.034, 0.058, 0.068, 0.08])
-    c.y_rect_top = yn + 0.152
-    c.y_crest = yn - 0.08
-    c.y_hipf = yn - 0.075
-    c.y_inguinal = pchip([0.02, 0.06, 0.12], [c.y_pubis - 0.01, c.y_pubis + 0.02, yn - 0.085])
-    c.sacrum = pchip([L.y_crotch, c.y_crest], [0.008, 0.05])
-    return c
-
-
-def organic_warp(p, amp=0.008, freq=10.0):
-    """Low-frequency, left/right-symmetric displacement so belly borders are gently organic."""
-    q = np.stack([np.abs(p[:, 0]), p[:, 1], p[:, 2]], 1) * freq
-    d = np.stack([perlin3(q, 11), perlin3(q + 31.7, 12), perlin3(q - 17.3, 13)], 1)
-    d[:, 0] *= np.sign(p[:, 0] + 1e-12)
-    return p + amp * d
-
-
-def classify_bellies(p, gw, L, nrm=None):
-    """Belly index per point, a soft tendon/aponeurosis mask (0..1) and anatomical contour lines (0..1)."""
-    p = organic_warp(p)
-    n = len(p)
-    x, y, z = p[:, 0], p[:, 1], p[:, 2]
-    ax = np.abs(x)
-    left = x >= 0
-    ch = chains(gw)
-    arm = np.where(left, ch['armL'], ch['armR'])
-    leg = np.where(left, ch['legL'], ch['legR'])
-    trunk = ch['torso'] + ch['pelvisL'] + ch['pelvisR']
-    dom = np.argmax(np.stack([ch['head'] + ch['neck'], trunk, arm, leg], 1), 1)
-    c = trunk_curves(L)
-    yn = L.y_navel
-    tt = torso_angle(p, L)
-    front = tt < 90
-    # trunk skin in front of the inguinal crease is treated as upper thigh
-    dom[(dom == 1) & front & (y < c.y_inguinal(ax)) & (ax > 0.025)] = 3
-    bel = np.full(n, BI['oblique'])
-    ten = np.zeros(n)
-    con = np.zeros(n)
-    S = np.where(left[:, None], L.armL[0], L.armR[0])
-    sx = np.abs(S[:, 0])
-
-    # ---- trunk ----
-    latm = (tt > c.tt_lat(y)) & (y < c.y_lat_top(ax) + 0.0)
-    bel[latm] = BI['lat']
-    bel[(tt > 100) & (y >= c.y_lat_top(ax)) & (ax > 0.05)] = BI['infra']
-    ew = pchip([c.y_crest - 0.03, yn, 1.2, 1.27], [0.05, 0.068, 0.062, 0.035])(y)
-    bel[(tt > 125) & (ax < ew) & (y < 1.27)] = BI['erector']
-    trap = (~front & (ax < c.w_trap(y))) | ((tt > 100) & (y > c.y_spine(ax))) | ((y > c.y_clav(ax) + 0.014) & (ax < sx - 0.03))
-    bel[trap] = BI['trap']
-    wave = 0.5 * (1 - np.cos(2 * np.pi * (tt - 44) / 19.0))     # serratus digitations
-    serr_low = yn + 0.102 + 0.015 * wave + 0.0005 * (tt - 50)
-    serr = (tt > 48) & (tt < c.tt_lat(y)) & (y > serr_low) & (y < 1.345) & (ax > 0.1)
-    bel[serr] = BI['serratus']
-    rect = (tt < 60) & (ax < c.w_rect(y)) & (y > c.y_pubis) & (y < c.y_rect_top)
-    bel[rect] = BI['rectus']
-    pec = (tt < 95) & (y > c.y_pec_low(ax)) & (y < c.y_clav(ax) + 0.014) & (ax < c.x_dp(y))
-    bel[pec] = BI['pec_stern']
-    bel[pec & (y > c.y_clav(ax) - 0.042 + 0.1 * np.maximum(ax - 0.12, 0))] = BI['pec_clav']
-    Cc = S + np.stack([np.sign(x + 1e-9) * 0.01, np.full(n, 0.015), np.zeros(n)], 1)
-    delt = (np.linalg.norm(p - Cc, axis=1) < 0.092) & (ax > sx - 0.065) & ~pec & (dom != 0) & (y > S[:, 1] - 0.045)
-    bel[delt] = np.where(tt[delt] < 62, BI['delt_ant'], np.where(tt[delt] < 118, BI['delt_lat'], BI['delt_post']))
-    bel[front & (dom == 1) & (y < c.y_pubis + 0.005) & (ax < 0.045)] = BI['groin']
-
-    # ---- head & neck ----
-    hd = dom == 0
-    bel[hd & (ch['head'] >= ch['neck'])] = BI['head']
-    nk = hd & (ch['head'] < ch['neck'])
-    if nk.any():
-        _, thn, _ = limb_coords(p[nk], [L.neck_base + np.array([0, -0.08, 0.02]), L.head_base + np.array([0, 0.02, 0.03])], 1)
-        thn = np.abs(thn)
-        yy = y[nk]
-        tc = np.interp(yy, [1.45, 1.64], [30, 112])
-        b_ = np.where(thn < tc - 26, BI['neck_front'], np.where(thn < tc + 26, BI['scm'], BI['trap']))
-        bel[nk] = b_
-
-    # ---- arms ----
-    for s_, sg in (('L', 1), ('R', -1)):
-        m = (dom == 2) & (left if sg > 0 else ~left)
-        if not m.any():
-            continue
-        pts = getattr(L, 'arm' + s_)
-        lu, lf, lh = seg_lengths(pts)
-        s, th, rad = limb_coords(p[m], pts, sg)
-        b_ = np.full(m.sum(), BI['hand'])
-        t_ = np.zeros(m.sum())
-        # forearm: palm-side reference blends from antero-medial (elbow) to the palm normal (wrist)
-        E, Wr = pts[1], pts[2]
-        axf = unit(Wr - E)
-        palm = getattr(L, 'palm' + s_)
-        pm = unit(palm - (palm @ axf) * axf)
-        fr = np.array([0, 0, 1.0]); fr = unit(fr - (fr @ axf) * axf)
-        lat = unit(np.cross(axf, fr)); lat = lat if lat[0] * sg > 0 else -lat
-        am = unit(fr - 0.35 * lat)
-        u = np.clip((s - lu) / lf, 0, 1)[:, None]
-        ref = unit(am * (1 - u) + pm * u)
-        pp = p[m]
-        foot_ = E + np.clip(((pp - E) @ axf), 0, lf)[:, None] * axf
-        rr = unit(pp - foot_)
-        side_flex = (rr * ref).sum(1)
-        side_lat = (rr * lat).sum(1)
-        fa = s < lu + lf - 0.03
-        b_[fa] = np.where(side_flex[fa] > -0.05, BI['flexors'], BI['extensors'])
-        br = fa & (s < lu + 0.62 * lf) & (side_lat > 0.25) & (side_flex > -0.45)
-        b_[br] = BI['brachiorad']
-        wb = (s >= lu + lf - 0.03) & (s < lu + lf + 0.02)
-        b_[wb] = BI['wristband']
-        t_ = np.maximum(t_, 0.22 * smoothstep(lu + lf - 0.045, lu + lf - 0.02, s) * (1 - smoothstep(lu + lf + 0.0, lu + lf + 0.025, s)))
-        ua = s < lu + 0.0
-        b_[ua] = np.where(np.abs(th[ua]) < 80, BI['biceps'], np.where(th[ua] > 0, BI['tri_lat'], BI['tri_long']))
-        b_[ua & (th > 45) & (th < 85) & (s > 0.55 * lu)] = BI['brachialis']
-        b_[ua & (np.abs(th) >= 80) & (np.abs(th) < 150) & (th > 0)] = BI['tri_lat']
-        b_[ua & ((th >= 150) | (th <= -80))] = BI['tri_long']
-        dl = lu * (0.24 + 0.30 * np.maximum(0, np.cos(np.radians(th - 90))) ** 1.5)
-        dm_ = s < dl
-        b_[dm_] = np.where(np.abs(th[dm_]) < 45, BI['delt_ant'], np.where(np.abs(th[dm_]) < 125, np.where(th[dm_] > 0, BI['delt_lat'], BI['delt_ant']), BI['delt_post']))
-        b_[dm_ & (th < -45) & (th > -125)] = np.where(th[dm_ & (th < -45) & (th > -125)] > -85, BI['biceps'], BI['tri_long'])
-        # triceps aponeurosis and olecranon
-        t_ = np.maximum(t_, smoothstep(lu - 0.09, lu - 0.055, s) * smoothstep(148, 168, np.abs(th)) * (1 - smoothstep(lu + 0.0, lu + 0.02, s)) * 0.35)
-        keep_trunk = (pp[:, 1] > pts[0][1] - 0.01) & (th < -40) & (s < 0.3 * lu)
-        b_[keep_trunk] = bel[m][keep_trunk]
-        bel[m] = b_
-        ten[m] = np.maximum(ten[m], t_)
-        # dorsum of the hand: pale tendons
-        hm = s > lu + lf + 0.02
-        dors = np.clip(-side_flex, 0, 1)
-        tmp = ten[m]; tmp[hm] = np.maximum(tmp[hm], 0.3 * smoothstep(0.1, 0.5, dors[hm])); ten[m] = tmp
-
-    # ---- legs ----
-    for s_, sg in (('L', 1), ('R', -1)):
-        m = (dom == 3) & (left if sg > 0 else ~left)
-        if not m.any():
-            continue
-        pts = getattr(L, 'leg' + s_)
-        lt, ls, _ = seg_lengths(pts)
-        s, th, rad = limb_coords(p[m], pts, sg)
-        pp = p[m]
-        yy = pp[:, 1]
-        axx = np.abs(pp[:, 0])
-        b_ = np.full(m.sum(), BI['foot'])
-        t_ = np.zeros(m.sum())
-        A = pts[2]
-        # thigh
-        th_ = s < lt + 0.005
-        tb = np.interp(s, [0.04, lt - 0.06], [38, -112])
-        w = 11
-        q = np.clip(s / lt, 0, 1)
-        vl_b = 142 - 30 * q                                   # biceps femoris runs obliquely to the fibula head
-        am_b = -162 + 34 * q                                  # semitendinosus / adductor border
-        bt = np.where(th > vl_b, BI['biceps_fem'], BI['vast_lat'])
-        bt = np.where((th <= vl_b) & (th > 22), BI['vast_lat'], bt)
-        bt = np.where((th <= 22) & (th > tb + w), BI['rectus_fem'], bt)
-        bt = np.where((th <= tb + w) & (th > tb - w), BI['sartorius'], bt)
-        bt = np.where((th <= tb - w) & (th > am_b), BI['adductor'], bt)
-        split = np.where(s > 0.3 * lt, 179 - 14 * q, 200)
-        bt = np.where((th <= am_b) | (th > split), BI['semi'], bt)
-        bt = np.where((th > vl_b) & (th <= split), BI['biceps_fem'], bt)
-        vm = (th <= -5) & (th > tb + w) & (s > lt * (0.6 + 0.35 * ((th + 50) / 45) ** 2))
-        bt = np.where(vm, BI['vast_med'], bt)
-        rf_lo = (th <= 22) & (th > -5) & (s > lt - 0.09)
-        bt = np.where(rf_lo & (th > tb + w), BI['vast_med'] if False else BI['rectus_fem'], bt)
-        b_[th_] = bt[th_]
-        # lower leg
-        ll = (s >= lt + 0.005) & (yy > A[1] + 0.05)
-        u = (s - lt) / ls
-        latg = (th > 115) & (th <= 172)
-        medg = (th > 172) | (th <= 0)
-        dmed = (th + 150 + 180) % 360 - 180
-        u_end = np.where(latg, 0.50 - 0.10 * ((th - 145) / 35) ** 2, 0.60 - 0.12 * (dmed / 70) ** 2)
-        bl = np.where(latg, BI['gastro_lat'], BI['gastro_med'])
-        bl = np.where((latg | medg) & (u > u_end), BI['soleus'], bl)
-        bl = np.where((th <= 115) & (th > 85), BI['peroneus'], bl)
-        bl = np.where((th <= 85) & (th > 0), BI['tib_ant'], bl)
-        b_[ll] = bl[ll]
-        b_[(s >= lt + 0.005) & (yy <= A[1] + 0.05)] = BI['foot']
-        # tendons: patella & ligament, quadriceps tendon, IT band, achilles, foot dorsum
-        arc = np.radians(th) * rad
-        pat = ((s - (lt - 0.012)) / 0.031) ** 2 + (arc / 0.025) ** 2
-        t_ = np.maximum(t_, 0.5 * (1 - smoothstep(0.5, 1.15, pat)))
-        cm = con[m]; cm = np.maximum(cm, (1 - smoothstep(0.03, 0.08, np.abs(np.sqrt(pat) - 1.0))) * (s > lt - 0.07)); con[m] = cm
-        t_ = np.maximum(t_, 0.45 * (1 - smoothstep(0.004, 0.011, np.abs(arc))) * smoothstep(lt, lt + 0.015, s) * (1 - smoothstep(lt + 0.05, lt + 0.075, s)))
-        t_ = np.maximum(t_, 0.3 * (1 - smoothstep(0.01, 0.024, np.abs(arc))) * smoothstep(lt - 0.08, lt - 0.045, s) * (1 - smoothstep(lt - 0.03, lt - 0.01, s)))
-        itb = np.interp(s, [0.15, 0.25, lt - 0.05], [0.02, 0.015, 0.011])
-        t_ = np.maximum(t_, 0.28 * (1 - smoothstep(itb * 0.4, itb + 0.01, np.abs(np.radians(th - 98) * rad))) * smoothstep(0.15, 0.26, s) * (1 - smoothstep(lt - 0.05, lt - 0.01, s)) * (th > 50))
-        ach = smoothstep(0.66, 0.78, u) * (1 - smoothstep(0.007, 0.013, np.abs(np.radians(np.abs(th) - 180) * rad)))
-        t_ = np.maximum(t_, 0.72 * ach * (s >= lt + 0.05) * (s <= lt + ls) * smoothstep(A[1] - 0.045, A[1] - 0.02, yy))
-        t_ = np.maximum(t_, 0.2 * smoothstep(0.08, 0.2, u) * (1 - smoothstep(0.005, 0.014, np.abs(np.radians(th + 22) * rad))) * (s >= lt + 0.005))
-        fm = b_ == BI['foot']
-        if nrm is not None:
-            t_[fm] = np.maximum(t_[fm], 0.35 * smoothstep(0.2, 0.6, nrm[m][fm, 1]) * (pp[fm, 2] > A[2] - 0.01) * (1 - smoothstep(A[2] + 0.07, A[2] + 0.1, pp[fm, 2])))
-        b_[(t_ > 0.35) & (np.abs(th) < 60) & (s > lt - 0.06) & (s < lt + 0.08)] = BI['patella']
-        bel[m] = b_
-        ten[m] = np.maximum(ten[m], t_)
-
-    # ---- hips & buttocks (trunk or leg skin, one continuous rule set) ----
-    hipd = (dom == 1) | (dom == 3)
-    y_fold = gluteal_fold(ax, L)
-    y_iliac = pchip([0, 45, 70, 95, 130, 180], [yn - 0.10, yn - 0.095, yn - 0.065, yn - 0.05, yn - 0.065, yn - 0.085])(tt)
-    gmax_top = pchip([0.02, 0.08, 0.13, 0.17, 0.2], [yn - 0.085, yn - 0.09, yn - 0.112, yn - 0.145, yn - 0.18])(ax)
-    sac = (tt > 140) & (y < c.y_crest) & (ax < c.sacrum(y)) & hipd
-    gmax = hipd & (tt > 100) & (y < gmax_top) & (y > y_fold) & ~sac
-    gmed = hipd & (y < y_iliac) & (((tt > 100) & (y >= gmax_top)) | ((tt <= 100) & (tt > 56) & (y > L.y_crotch + 0.035 + 0.0008 * (100 - tt))))
-    gmed &= ~rect & (ax > 0.06)
-    bel[gmed] = BI['glute_med']
-    bel[gmax] = BI['glute_max']
-    bel[sac] = BI['glute_max']
-
-    # ---- trunk tendons / bones ----
-    tr = (dom == 1)
-    la = (1 - smoothstep(0.0025, 0.006, ax)) * rect
-    ten = np.maximum(ten, 0.75 * la)
-    con = np.maximum(con, (1 - smoothstep(0.001, 0.0028, ax)) * rect)
-    for y0 in (yn + 0.004, yn + 0.056, yn + 0.106):
-        yl = y0 + 0.014 * (ax / 0.07) ** 2
-        ten = np.maximum(ten, 0.7 * (1 - smoothstep(0.002, 0.005, np.abs(y - yl))) * rect * (1 - smoothstep(0.75, 1.0, ax / c.w_rect(y))))
-        con = np.maximum(con, 0.9 * (1 - smoothstep(0.001, 0.0028, np.abs(y - yl))) * rect)
-    apo = front & (dom == 1) & (bel == BI['oblique']) & (y < yn + 0.07)
-    wr_ = c.w_rect(y)
-    ten = np.maximum(ten, 0.16 * apo * (1 - smoothstep(wr_ + 0.004, wr_ + 0.018, ax)))
-    ten = np.maximum(ten, 0.35 * (tt < 90) * (1 - smoothstep(0.002, 0.008, ax)) * (y > c.y_pec_low(ax) - 0.01) * (y < 1.45) * (dom == 1))  # sternum
-    clav = (1 - smoothstep(0.002, 0.009, np.abs(y - c.y_clav(ax)))) * (ax > 0.012) * (ax < sx - 0.02) * (tt < 95)
-    ten = np.maximum(ten, 0.3 * clav * (dom != 2))
-    con = np.maximum(con, (1 - smoothstep(0.001, 0.0028, np.abs(y - c.y_clav(ax)))) * (ax > 0.012) * (ax < sx - 0.02) * (tt < 95) * (dom != 2))
-    con = np.maximum(con, 0.7 * (1 - smoothstep(0.001, 0.0028, np.abs(y - c.y_spine(ax)))) * (ax > 0.06) * (ax < sx - 0.01) * (tt > 100) * (dom != 2))
-    spine = (1 - smoothstep(0.002, 0.009, np.abs(y - c.y_spine(ax)))) * (ax > 0.06) * (ax < sx - 0.01) * (tt > 100)
-    ten = np.maximum(ten, 0.32 * spine * (dom != 2))
-    dia = ax / 0.03 + np.abs(y - 1.47) / 0.06
-    ten = np.maximum(ten, 0.4 * (1 - smoothstep(0.5, 1.05, dia)) * (tt > 100))
-    tlf = ax / 0.08 + np.abs(y - (yn - 0.06)) / 0.12
-    ten = np.maximum(ten, 0.1 * (1 - smoothstep(0.5, 1.05, tlf)) * (tt > 110) * (dom == 1))
-    sac_soft = (1 - smoothstep(0.6, 1.1, ax / np.maximum(c.sacrum(y), 1e-3))) * smoothstep(L.y_crotch + 0.04, L.y_crotch + 0.1, y) * (1 - smoothstep(c.y_crest - 0.02, c.y_crest + 0.03, y))
-    ten = np.maximum(ten, 0.12 * sac_soft * (tt > 140))
-    return bel, np.clip(ten, 0, 1), np.clip(con, 0, 1)
-
-
-# Fibre layout per belly (left side; mirrored for the right): stripes are constant along rays from a
-# focus F, measured as the angle around an axis through F. Fan-shaped muscles use their mean surface
-# normal as the axis (fibres converge on F); limb muscles use the limb axis (fibres run along it).
-def belly_fibres(L):
-    F, AX = {}, {}
-    S, E, Wr, Ft = [np.asarray(q) for q in L.armL]
-    H, K, A, Toe = [np.asarray(q) for q in L.legL]
-    far = lambda a, d, k=2.5: a + unit(np.asarray(d, float)) * k
-    F['pec_clav'] = S + np.array([-0.02, -0.05, 0.07])
-    F['pec_stern'] = S + np.array([-0.02, -0.07, 0.07])
-    D = S + 0.48 * (E - S) + np.array([0.03, 0, 0])
-    F['delt_ant'] = F['delt_lat'] = F['delt_post'] = D
-    F['trap'] = np.array([S[0] - 0.035, 1.45, -0.09])
-    F['lat'] = np.array([S[0] - 0.03, 1.33, -0.03])
-    F['infra'] = S + np.array([0.0, -0.01, -0.03])
-    F['serratus'] = np.array([0.07, 1.37, -0.14])
-    F['oblique'] = far(np.array([0.12, 1.05, 0.02]), [-0.55, -0.62, 0.55])
-    F['rectus'] = np.array([0.04, -2.5, 0.08])
-    F['erector'] = np.array([0.035, -2.5, -0.12])
-    F['glute_max'] = np.array([H[0] + 0.07, L.y_crotch - 0.08, H[2] - 0.02])
-    F['glute_med'] = np.array([H[0] + 0.07, L.y_crotch + 0.0, H[2]])
-    pat = K + np.array([0, -0.02, 0.07])
-    F['vast_lat'] = F['vast_med'] = pat
-    F['sartorius'] = far(np.array([H[0], H[1], 0.06]), (K + np.array([-0.05, 0, -0.03])) - np.array([H[0] + 0.05, H[1], 0.06]), 2.0)
-    F['adductor'] = np.array([0.03, L.y_crotch + 0.03, 0.03])
-    F['gastro_med'] = F['gastro_lat'] = A + np.array([0, 0.12, -0.08])
-    F['soleus'] = A + np.array([0, 0.02, -0.07])
-    F['tri_lat'] = F['tri_long'] = E + np.array([0, 0.0, -0.05])
-    F['scm'] = far(np.array([0.025, 1.45, 0.05]), np.array([0.025, 1.45, 0.05]) - np.array([0.065, 1.665, -0.03]), 2.0)
-    F['neck_front'] = np.array([0.0, -2.0, 0.05])
-    for k in ('rectus_fem', 'biceps_fem', 'semi'):
-        F[k], AX[k] = H, unit(K - H)
-    for k in ('tib_ant', 'peroneus', 'tibia'):
-        F[k], AX[k] = K, unit(A - K)
-    for k in ('biceps', 'brachialis'):
-        F[k], AX[k] = S, unit(E - S)
-    for k in ('flexors', 'extensors', 'brachiorad'):
-        F[k], AX[k] = E, unit(Wr - E)
-    for k in ('head', 'hand', 'foot', 'patella', 'wristband', 'groin'):
-        F[k] = np.array([0.05, -2.5, 0.0])
-    return [(F[n], AX.get(n)) for n, _ in BELLIES]
-
-
-# ----------------------------------------------------------------------------------------------
-# Texture baking
-def perlin3(p, seed=0):
-    rng = np.random.RandomState(seed)
-    perm = rng.permutation(256)
-    perm = np.concatenate([perm, perm]).astype(np.int64)
-    grads = unit(rng.normal(size=(256, 3)))
-    pi = np.floor(p).astype(np.int64)
-    pf = p - pi
-    u = pf * pf * pf * (pf * (pf * 6 - 15) + 10)
-    pi &= 255
-    out = np.zeros(len(p))
-    for dx in (0, 1):
-        for dy in (0, 1):
-            for dz in (0, 1):
-                h = perm[perm[perm[pi[:, 0] + dx] + pi[:, 1] + dy] + pi[:, 2] + dz]
-                g = grads[h]
-                d = pf - np.array([dx, dy, dz])
-                w = (u[:, 0] if dx else 1 - u[:, 0]) * (u[:, 1] if dy else 1 - u[:, 1]) * (u[:, 2] if dz else 1 - u[:, 2])
-                out += w * (g * d).sum(1)
-    return out * 1.6
-
-
-def bake_texels(b, size):
-    P2 = b.uv * size
-    tid, bc = rasterize(P2, None, b.T, size, size)
-    mask = tid >= 0
-    t = b.T[tid[mask]]
-    w = bc[mask][..., None].astype(np.float64)
-    tx = Body()
-    tx.mask = mask
-    tx.pos = (b.P[b.rv_pos[t]] * w).sum(1)
-    tx.nrm = unit((b.N[b.rv_pos[t]] * w).sum(1))
-    tx.gw = (b.GW[b.rv_pos[t]] * w).sum(1)
-    tx.size = size
-    return tx
-
-
-def label_boundary_points(tx, lab):
-    """3D midpoints between neighbouring texels (same UV island) whose labels differ."""
-    size = tx.size
-    L2 = np.full((size, size), -1, np.int64)
-    L2[tx.mask] = lab
-    idx = np.full((size, size), -1, np.int64)
-    idx[tx.mask] = np.arange(tx.mask.sum())
-    pts = []
-    for dy, dx in ((0, 1), (1, 0), (1, 1), (1, -1)):
-        ra, rb = slice(0, size - dy), slice(dy, size)
-        ca, cb = (slice(0, size - dx), slice(dx, size)) if dx >= 0 else (slice(-dx, size), slice(0, size + dx))
-        a, bb_ = idx[ra, ca], idx[rb, cb]
-        a, bb_ = a.ravel(), bb_.ravel()
-        ok = (a >= 0) & (bb_ >= 0)
-        a, bb_ = a[ok], bb_[ok]
-        diff = lab[a] != lab[bb_]
-        a, bb_ = a[diff], bb_[diff]
-        near = np.linalg.norm(tx.pos[a] - tx.pos[bb_], axis=1) < 0.004
-        pts.append((tx.pos[a[near]] + tx.pos[bb_[near]]) / 2)
-    return np.concatenate(pts)
-
-
-def fill_uncovered(img, mask, margin=None, flat=None):
-    """Dilate across UV seams: empty texels take the nearest covered texel's value (within `margin`
-    texels if given; beyond that `flat`)."""
-    dist, idx = ndimage.distance_transform_edt(~mask, return_distances=True, return_indices=True)
-    out = img[idx[0], idx[1]]
-    if margin is not None:
-        out[dist > margin] = flat
+def load_muscles(to_bp):
+    cf = os.path.join(CACHE, 'za_muscles.npz')
+    if not os.path.exists(cf):
+        parts = za_parts('MuscularSystem100')
+        keep = [q for q in parts if len(q['F']) and not any(k in '/'.join(q['path']) for k in SKIP_PATH)
+                and not any(k.lower() in q['name'].lower() for k in SKIP_NAME)]
+        np.savez_compressed(cf, names=np.array([q['name'] for q in keep]),
+                            V=np.array([q['V'] for q in keep], dtype=object), F=np.array([q['F'] for q in keep], dtype=object))
+    d = np.load(cf, allow_pickle=True)
+    out = []
+    for n, V, F in zip(d['names'], d['V'], d['F']):
+        V, F = weld(to_bp(V.astype(np.float64)), F.astype(np.int64), 1e-7)
+        if len(F) >= 8:
+            out.append(dict(name=str(n), V=V, F=F))
     return out
 
 
-def gradient_map(v, stops):
-    xs = np.array([s_[0] for s_ in stops])
-    cols = np.array([hexc(s_[1]) for s_ in stops])
-    return np.stack([np.interp(v, xs, cols[:, i]) for i in range(3)], 1)
+def snap_field(parts, skin_V, skin_F, skin_N, skin_tree, gap=0.0015, max_shift=0.03):
+    """Per skin vertex, how far everything beneath it must move along the skin normal so the
+    outermost muscle surface sits `gap` under the skin. Smooth across the skin, so muscles keep
+    their thickness, relief and layering; the red figure's envelope then matches the skin."""
+    allV = np.concatenate([q['V'] for q in parts])
+    _, j = skin_tree.query(allV)
+    sd = ((allV - skin_V[j]) * skin_N[j]).sum(1)
+    D = np.full(len(skin_V), -np.inf)
+    np.maximum.at(D, j, sd)
+    known = np.isfinite(D)
+    D = np.where(known, np.clip(D + gap, -max_shift, max_shift), 0.0)
+    A = adjacency(len(skin_V), skin_F)
+    deg = np.asarray(A.sum(1)).ravel()
+    for _ in range(200):                                   # fill uncovered skin by diffusion
+        D = np.where(known, D, (A @ D) / deg)
+    for _ in range(12):                                    # then smooth everything
+        D = 0.5 * D + 0.5 * (A @ D) / deg
+    return D
 
 
-def make_textures(b, L, size=TEX):
-    tx = bake_texels(b, size)
-    p, nrm = tx.pos, tx.nrm
-    bel, ten, con = classify_bellies(p, tx.gw, L, nrm)
-    mus = BELLY_MUSCLE[bel]
-    print('  texels', len(p))
-    kb = cKDTree(label_boundary_points(tx, bel))
-    kg = cKDTree(label_boundary_points(tx, mus))
-    d_b = kb.query(p, workers=-1)[0]
-    d_g = kg.query(p, workers=-1)[0]
-    # fibres: stripes = noise of (angle around the belly's fibre axis) -> constant along each fibre
-    fib = belly_fibres(L)
-    nb = len(BELLIES)
-    Fb, E1, E2, Ab, R0, AXIAL = (np.zeros((nb, 3)), np.zeros((nb, 3)), np.zeros((nb, 3)), np.zeros((nb, 3)), np.ones(nb), np.zeros(nb, bool))
-    for i, (Fi, Ai) in enumerate(fib):
-        m = (bel == i) & (p[:, 0] >= 0)
-        cen = p[m].mean(0) if m.any() else Fi + np.array([0.1, 0, 0])
-        A_ = Ai if Ai is not None else (unit(nrm[m].mean(0)) if m.any() else np.array([0, 0, 1.0]))
-        r = cen - Fi
-        r = r - (r @ A_) * A_
-        e1 = unit(r) if np.linalg.norm(r) > 1e-6 else unit(np.cross(A_, [0.3, 0.5, 0.8]))
-        Fb[i], E1[i], E2[i], Ab[i] = Fi, e1, np.cross(A_, e1), A_
-        R0[i] = max(np.linalg.norm(r), 0.02)
-        AXIAL[i] = Ai is not None
-    mir = np.where(p[:, 0] >= 0, 1.0, -1.0)[:, None] * np.array([1, 0, 0]) + np.array([0, 1, 1])
-    rel = p - Fb[bel] * mir
-    a_ = (rel * (E1[bel] * mir)).sum(1)
-    b_ = (rel * (E2[bel] * mir)).sum(1)
-    uu = np.arctan2(b_, a_) * R0[bel]
-    vv = np.where(AXIAL[bel], (rel * (Ab[bel] * mir)).sum(1), np.hypot(a_, b_))
-    sd = bel * 7.31
-    fine = (perlin3(np.stack([uu / 0.0024, vv / 0.035, sd], 1), 1) * 0.65
-            + perlin3(np.stack([uu / 0.0012, vv / 0.02, sd + 3.3], 1), 2) * 0.35)
-    bundle = perlin3(np.stack([uu / 0.008, vv / 0.07, sd + 9.1], 1), 3)
-    along = perlin3(p * 38.0, 4)
-    blob = perlin3(p * 9.0, 5)
-    sep = 1 - smoothstep(0.03, 0.14, np.abs(bundle))
-    bulge = smoothstep(0.0, 0.03, d_b)
-    groove = (1 - smoothstep(0.0, 0.006, d_b)) ** 1.8
-    ggroove = (1 - smoothstep(0.0, 0.01, d_g)) ** 1.8
-    edge = 1 - smoothstep(0.0, 0.028, d_b)
-    I = 0.56 + 0.16 * fine + 0.04 * along + 0.05 * blob + 0.1 * bulge - 0.22 * sep * (0.6 + 0.4 * along)
-    I = I * (1 - 0.3 * edge) * (1 - 0.35 * groove) * (1 - 0.5 * ggroove)
-    col = gradient_map(np.clip(I, 0, 1), [(0.0, '#220303'), (0.22, '#4E0909'), (0.42, '#8E1414'), (0.62, '#B0261F'), (0.8, '#D6453A'), (1.0, '#E3614C')])
-    none = BELLY_MUSCLE[bel] == NONE
-    muted = gradient_map(np.clip(0.5 + 0.12 * blob + 0.05 * fine + 0.1 * along, 0, 1), [(0.0, '#3C0D0C'), (0.5, '#6E1D1A'), (1.0, '#8A2B25')])
-    muted = muted * (1 - 0.45 * groove * (bel != BI['head']))[:, None]
-    col = np.where(none[:, None], muted, col)
-    ivory = gradient_map(np.clip(0.6 + 0.25 * fine + 0.1 * along, 0, 1), [(0.0, '#B9A58C'), (0.6, '#E4D7C0'), (1.0, '#F2EADB')])
-    tt = ten[:, None] * (1 - 0.5 * groove[:, None])
-    col = col * (1 - tt) + ivory * tt
-    # anatomy lines (for the blue look)
-    nohead = np.where(bel == BI['head'], MI['neck'], mus)
-    d_l = cKDTree(label_boundary_points(tx, nohead)).query(p, workers=-1)[0]
-    lines = np.maximum(np.exp(-(d_l / 0.0012) ** 2), 0.35 * np.exp(-(d_b / 0.0010) ** 2))
-    lines[bel == BI['head']] = 0
-    lines = np.maximum(lines, con)
-    # output images
-    det = np.zeros((size, size)); det[tx.mask] = lines
-    det = fill_uncovered(det, tx.mask, 12, 0.0)
-    det = ndimage.gaussian_filter(det, 0.8)
-    det = np.clip(det / max(det.max(), 1e-6) * 1.0, 0, 1)
-    mimg = np.zeros((size, size, 3)); mimg[tx.mask] = col
-    mimg = fill_uncovered(mimg, tx.mask, 12, col.mean(0))
-    tx.bel, tx.ten = bel, ten
-    mimg = ndimage.gaussian_filter(mimg, (0.35, 0.35, 0))
-    return (det * 255 + 0.5).astype(np.uint8), (np.clip(mimg, 0, 1) * 255 + 0.5).astype(np.uint8), tx
+def apply_snap(V, D, skin_V, skin_N, skin_tree):
+    _, j = skin_tree.query(V)
+    return V - skin_N[j] * D[j][:, None]
+
+
+def sphere_dirs():
+    dirs = [[0, 1, 0], [0, -1, 0]]
+    for el in (-35, 0, 35):
+        for az in range(0, 360, 30):
+            a, e = np.radians(az + (15 if el else 0)), np.radians(el)
+            dirs.append([np.sin(a) * np.cos(e), np.sin(e), np.cos(a) * np.cos(e)])
+    return unit(np.array(dirs, float))
+
+
+def visibility(V, F, px=0.003, dirs=None):
+    """Visible pixel count per triangle, summed over orthographic views from all around."""
+    dirs = sphere_dirs() if dirs is None else dirs
+    cnt = np.zeros(len(F))
+    c = V.mean(0)
+    for d in dirs:
+        up = np.array([0, 0, 1.0]) if abs(d[1]) > 0.9 else np.array([0, 1.0, 0])
+        u = unit(np.cross(up, d))
+        v = np.cross(d, u)
+        P = V - c
+        X, Y, Z = P @ u / px, -(P @ v) / px, -(P @ d)
+        W, H = int(X.max() - X.min()) + 4, int(Y.max() - Y.min()) + 4
+        tid, _ = rasterize(np.stack([X - X.min() + 2, Y - Y.min() + 2], 1), Z, F, W, H)
+        t = tid[tid >= 0]
+        cnt += np.bincount(t, minlength=len(F))
+    return cnt
+
+
+def merge(parts):
+    Vs, Fs, pid, o = [], [], [], 0
+    for i, q in enumerate(parts):
+        Vs.append(q['V'])
+        Fs.append(q['F'] + o)
+        pid.append(np.full(len(q['F']), i))
+        o += len(q['V'])
+    return np.concatenate(Vs), np.concatenate(Fs), np.concatenate(pid)
+
+
+def build_underlayer(skin_V, skin_F, skin_tree, muscle_pts, bone_pts, below=0.003, bare=0.0045):
+    """The skin pushed inward so it sits `below` under the outermost muscle beneath each point
+    (`bare` under the skin where no muscle covers, never more than 80 % of the way to bone): one
+    continuous surface that fills every gap between muscles without ever covering one."""
+    N = vertex_normals(skin_V, skin_F)
+    _, j = skin_tree.query(muscle_pts)
+    sd = ((muscle_pts - skin_V[j]) * N[j]).sum(1)
+    top = np.full(len(skin_V), -np.inf)
+    np.maximum.at(top, j, sd)
+    covered = np.isfinite(top)
+    db, _ = cKDTree(bone_pts).query(skin_V)
+    need = np.where(covered, -top + below, np.minimum(bare, np.maximum(0.8 * db, 0.002)))
+    need = np.clip(need, 0.002, 0.04)
+    A = adjacency(len(skin_V), skin_F).tocsr()
+    depth = need.copy()
+    for _ in range(2):                                     # dilate so borders dip under muscle edges
+        depth = np.maximum(depth, A.multiply(depth[None, :]).max(1).toarray().ravel())
+    deg = np.asarray(A.sum(1)).ravel()
+    for _ in range(4):
+        depth = np.maximum(need, 0.5 * depth + 0.5 * (A @ depth) / deg)
+    return decimate(skin_V - N * depth[:, None], skin_F.copy(), UNDER_TRIS)
 
 
 # ----------------------------------------------------------------------------------------------
 # Anchors
+REGION_VIEW = {'upperBack': (0, 0, -1), 'lowerBack': (0, 0, -1), 'rightCalf': (0, 0, -1), 'leftCalf': (0, 0, -1),
+               'rightHand': (-0.7, 0, 0.7), 'leftHand': (0.7, 0, 0.7), 'rightFoot': (0, 0.5, 0.85), 'leftFoot': (0, 0.5, 0.85),
+               'rightShoulder': (-0.45, 0.25, 0.85), 'leftShoulder': (0.45, 0.25, 0.85),
+               'rightHip': (-0.8, 0, -0.6), 'leftHip': (0.8, 0, -0.6)}
+MIDLINE_REGIONS = {'head', 'neck', 'chest', 'abdomen', 'upperBack', 'lowerBack', 'hips'}
+
+
+def tri_area(P, T):
+    return 0.5 * np.linalg.norm(np.cross(P[T[:, 1]] - P[T[:, 0]], P[T[:, 2]] - P[T[:, 0]]), axis=1)
+
+
 def surface_anchor(P, N, c, d):
-    """Point on the surface near centroid c, seen from direction d (the front-most point along d close
-    to the line through c)."""
+    """Front-most surface point along direction d near the line through c, and its local normal."""
     d = unit(np.asarray(d, float))
     rel = P - c
     perp = np.linalg.norm(rel - (rel @ d)[:, None] * d, axis=1)
@@ -1276,60 +823,39 @@ def surface_anchor(P, N, c, d):
     return P[i], unit(N[nb].mean(0))
 
 
-REGION_VIEW = {'upperBack': (0, 0, -1), 'lowerBack': (0, 0, -1), 'rightCalf': (0, 0, -1), 'leftCalf': (0, 0, -1),
-               'rightHand': (-0.7, 0, 0.7), 'leftHand': (0.7, 0, 0.7), 'rightFoot': (0, 0.5, 0.85), 'leftFoot': (0, 0.5, 0.85),
-               'rightShoulder': (-0.45, 0.25, 0.85), 'leftShoulder': (0.45, 0.25, 0.85),
-               'rightHip': (-0.8, 0, -0.6), 'leftHip': (0.8, 0, -0.6)}
-# muscle views are for the person's left (+x) instance
-MUSCLE_VIEW = {'trapezius': (0, 0.3, -1), 'deltoids': (0.8, 0.2, 0.3), 'triceps': (0.3, 0, -1), 'forearmExtensors': (0.7, 0, -0.7),
-               'forearmFlexors': (-0.2, 0, 1), 'obliques': (0.6, 0, 0.8), 'serratus': (0.8, 0, 0.5), 'lats': (0.4, 0, -1),
-               'erectors': (0, 0, -1), 'glutes': (0, 0, -1), 'hamstrings': (0, 0, -1), 'calves': (0, 0, -1), 'adductors': (-0.5, 0, 0.85)}
-
-
-def tri_area(P, TG):
-    return 0.5 * np.linalg.norm(np.cross(P[TG[:, 1]] - P[TG[:, 0]], P[TG[:, 2]] - P[TG[:, 0]]), axis=1)
-
-
-MIDLINE = {'head', 'neck', 'chest', 'abdomen', 'upperBack', 'lowerBack', 'hips', 'trapezius', 'abdominals', 'erectors'}
-
-
-def anchors(b, labels, names, views, left_only=False):
-    """Per label: surface anchor, outward normal, rough radius. Bilateral muscles use the person's
-    left (+x) instance; midline items are centred on x = 0."""
-    P, N, TG = b.P, b.N, b.TG
-    area = tri_area(P, TG)
-    cen = P[TG].mean(1)
+def region_anchors(V, F, N, tri_reg):
+    area = tri_area(V, F)
+    cen = V[F].mean(1)
     out = []
-    for i, name in enumerate(names):
-        m = labels == i
-        if left_only and name not in MIDLINE:
-            m = m & (cen[:, 0] > 0)
+    for i, name in enumerate(REGION_IDS):
+        m = tri_reg == i
         c = (cen[m] * area[m, None]).sum(0) / area[m].sum()
-        if name in MIDLINE:
+        if name in MIDLINE_REGIONS:
             c[0] = 0.0
-        d = np.array(views.get(name, (0, 0, 1)), float)
-        if not left_only and name.startswith('right'):
+        d = np.array(REGION_VIEW.get(name, (0, 0, 1)), float)
+        if name.startswith('right'):
             d[0] = -abs(d[0])
-        vid = np.unique(TG[m])
-        a, n = surface_anchor(P[vid], N[vid], c, d)
-        ext = P[vid].max(0) - P[vid].min(0)
+        vid = np.unique(F[m])
+        a, n = surface_anchor(V[vid], N[vid], c, d)
+        ext = V[vid].max(0) - V[vid].min(0)
         out.append((a, n, float(np.clip(0.5 * np.linalg.norm(ext), 0.05, 0.45))))
     return out
 
 
 # ----------------------------------------------------------------------------------------------
 # Output
-def write_bin(path, pos, nrm, uv, groups, muscle, tris):
-    with open(path, 'wb') as f:
-        f.write(b'BLB2')
-        f.write(struct.pack('<III', len(pos), len(tris), len(groups)))
-        f.write(pos.astype('<f4').tobytes())
-        f.write(nrm.astype('<f4').tobytes())
-        f.write(uv.astype('<f4').tobytes())
-        for g in groups:
-            f.write(struct.pack('<III', *g))
-        f.write(muscle.astype(np.uint8).tobytes())
-        f.write(tris.astype('<u4').tobytes())
+NONE = 0xFFFFFFFF
+
+
+def write_layer(f, pos, nrm, groups, tri_region, tris):
+    f.write(struct.pack('<III', len(pos), len(tris), len(groups)))
+    f.write(pos.astype('<f4').tobytes())
+    f.write(nrm.astype('<f4').tobytes())
+    for g in groups:
+        f.write(struct.pack('<IIII', *g))
+    f.write(tri_region.astype(np.uint8).tobytes())
+    f.write(b'\0' * ((-len(tri_region)) % 4))
+    f.write(tris.astype('<u4').tobytes())
 
 
 def rnd(v, k=4):
@@ -1337,113 +863,241 @@ def rnd(v, k=4):
 
 
 # ----------------------------------------------------------------------------------------------
-# Preview looks
-def blue_look(g, det):
+# Preview looks (CPU approximations of the SceneKit materials in Body3D.swift)
+def ssao(g, strength=9.0, sigma=7.0):
+    depth = np.full((g.H, g.W), np.nan)
+    depth.reshape(-1)[np.nonzero(g.mask.ravel())[0]] = -g.pos[:, 2]
+    fill = np.where(np.isnan(depth), np.nanmax(depth) + 0.05, depth)
+    blur = ndimage.gaussian_filter(fill, sigma)
+    occ = np.clip((fill - blur) * strength, 0, 0.6)
+    return 1 - occ.reshape(-1)[np.nonzero(g.mask.ravel())[0]]
+
+
+def blue_look(g):
     lam = np.clip(g.nrm @ LIGHT, 0, 1)
     ndv = np.clip((g.nrm * g.view).sum(1), 0, 1)
-    fres = (1 - ndv) ** 2.4
-    base = hexc('#0A2A9E') * (0.38 + 0.62 * lam)[:, None]
-    rim = (hexc('#6FA8FF') * (1 - fres[:, None] ** 1.5) + hexc('#BFE0FF') * fres[:, None] ** 1.5) * (fres * 1.15)[:, None]
-    lines = hexc('#6FE0FF') * (0.25 * sample(det, g.uv))[:, None]
-    col = base + rim + lines
-    alpha = np.clip(0.8 + 0.2 * fres, 0, 1)
-    return col, alpha, rim * 0.5 + lines * 0.6
+    fres = (1 - ndv) ** 2.2
+    base = hexc('#1B3A8C') * (1 - lam[:, None]) * 0.75 + hexc('#4F8EFF') * lam[:, None] * 0.62
+    base *= ssao(g, 5.0)[:, None]
+    rim = hexc('#B9DAFF') * (fres * 1.25)[:, None]
+    col = base + rim
+    alpha = np.clip(0.74 + 0.26 * fres, 0, 1)
+    col = BG * (1 - alpha[:, None]) + col * alpha[:, None]
+    return col, rim * 0.55 + hexc('#4F8EFF') * 0.06
 
 
-def muscle_look(g, alb):
+def muscle_look(g, tone):
     lam = np.clip(g.nrm @ LIGHT, 0, 1)
+    wrap = np.clip((g.nrm @ LIGHT + 0.35) / 1.35, 0, 1)
     h = unit(LIGHT + g.view)
-    spec = np.clip((g.nrm * h).sum(1), 0, 1) ** 28 * 0.16
-    fill = np.clip(g.nrm @ unit(np.array([0.6, 0.1, 0.5])), 0, 1) * 0.12
-    return sample(alb, g.uv) * (0.24 + 0.8 * lam + fill)[:, None] + spec[:, None]
+    spec = np.clip((g.nrm * h).sum(1), 0, 1) ** 24 * 0.10
+    ndv = np.clip((g.nrm * g.view).sum(1), 0, 1)
+    rim = (1 - ndv) ** 3 * 0.10
+    ao = ssao(g, 12.0, 5.0)
+    col = tone * (0.16 + 0.62 * wrap + 0.22 * lam)[:, None] * ao[:, None] + (spec + rim)[:, None] * np.array([1.0, 0.75, 0.72])
+    return col
 
 
 def region_palette():
     import colorsys
     pal = np.zeros((len(REGION_IDS), 3))
-    base = {}
-    k = 0
+    base, k = {}, 0
     for i, r in enumerate(REGION_IDS):
         key = r.replace('left', '').replace('right', '').lower()
         if key not in base:
             base[key] = k
             k += 1
-        h = (base[key] * 0.618034) % 1.0
-        light = 0.62 if r.startswith('left') else 0.5
-        pal[i] = colorsys.hls_to_rgb(h, light, 0.75)
+        pal[i] = colorsys.hls_to_rgb((base[key] * 0.618034) % 1.0, 0.62 if r.startswith('left') else 0.5, 0.75)
     return pal
 
 
-def render_previews(b, reg, det, alb):
-    W, H = 900, 1400
-    detf = det.astype(np.float64) / 255.0
-    albf = alb.astype(np.float64) / 255.0
+def muscle_tones(entries):
+    rng = np.random.RandomState(7)
+    tones = []
+    for e in entries:
+        if e['kind'] == 'tendon':
+            t = hexc('#93403F')
+        else:
+            t = hexc('#9C2328') * (1 + rng.uniform(-0.08, 0.08)) + np.array([rng.uniform(-0.02, 0.02), 0, 0])
+        tones.append(np.clip(t, 0, 1))
+    return np.array(tones)
+
+
+UNDER_TONE = hexc('#74191E')
+
+
+def render_previews(skin, mus, entries, W=900, H=1400):
+    sV, sF, sreg = skin
+    sN = vertex_normals(sV, sF)
     for name, yaw in (('front', 0), ('back', 180), ('34', -35)):
-        g = project(b, yaw, W, H)
-        col, alpha, glow = blue_look(g, detf)
-        Image.fromarray(compose(g, col, alpha, glow)).save(os.path.join(DESIGN, f'preview-{name}.png'), optimize=True)
-    for name, yaw in (('front', 0), ('back', 180)):
-        g = project(b, yaw, W, H)
-        Image.fromarray(compose(g, muscle_look(g, albf))).save(os.path.join(DESIGN, f'preview-muscle-{name}.png'), optimize=True)
+        g = project(sV, sN, sF, yaw, W, H)
+        col, glow = blue_look(g)
+        Image.fromarray(compose(g, col, glow, 7.0)).save(os.path.join(DESIGN, f'preview-{name}.png'), optimize=True)
+    mV, mN, mF, mgrp = mus
+    tones = np.concatenate([muscle_tones(entries), UNDER_TONE[None]])
+    for name, yaw in (('front', 0), ('back', 180), ('34', -35)):
+        g = project(mV, mN, mF, yaw, W, H)
+        col = muscle_look(g, tones[mgrp[g.tid]])
+        Image.fromarray(compose(g, col)).save(os.path.join(DESIGN, f'preview-muscle-{name}.png'), optimize=True)
     pal = region_palette()
     ims = []
     for yaw in (0, 180):
-        g = project(b, yaw, W, H)
+        g = project(sV, sN, sF, yaw, W // 2, H // 2)
         lam = np.clip(g.nrm @ LIGHT, 0, 1)
-        ims.append(compose(g, pal[reg[g.tid]] * (0.55 + 0.45 * lam)[:, None]))
+        ims.append(compose(g, pal[sreg[g.tid]] * (0.55 + 0.45 * lam)[:, None]))
     Image.fromarray(np.concatenate(ims, 1)).save(os.path.join(DESIGN, 'preview-regions.png'), optimize=True)
+
+
+# ----------------------------------------------------------------------------------------------
+def slug(name):
+    import re
+    return re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
 
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    print('building mesh')
-    b = build_mesh()
-    L = landmarks(b)
-    b.tri_attrs = ['tri_eye']
-    reg = split_by_labels(b, lambda p, gw: classify_regions(p, gw, L), len(REGION_IDS))
-    reg[b.tri_eye] = RI['head']
-    print(f'  vertices {len(b.rv_pos)}, triangles {len(b.T)}')
-    assert len(b.rv_pos) <= 60000
-    # muscles per triangle (centroid classification, majority-smoothed)
-    cen = b.P[b.TG].mean(1)
-    gw = b.GW[b.TG].mean(1)
-    nt = unit(b.N[b.TG].mean(1))
-    bel, _, _ = classify_bellies(cen, gw, L, nt)
-    mus = BELLY_MUSCLE[bel].astype(np.int64)
-    mus[b.tri_eye] = NONE
-    nm = len(MUSCLES)
-    mus = np.where(mus == NONE, nm, mus)
-    mus = smooth_labels(b.TG, mus, nm + 1, iters=2)
-    mus = np.where(mus == nm, NONE, mus)
-    # sort triangles by region
-    order = np.argsort(reg, kind='stable')
-    b.T, reg, mus, b.TG = b.T[order], reg[order], mus[order], b.TG[order]
-    groups = []
+    print('skin')
+    sV, sF = build_skin()
+    sN = vertex_normals(sV, sF)
+    print('bones and regions')
+    bpts, bpart, named = load_bones()
+    _, j = cKDTree(bpts).query(sV)
+    s_part = bpart[j]
+    L = landmarks(sV, s_part, named)
+    s_lab, s_reg = label_skin(sV, sF, s_part, L)
+    print(f'  navel y {L.y_navel:.3f}, xiphoid y {L.y_xiph:.3f}, crest y {L.y_crest:.3f}')
+
+    print('muscles')
+    parts = load_muscles(za_to_bp())
+    stree = cKDTree(sV)
+    D = snap_field(parts, sV, sF, sN, stree)
+    print(f'  snap shift: median {np.median(np.abs(D)) * 1000:.1f} mm, max {np.abs(D).max() * 1000:.1f} mm')
+    for q in parts:
+        q['V'] = apply_snap(q['V'], D, sV, sN, stree)
+        q['pre'] = decimate(q['V'], q['F'], max(250, len(q['F']) * 0.4))
+    pre = [dict(V=q['pre'][0], F=q['pre'][1]) for q in parts]
+    V, F, pid = merge(pre)
+    vis = np.bincount(pid, weights=visibility(V, F), minlength=len(parts))
+    keep = [i for i in range(len(parts)) if vis[i] >= 40]
+    print(f'  pass 1: {len(keep)} of {len(parts)} parts visible')
+    kpts = np.concatenate([np.concatenate([pre[i]['V'], pre[i]['V'][pre[i]['F']].mean(1)]) for i in keep])
+    uV, uF = build_underlayer(sV, sF, stree, kpts, bpts)
+    V, F, pid = merge([pre[i] for i in keep] + [dict(V=uV, F=uF)])
+    cnt = visibility(V, F)
+    vis2 = np.bincount(pid, weights=cnt, minlength=len(keep) + 1)[:len(keep)]
+    final = [(keep[k], vis2[k]) for k in range(len(keep)) if vis2[k] >= 60]
+    print(f'  pass 2: {len(final)} parts kept')
+    w = np.array([v for _, v in final]) ** 0.75
+    budget = np.maximum(40, np.round(MUSCLE_TRIS * w / w.sum())).astype(int)
+    budget = np.minimum(budget, [len(parts[i]['F']) for i, _ in final])
+    mparts = []
+    for (i, _), b in zip(final, budget):
+        V_, F_ = decimate(parts[i]['V'], parts[i]['F'], b)
+        name, side, kind = pretty(parts[i]['name'])
+        mparts.append(dict(V=V_, F=F_, name=name, side=side, kind=kind, src=parts[i]['name']))
+
+    # regions for muscle triangles: region of the nearest skin point
+    for q in mparts:
+        _, j = stree.query(q['V'][q['F']].mean(1))
+        q['treg'] = s_lab[j]
+        area = tri_area(q['V'], q['F'])
+        q['region'] = int(np.bincount(q['treg'], weights=area, minlength=len(REGION_IDS)).argmax())
+    _, j = stree.query(uV[uF].mean(1))
+    u_treg = s_lab[j]
+
+    # final visibility on the shipped muscle layer -> anchors of each muscle
+    V, F, pid = merge(mparts + [dict(V=uV, F=uF)])
+    cnt = visibility(V, F, px=0.004)
+    FN = unit(np.cross(V[F[:, 1]] - V[F[:, 0]], V[F[:, 2]] - V[F[:, 0]]))
+    cen = V[F].mean(1)
+    for k, q in enumerate(mparts):
+        m = (pid == k)
+        wv = cnt[m] + 1e-6
+        c = (cen[m] * wv[:, None]).sum(0) / wv.sum()
+        n = unit((FN[m] * wv[:, None]).sum(0))
+        tri = np.argmin(np.linalg.norm(cen[m] - c, axis=1) - 0.002 * (cnt[m] > 0))
+        q['anchor'], q['normal'] = cen[m][tri], n
+        q['visible'] = float(cnt[m].sum())
+
+    # order muscles by region, then name; ids unique per side
+    mparts.sort(key=lambda q: (q['region'], q['name'], q['side']))
+    entries = []
+    for q in mparts:
+        sid = {'left': '.l', 'right': '.r'}.get(q['side'], '')
+        entries.append(dict(id=slug(q['name']) + sid, name=q['name'], side=q['side'], kind=q['kind'],
+                            region=REGION_IDS[q['region']]))
+    ids = [e['id'] for e in entries]
+    for e in entries:
+        if ids.count(e['id']) > 1:
+            k = sum(1 for x in entries[:entries.index(e)] if x['id'] == e['id'])
+            e['id'] += f'-{k + 1}' if k else ''
+
+    # global frame: 1.80 m, feet on y = 0, centred on x/z
+    y0 = sV[:, 1].min()
+    k = HEIGHT / (sV[:, 1].max() - y0)
+    c = np.array([(sV[:, 0].max() + sV[:, 0].min()) / 2, y0, (sV[:, 2].max() + sV[:, 2].min()) / 2])
+    tf = lambda P: (np.asarray(P) - c) * k
+
+    # skin layer: triangles sorted by region
+    order = np.argsort(s_reg, kind='stable')
+    sFo, s_rego = sF[order], s_reg[order]
+    s_groups = []
     for r in range(len(REGION_IDS)):
-        idx = np.nonzero(reg == r)[0]
+        idx = np.nonzero(s_rego == r)[0]
         assert len(idx), REGION_IDS[r]
-        groups.append((r, int(idx[0]), len(idx)))
-    pos, nrm = b.P[b.rv_pos], b.N[b.rv_pos]
-    write_bin(os.path.join(OUT, 'body.bin'), pos, nrm, b.uv, groups, mus, b.T)
-    ra = anchors(b, reg, REGION_IDS, REGION_VIEW)
-    ma = anchors(b, np.where(mus == NONE, -1, mus), [m for m, _ in MUSCLES], MUSCLE_VIEW, left_only=True)
+        s_groups.append((r, NONE, int(idx[0]), len(idx)))
+    sVt = tf(sV)
+    # muscle layer: underlayer (per region) first, then one group per muscle
+    mV, mN, mT, mR, m_groups, mgrp = [], [], [], [], [], []
+    o = t0 = 0
+    uN = vertex_normals(uV, uF)
+    uo = np.argsort(u_treg, kind='stable')
+    for r in range(len(REGION_IDS)):
+        idx = uo[u_treg[uo] == r]
+        if len(idx):
+            m_groups.append((r, NONE, t0, len(idx)))
+            t0 += len(idx)
+    mV.append(tf(uV)); mN.append(uN); mT.append(uF[uo]); mR.append(u_treg[uo]); mgrp.append(np.full(len(uF), len(mparts)))
+    o = len(uV)
+    for k2, q in enumerate(mparts):
+        mV.append(tf(q['V'])); mN.append(vertex_normals(q['V'], q['F'])); mT.append(q['F'] + o); mR.append(q['treg'])
+        mgrp.append(np.full(len(q['F']), k2))
+        m_groups.append((q['region'], k2, t0, len(q['F'])))
+        o += len(q['V'])
+        t0 += len(q['F'])
+    mV, mN, mT, mR, mgrp = map(np.concatenate, (mV, mN, mT, mR, mgrp))
+
+    with open(os.path.join(OUT, 'body.bin'), 'wb') as f:
+        f.write(b'BLB3')
+        f.write(struct.pack('<I', 2))
+        write_layer(f, sVt, sN, s_groups, s_rego, sFo)
+        write_layer(f, mV, mN, m_groups, mR, mT)
+
+    ra = region_anchors(sVt, sFo, sN, s_rego)
+    for e, q in zip(entries, mparts):
+        e['anchor'], e['normal'] = rnd(tf(q['anchor'])), rnd(q['normal'])
     meta = {
-        'source': 'MakeHuman 1.x base mesh + macro targets (CC0 1.0)',
-        'height': round(float(pos[:, 1].max() - pos[:, 1].min()), 4),
-        'bounds': {'min': rnd(pos.min(0)), 'max': rnd(pos.max(0))},
+        'format': 'BLB3',
+        'source': SOURCE,
+        'license': LICENSE,
+        'attribution': ATTRIBUTION,
+        'height': round(float(sVt[:, 1].max() - sVt[:, 1].min()), 4),
+        'bounds': {'min': rnd(sVt.min(0)), 'max': rnd(sVt.max(0))},
+        'counts': {'skinTriangles': int(len(sFo)), 'muscleTriangles': int(sum(len(q['F']) for q in mparts)),
+                   'underlayerTriangles': int(len(uF)), 'muscles': len(entries)},
         'regions': [{'id': r, 'anchor': rnd(a), 'normal': rnd(n), 'radius': round(rad, 3)} for r, (a, n, rad) in zip(REGION_IDS, ra)],
-        'muscles': [{'id': m, 'name': nme, 'anchor': rnd(a), 'normal': rnd(n)} for (m, nme), (a, n, _) in zip(MUSCLES, ma)],
+        'muscles': entries,
     }
     with open(os.path.join(OUT, 'body3d.json'), 'w') as f:
         json.dump(meta, f, indent=1)
-    print('baking textures')
-    det, alb, _ = make_textures(b, L, TEX)
-    Image.fromarray(det, 'L').save(os.path.join(OUT, 'body_detail.png'), optimize=True)
-    Image.fromarray(alb, 'RGB').save(os.path.join(OUT, 'body_muscle.jpg'), quality=85, optimize=True, subsampling=0)
-    print('rendering previews')
-    render_previews(b, reg, det, alb)
-    for fn in ('body.bin', 'body3d.json', 'body_detail.png', 'body_muscle.jpg'):
+    for fn in ('body.bin', 'body3d.json'):
         print(f'  {fn}: {os.path.getsize(os.path.join(OUT, fn)) / 1e6:.2f} MB')
+    print(f"  skin {len(sFo)} tris, muscles {meta['counts']['muscleTriangles']} tris in {len(entries)} named parts, "
+          f"underlayer {len(uF)} tris")
+    np.savez(os.path.join(CACHE, 'last_build.npz'), mV=mV, mN=mN, mT=mT, mgrp=mgrp, sV=sVt, sF=sFo, sreg=s_rego)
+    json.dump(entries, open(os.path.join(CACHE, 'last_entries.json'), 'w'))
+    print('previews')
+    render_previews((sVt, sFo, s_rego), (mV, mN, mT, mgrp), entries)
 
 
 if __name__ == '__main__':
