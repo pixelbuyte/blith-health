@@ -32,7 +32,7 @@ struct BodyView: View {
                     regionPanel
                     timeline
                     historyList
-                    Text("3D figure generated from MakeHuman's CC0 base mesh. The muscle layer is an illustrative map of the main surface muscle groups, not a medical atlas.")
+                    Text("3D figure and muscles derived from BodyParts3D (© The Database Center for Life Science, CC BY-SA 2.1 JP) and Z-Anatomy (CC BY-SA 4.0). For orientation and notes, not a medical atlas.")
                         .font(.caption2).foregroundStyle(Palette.tertiaryInk)
                 }
                 .padding(.horizontal, Space.page)
@@ -95,7 +95,7 @@ struct BodyView: View {
                 selectedMuscle = muscle?.name
                 focusedNoteID = nil
             }
-            controller?.highlight(region)
+            controller?.highlight(region, muscle: muscle)
         }
         controller.onMarker = { id in if let n = notes.first(where: { $0.id == id }) { focus(n) } }
         if let l = UserDefaults.standard.string(forKey: "BlithBodyLayer").flatMap(BodyLayer.init(rawValue:)) { layer = l }
@@ -235,7 +235,7 @@ struct BodyView: View {
             VStack(alignment: .leading, spacing: Space.m) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Eyebrow(text: layer == .muscle && selectedMuscle != nil ? "Muscle group · \(region.displayName)" : "Region", icon: "bl.bodynote",
+                        Eyebrow(text: layer == .muscle && selectedMuscle != nil ? "Muscle · \(region.displayName)" : "Region", icon: "bl.bodynote",
                                 color: layer == .muscle ? Palette.coral : Palette.cyan)
                         Text(layer == .muscle ? (selectedMuscle ?? region.displayName) : region.displayName)
                             .font(Typo.title).foregroundStyle(Palette.ink)

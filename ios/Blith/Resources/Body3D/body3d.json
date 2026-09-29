@@ -1,747 +1,4604 @@
 {
- "source": "MakeHuman 1.x base mesh + macro targets (CC0 1.0)",
+ "format": "BLB3",
+ "source": "Skin: BodyParts3D 4.0 (FJ2810). Muscles: Z-Anatomy MuscularSystem100 (derived from BodyParts3D). Mapped to one frame, decimated, genital area smoothed to a neutral form.",
+ "license": "CC BY-SA 4.0",
+ "attribution": "\"BodyParts3D, (c) The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan\"; \"Z-Anatomy - The open source atlas of anatomy - CC-BY-SA 4.0\". Derived meshes: CC BY-SA 4.0.",
  "height": 1.8,
  "bounds": {
   "min": [
-   -0.4722,
+   -0.349,
    0.0,
-   -0.158
+   -0.1529
   ],
   "max": [
-   0.4722,
+   0.349,
    1.8,
-   0.158
+   0.1529
   ]
+ },
+ "counts": {
+  "skinTriangles": 59650,
+  "muscleTriangles": 127858,
+  "underlayerTriangles": 18000,
+  "muscles": 242
  },
  "regions": [
   {
    "id": "head",
    "anchor": [
-    -0.0001,
-    1.6687,
-    0.0977
+    0.0043,
+    1.6773,
+    0.0888
    ],
    "normal": [
-    -0.0,
-    0.4659,
-    0.8848
+    0.3504,
+    0.2358,
+    0.9064
    ],
-   "radius": 0.192
+   "radius": 0.19
   },
   {
    "id": "neck",
    "anchor": [
-    -0.0001,
-    1.5438,
-    0.0278
+    0.0022,
+    1.5582,
+    0.0447
    ],
    "normal": [
-    -0.0,
-    -0.2695,
-    0.963
+    0.1082,
+    -0.7843,
+    0.6109
    ],
-   "radius": 0.15
+   "radius": 0.139
   },
   {
    "id": "rightShoulder",
    "anchor": [
-    -0.2594,
-    1.4322,
-    -0.0008
+    -0.203,
+    1.46,
+    0.0155
    ],
    "normal": [
-    -0.4779,
-    0.2215,
-    0.85
+    -0.4599,
+    0.4512,
+    0.7647
    ],
-   "radius": 0.143
+   "radius": 0.15
   },
   {
    "id": "leftShoulder",
    "anchor": [
-    0.2592,
-    1.4322,
-    -0.0008
+    0.1993,
+    1.4609,
+    0.0173
    ],
    "normal": [
-    0.4779,
-    0.2215,
-    0.85
+    0.456,
+    0.4672,
+    0.7575
    ],
-   "radius": 0.143
+   "radius": 0.154
   },
   {
    "id": "chest",
    "anchor": [
-    -0.0067,
-    1.3472,
-    0.0745
+    -0.0153,
+    1.3533,
+    0.1211
    ],
    "normal": [
-    0.1127,
-    0.0223,
-    0.9934
+    0.3142,
+    0.1686,
+    0.9343
    ],
-   "radius": 0.286
+   "radius": 0.272
   },
   {
    "id": "abdomen",
    "anchor": [
-    -0.0098,
-    1.0953,
-    0.0628
+    0.0069,
+    1.1182,
+    0.1106
    ],
    "normal": [
-    0.0171,
-    0.1229,
-    0.9923
+    -0.0743,
+    -0.2271,
+    0.971
    ],
-   "radius": 0.194
+   "radius": 0.236
   },
   {
    "id": "upperBack",
    "anchor": [
-    -0.0001,
-    1.3405,
-    -0.1419
+    0.0139,
+    1.351,
+    -0.132
    ],
    "normal": [
-    -0.0,
-    0.0029,
-    -1.0
+    -0.2912,
+    -0.0823,
+    -0.9531
    ],
-   "radius": 0.289
+   "radius": 0.295
   },
   {
    "id": "lowerBack",
    "anchor": [
-    -0.0001,
-    1.0751,
-    -0.1178
+    -0.0104,
+    1.1385,
+    -0.1036
    ],
    "normal": [
-    -0.0,
-    0.2258,
-    -0.9742
+    0.0965,
+    -0.0823,
+    -0.9919
    ],
-   "radius": 0.18
+   "radius": 0.193
   },
   {
    "id": "rightUpperArm",
    "anchor": [
-    -0.2885,
-    1.2826,
-    0.0098
+    -0.2097,
+    1.2855,
+    0.0153
    ],
    "normal": [
-    -0.0487,
-    0.1746,
-    0.9834
+    0.0868,
+    -0.0716,
+    0.9937
    ],
-   "radius": 0.128
+   "radius": 0.138
   },
   {
    "id": "leftUpperArm",
    "anchor": [
-    0.2883,
-    1.2826,
-    0.0098
+    0.2155,
+    1.291,
+    0.0151
    ],
    "normal": [
-    0.0487,
-    0.1746,
-    0.9834
+    0.2277,
+    -0.0336,
+    0.9731
    ],
    "radius": 0.128
   },
   {
    "id": "rightElbow",
    "anchor": [
-    -0.3312,
-    1.1685,
-    0.01
+    -0.2188,
+    1.1544,
+    0.0055
    ],
    "normal": [
-    0.1287,
-    0.0694,
-    0.9892
+    0.156,
+    0.1813,
+    0.971
    ],
-   "radius": 0.084
+   "radius": 0.099
   },
   {
    "id": "leftElbow",
    "anchor": [
-    0.3311,
-    1.1685,
-    0.01
+    0.2318,
+    1.1766,
+    0.0045
    ],
    "normal": [
-    -0.1287,
-    0.0694,
-    0.9892
+    0.0553,
+    0.0145,
+    0.9984
    ],
-   "radius": 0.084
+   "radius": 0.099
   },
   {
    "id": "rightForearm",
    "anchor": [
-    -0.3774,
-    1.0643,
-    0.0276
+    -0.243,
+    1.0352,
+    0.0257
    ],
    "normal": [
-    -0.0034,
-    0.1983,
-    0.9801
+    0.0465,
+    0.0674,
+    0.9966
    ],
-   "radius": 0.148
+   "radius": 0.132
   },
   {
    "id": "leftForearm",
    "anchor": [
-    0.3773,
-    1.0643,
-    0.0276
+    0.2434,
+    1.0414,
+    0.0254
    ],
    "normal": [
-    0.0034,
-    0.1983,
-    0.9801
+    -0.0593,
+    0.059,
+    0.9965
    ],
-   "radius": 0.148
+   "radius": 0.135
   },
   {
    "id": "rightWrist",
    "anchor": [
-    -0.4292,
-    0.9279,
-    0.0846
+    -0.2813,
+    0.9194,
+    0.0479
    ],
    "normal": [
-    -0.0216,
-    0.8011,
-    0.5982
+    0.0036,
+    0.5302,
+    0.8478
    ],
-   "radius": 0.059
+   "radius": 0.067
   },
   {
    "id": "leftWrist",
    "anchor": [
-    0.4296,
-    0.9282,
-    0.0839
+    0.2583,
+    0.9236,
+    0.0448
    ],
    "normal": [
-    -0.0038,
-    0.7841,
-    0.6206
+    -0.2699,
+    0.466,
+    0.8426
    ],
-   "radius": 0.059
+   "radius": 0.063
   },
   {
    "id": "rightHand",
    "anchor": [
-    -0.4606,
-    0.8407,
-    0.1175
+    -0.294,
+    0.8341,
+    0.0584
    ],
    "normal": [
-    -0.7805,
-    0.0767,
-    0.6204
+    -0.0835,
+    -0.0341,
+    0.9959
    ],
-   "radius": 0.118
+   "radius": 0.143
   },
   {
    "id": "leftHand",
    "anchor": [
-    0.4597,
-    0.8427,
-    0.1184
+    0.3025,
+    0.8359,
+    0.059
    ],
    "normal": [
-    0.7254,
-    0.2611,
-    0.6369
+    0.1227,
+    0.0405,
+    0.9916
    ],
-   "radius": 0.118
+   "radius": 0.143
   },
   {
    "id": "hips",
    "anchor": [
-    -0.0001,
-    0.9739,
-    0.0579
+    -0.0112,
+    0.8318,
+    0.0508
    ],
    "normal": [
-    -0.0,
-    -0.2333,
-    0.9724
+    0.2492,
+    -0.5159,
+    0.8196
    ],
-   "radius": 0.163
+   "radius": 0.45
   },
   {
    "id": "rightHip",
    "anchor": [
-    -0.1374,
-    0.9317,
-    -0.1084
+    -0.138,
+    0.9413,
+    -0.091
    ],
    "normal": [
-    -0.7606,
-    0.0942,
-    -0.6424
+    -0.8496,
+    0.0726,
+    -0.5223
    ],
-   "radius": 0.16
+   "radius": 0.208
   },
   {
    "id": "leftHip",
    "anchor": [
-    0.1372,
-    0.9317,
-    -0.1084
+    0.1438,
+    0.9202,
+    -0.0842
    ],
    "normal": [
-    0.7606,
-    0.0942,
-    -0.6424
+    0.8685,
+    0.0755,
+    -0.4899
    ],
-   "radius": 0.16
+   "radius": 0.199
   },
   {
    "id": "rightThigh",
    "anchor": [
-    -0.1248,
-    0.7604,
-    0.063
+    -0.098,
+    0.6959,
+    0.0753
    ],
    "normal": [
-    -0.0164,
-    -0.0513,
-    0.9985
+    0.1325,
+    -0.0992,
+    0.9862
    ],
-   "radius": 0.24
+   "radius": 0.259
   },
   {
    "id": "leftThigh",
    "anchor": [
-    0.1247,
-    0.7604,
-    0.063
+    0.0992,
+    0.6907,
+    0.0749
    ],
    "normal": [
-    0.0164,
-    -0.0513,
-    0.9985
+    -0.1028,
+    -0.1097,
+    0.9886
    ],
-   "radius": 0.24
+   "radius": 0.253
   },
   {
    "id": "rightKnee",
    "anchor": [
-    -0.145,
-    0.5353,
-    0.0189
+    -0.0952,
+    0.4821,
+    0.0415
    ],
    "normal": [
-    -0.0319,
-    -0.231,
-    0.9724
+    -0.1214,
+    -0.3917,
+    0.912
    ],
-   "radius": 0.115
+   "radius": 0.127
   },
   {
    "id": "leftKnee",
    "anchor": [
-    0.1448,
-    0.5353,
-    0.0189
+    0.0888,
+    0.4824,
+    0.0423
    ],
    "normal": [
-    0.0319,
-    -0.231,
-    0.9724
+    -0.0492,
+    -0.409,
+    0.9112
    ],
-   "radius": 0.115
+   "radius": 0.134
   },
   {
    "id": "rightShin",
    "anchor": [
-    -0.2006,
-    0.3201,
-    -0.0088
+    -0.0892,
+    0.3012,
+    0.0114
    ],
    "normal": [
-    -0.1062,
-    -0.062,
-    0.9924
+    0.0101,
+    -0.1448,
+    0.9894
    ],
-   "radius": 0.194
+   "radius": 0.17
   },
   {
    "id": "leftShin",
    "anchor": [
-    0.2005,
-    0.3201,
-    -0.0088
+    0.0884,
+    0.2939,
+    0.0108
    ],
    "normal": [
-    0.1062,
-    -0.062,
-    0.9924
+    -0.1684,
+    -0.1232,
+    0.978
    ],
-   "radius": 0.194
+   "radius": 0.175
   },
   {
    "id": "rightCalf",
    "anchor": [
-    -0.1943,
-    0.3282,
-    -0.1225
+    -0.0896,
+    0.3012,
+    -0.1093
    ],
    "normal": [
-    -0.1028,
-    -0.1796,
-    -0.9784
+    -0.1526,
+    -0.2429,
+    -0.958
    ],
-   "radius": 0.199
+   "radius": 0.192
   },
   {
    "id": "leftCalf",
    "anchor": [
-    0.1941,
-    0.3282,
-    -0.1225
+    0.0768,
+    0.2877,
+    -0.1055
    ],
    "normal": [
-    0.1028,
-    -0.1796,
-    -0.9784
+    -0.0589,
+    -0.2519,
+    -0.9659
    ],
-   "radius": 0.199
+   "radius": 0.182
   },
   {
    "id": "rightAnkle",
    "anchor": [
-    -0.208,
-    0.0777,
-    0.0203
+    -0.0886,
+    0.0741,
+    0.043
    ],
    "normal": [
-    -0.1308,
-    0.7954,
-    0.5918
+    0.0011,
+    0.7937,
+    0.6083
    ],
-   "radius": 0.084
+   "radius": 0.104
   },
   {
    "id": "leftAnkle",
    "anchor": [
-    0.2079,
-    0.0777,
-    0.0203
+    0.0873,
+    0.0682,
+    0.0485
    ],
    "normal": [
-    0.1308,
-    0.7954,
-    0.5918
+    -0.2017,
+    0.7217,
+    0.6622
    ],
-   "radius": 0.084
+   "radius": 0.098
   },
   {
    "id": "rightFoot",
    "anchor": [
-    -0.2016,
-    0.0422,
-    0.0799
+    -0.1067,
+    0.0464,
+    0.0834
    ],
    "normal": [
-    -0.1524,
-    0.8938,
-    0.4219
+    -0.1354,
+    0.8515,
+    0.5065
    ],
-   "radius": 0.148
+   "radius": 0.152
   },
   {
    "id": "leftFoot",
    "anchor": [
-    0.2014,
-    0.0422,
-    0.0799
+    0.1018,
+    0.0443,
+    0.09
    ],
    "normal": [
-    0.1524,
-    0.8938,
-    0.4219
+    -0.1675,
+    0.8362,
+    0.5222
    ],
-   "radius": 0.148
+   "radius": 0.152
   }
  ],
  "muscles": [
   {
-   "id": "neck",
-   "name": "Neck (sternocleidomastoid)",
+   "id": "depressor-anguli-oris.l",
+   "name": "Depressor anguli oris",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
    "anchor": [
-    -0.0001,
-    1.5438,
-    0.0278
+    0.0306,
+    1.593,
+    0.0693
    ],
    "normal": [
-    -0.0,
-    -0.2695,
-    0.963
+    0.6511,
+    -0.1351,
+    0.7469
    ]
   },
   {
-   "id": "trapezius",
-   "name": "Upper back (trapezius)",
+   "id": "depressor-anguli-oris.r",
+   "name": "Depressor anguli oris",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
    "anchor": [
-    -0.0001,
-    1.4581,
-    -0.1201
+    -0.0289,
+    1.5928,
+    0.0727
    ],
    "normal": [
-    -0.0,
-    0.2944,
-    -0.9557
+    -0.689,
+    -0.0577,
+    0.7225
    ]
   },
   {
-   "id": "deltoids",
-   "name": "Shoulders (deltoids)",
+   "id": "depressor-labii-inferioris.l",
+   "name": "Depressor labii inferioris",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
    "anchor": [
-    0.2901,
-    1.4207,
-    -0.0298
+    0.0175,
+    1.591,
+    0.081
    ],
    "normal": [
-    0.8957,
-    0.2483,
-    0.3688
+    0.6034,
+    -0.0825,
+    0.7931
    ]
   },
   {
-   "id": "pectorals",
-   "name": "Chest (pectorals)",
+   "id": "depressor-labii-inferioris.r",
+   "name": "Depressor labii inferioris",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
    "anchor": [
-    0.072,
-    1.3548,
-    0.0825
+    -0.019,
+    1.5893,
+    0.0772
    ],
    "normal": [
-    0.1052,
-    0.0957,
-    0.9898
+    -0.6444,
+    -0.1414,
+    0.7515
    ]
   },
   {
-   "id": "biceps",
-   "name": "Front of upper arm (biceps)",
+   "id": "epicranial-aponeurosis.l",
+   "name": "Epicranial aponeurosis",
+   "side": "left",
+   "kind": "tendon",
+   "region": "head",
    "anchor": [
-    0.2905,
-    1.2561,
-    0.0122
+    0.0438,
+    1.7799,
+    -0.0509
    ],
    "normal": [
-    -0.1434,
-    -0.0009,
-    0.9897
+    0.6096,
+    0.7274,
+    -0.315
    ]
   },
   {
-   "id": "triceps",
-   "name": "Back of upper arm (triceps)",
+   "id": "epicranial-aponeurosis.r",
+   "name": "Epicranial aponeurosis",
+   "side": "right",
+   "kind": "tendon",
+   "region": "head",
    "anchor": [
-    0.2916,
-    1.2802,
-    -0.0962
+    -0.0562,
+    1.7738,
+    -0.0552
    ],
    "normal": [
-    0.279,
+    -0.6101,
+    0.7278,
+    -0.3132
+   ]
+  },
+  {
+   "id": "frontalis.l",
+   "name": "Frontalis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0324,
+    1.7284,
+    0.0753
+   ],
+   "normal": [
+    0.4488,
+    0.2506,
+    0.8578
+   ]
+  },
+  {
+   "id": "frontalis.r",
+   "name": "Frontalis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0366,
+    1.7257,
+    0.0741
+   ],
+   "normal": [
+    -0.4503,
+    0.262,
+    0.8536
+   ]
+  },
+  {
+   "id": "levator-anguli-oris.l",
+   "name": "Levator anguli oris",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0236,
+    1.6277,
+    0.0799
+   ],
+   "normal": [
+    0.7159,
+    0.0883,
+    0.6926
+   ]
+  },
+  {
+   "id": "levator-anguli-oris.r",
+   "name": "Levator anguli oris",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0233,
+    1.6279,
+    0.0785
+   ],
+   "normal": [
+    -0.7243,
+    0.1591,
+    0.6708
+   ]
+  },
+  {
+   "id": "levator-labii-superioris.l",
+   "name": "Levator labii superioris",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0179,
+    1.6418,
+    0.082
+   ],
+   "normal": [
+    0.5697,
+    0.299,
+    0.7656
+   ]
+  },
+  {
+   "id": "levator-labii-superioris.r",
+   "name": "Levator labii superioris",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0186,
+    1.6415,
+    0.0829
+   ],
+   "normal": [
+    -0.6661,
+    0.1274,
+    0.7349
+   ]
+  },
+  {
+   "id": "levator-nasolabialis.l",
+   "name": "Levator nasolabialis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.013,
+    1.6526,
+    0.0864
+   ],
+   "normal": [
+    0.8377,
+    0.3668,
+    0.4046
+   ]
+  },
+  {
+   "id": "masseter-superficial-part.l",
+   "name": "Masseter (superficial part)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0607,
+    1.6215,
+    0.0436
+   ],
+   "normal": [
+    0.9362,
+    -0.2293,
+    0.2665
+   ]
+  },
+  {
+   "id": "masseter-superficial-part.r",
+   "name": "Masseter (superficial part)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
     -0.062,
-    -0.9583
+    1.6211,
+    0.0408
+   ],
+   "normal": [
+    -0.9411,
+    -0.2493,
+    0.2285
    ]
   },
   {
-   "id": "forearmFlexors",
-   "name": "Inner forearm (flexors)",
+   "id": "nasalis.l",
+   "name": "Nasalis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
    "anchor": [
-    0.3588,
-    1.075,
-    0.0228
+    0.0052,
+    1.6602,
+    0.0927
    ],
    "normal": [
-    -0.293,
-    0.0151,
-    0.956
+    0.8511,
+    0.3127,
+    0.4217
    ]
   },
   {
-   "id": "forearmExtensors",
-   "name": "Outer forearm (extensors)",
+   "id": "nasalis.r",
+   "name": "Nasalis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
    "anchor": [
-    0.3882,
-    1.0806,
-    -0.0393
+    -0.0057,
+    1.6582,
+    0.0919
    ],
    "normal": [
-    0.6417,
-    -0.0551,
-    -0.765
+    -0.8537,
+    0.2775,
+    0.4406
    ]
   },
   {
-   "id": "abdominals",
-   "name": "Abs (rectus abdominis)",
+   "id": "occipitalis.l",
+   "name": "Occipitalis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
    "anchor": [
-    -0.0093,
-    1.1006,
-    0.0616
+    0.0511,
+    1.6736,
+    -0.1004
    ],
    "normal": [
-    0.0246,
-    0.121,
+    0.6537,
+    -0.3536,
+    -0.669
+   ]
+  },
+  {
+   "id": "occipitalis.r",
+   "name": "Occipitalis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0523,
+    1.6765,
+    -0.1019
+   ],
+   "normal": [
+    -0.6836,
+    -0.343,
+    -0.6443
+   ]
+  },
+  {
+   "id": "orbicularis-oculi-orbital-part.l",
+   "name": "Orbicularis oculi (orbital part)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0439,
+    1.6645,
+    0.0666
+   ],
+   "normal": [
+    0.4791,
+    -0.1395,
+    0.8666
+   ]
+  },
+  {
+   "id": "orbicularis-oculi-orbital-part.r",
+   "name": "Orbicularis oculi (orbital part)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0461,
+    1.6793,
+    0.0663
+   ],
+   "normal": [
+    -0.4999,
+    -0.1649,
+    0.8503
+   ]
+  },
+  {
+   "id": "orbicularis-oculi-palpebral-part.l",
+   "name": "Orbicularis oculi (palpebral part)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0224,
+    1.6794,
+    0.0776
+   ],
+   "normal": [
+    0.442,
+    0.136,
+    0.8867
+   ]
+  },
+  {
+   "id": "orbicularis-oculi-palpebral-part.r",
+   "name": "Orbicularis oculi (palpebral part)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.029,
+    1.6802,
+    0.0789
+   ],
+   "normal": [
+    -0.3239,
+    0.1455,
+    0.9349
+   ]
+  },
+  {
+   "id": "orbicularis-oris.l",
+   "name": "Orbicularis oris",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0172,
+    1.6106,
+    0.0869
+   ],
+   "normal": [
+    0.4616,
+    -0.1202,
+    0.8789
+   ]
+  },
+  {
+   "id": "orbicularis-oris.r",
+   "name": "Orbicularis oris",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0208,
+    1.6103,
+    0.0846
+   ],
+   "normal": [
+    -0.4824,
+    -0.1038,
+    0.8698
+   ]
+  },
+  {
+   "id": "procerus.l",
+   "name": "Procerus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0035,
+    1.6879,
+    0.0839
+   ],
+   "normal": [
+    0.395,
+    0.087,
+    0.9146
+   ]
+  },
+  {
+   "id": "procerus.r",
+   "name": "Procerus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0044,
+    1.6879,
+    0.0837
+   ],
+   "normal": [
+    -0.2163,
+    0.0735,
+    0.9735
+   ]
+  },
+  {
+   "id": "risorius.l",
+   "name": "Risorius",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0474,
+    1.6039,
+    0.0594
+   ],
+   "normal": [
+    0.6537,
+    -0.1873,
+    0.7332
+   ]
+  },
+  {
+   "id": "risorius.r",
+   "name": "Risorius",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0463,
+    1.6078,
+    0.0612
+   ],
+   "normal": [
+    -0.6692,
+    -0.2102,
+    0.7127
+   ]
+  },
+  {
+   "id": "sternocleidomastoid.l",
+   "name": "Sternocleidomastoid",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0545,
+    1.5903,
+    -0.0085
+   ],
+   "normal": [
+    0.9498,
+    -0.0632,
+    0.3063
+   ]
+  },
+  {
+   "id": "sternocleidomastoid.r",
+   "name": "Sternocleidomastoid",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0474,
+    1.5824,
+    -0.0039
+   ],
+   "normal": [
+    -0.9408,
+    -0.0242,
+    0.338
+   ]
+  },
+  {
+   "id": "temporalis.l",
+   "name": "Temporalis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0599,
+    1.6932,
+    0.039
+   ],
+   "normal": [
+    0.9274,
+    -0.0688,
+    0.3677
+   ]
+  },
+  {
+   "id": "temporalis.r",
+   "name": "Temporalis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0623,
+    1.6898,
+    0.037
+   ],
+   "normal": [
+    -0.9163,
+    -0.0871,
+    0.3909
+   ]
+  },
+  {
+   "id": "temporoparietalis.l",
+   "name": "Temporoparietalis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0776,
+    1.7127,
+    -0.0155
+   ],
+   "normal": [
+    0.9953,
+    0.0377,
+    0.0892
+   ]
+  },
+  {
+   "id": "temporoparietalis.r",
+   "name": "Temporoparietalis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0794,
+    1.7114,
+    -0.0187
+   ],
+   "normal": [
+    -0.9957,
+    0.0414,
+    0.0825
+   ]
+  },
+  {
+   "id": "zygomaticus-major.l",
+   "name": "Zygomaticus major",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.045,
+    1.6341,
+    0.0668
+   ],
+   "normal": [
+    0.626,
+    -0.1012,
+    0.7733
+   ]
+  },
+  {
+   "id": "zygomaticus-major.r",
+   "name": "Zygomaticus major",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0456,
+    1.6317,
+    0.0689
+   ],
+   "normal": [
+    -0.6923,
+    -0.1759,
+    0.6998
+   ]
+  },
+  {
+   "id": "zygomaticus-minor.l",
+   "name": "Zygomaticus minor",
+   "side": "left",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    0.0264,
+    1.6393,
+    0.0809
+   ],
+   "normal": [
+    0.5292,
+    0.0245,
+    0.8481
+   ]
+  },
+  {
+   "id": "zygomaticus-minor.r",
+   "name": "Zygomaticus minor",
+   "side": "right",
+   "kind": "muscle",
+   "region": "head",
+   "anchor": [
+    -0.0276,
+    1.6396,
+    0.0778
+   ],
+   "normal": [
+    -0.4976,
+    -0.002,
+    0.8674
+   ]
+  },
+  {
+   "id": "levator-scapulae.l",
+   "name": "Levator scapulae",
+   "side": "left",
+   "kind": "muscle",
+   "region": "neck",
+   "anchor": [
+    0.0543,
+    1.5686,
+    -0.0199
+   ],
+   "normal": [
+    0.9224,
+    0.3492,
+    0.1651
+   ]
+  },
+  {
+   "id": "scalenus-medius.r",
+   "name": "Scalenus medius",
+   "side": "right",
+   "kind": "muscle",
+   "region": "neck",
+   "anchor": [
+    -0.0449,
+    1.5329,
+    -0.0049
+   ],
+   "normal": [
+    -0.8759,
+    0.2885,
+    0.3867
+   ]
+  },
+  {
+   "id": "splenius-capitis.l",
+   "name": "Splenius capitis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "neck",
+   "anchor": [
+    0.0554,
+    1.6118,
+    -0.0372
+   ],
+   "normal": [
+    0.9538,
+    -0.1623,
+    -0.2528
+   ]
+  },
+  {
+   "id": "splenius-capitis.r",
+   "name": "Splenius capitis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "neck",
+   "anchor": [
+    -0.0522,
+    1.6062,
+    -0.0391
+   ],
+   "normal": [
+    -0.9545,
+    -0.1436,
+    -0.2614
+   ]
+  },
+  {
+   "id": "trapezius-ascending-part.l",
+   "name": "Trapezius (ascending part)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "neck",
+   "anchor": [
+    0.0493,
+    1.565,
+    -0.0681
+   ],
+   "normal": [
+    0.5931,
+    0.4686,
+    -0.6548
+   ]
+  },
+  {
+   "id": "trapezius-ascending-part.r",
+   "name": "Trapezius (ascending part)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "neck",
+   "anchor": [
+    -0.0475,
+    1.564,
+    -0.0691
+   ],
+   "normal": [
+    -0.6119,
+    0.489,
+    -0.6216
+   ]
+  },
+  {
+   "id": "deltoid-acromial-part.r",
+   "name": "Deltoid (acromial part)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightShoulder",
+   "anchor": [
+    -0.2232,
+    1.4324,
+    -0.0313
+   ],
+   "normal": [
+    -0.8783,
+    0.3716,
+    0.3009
+   ]
+  },
+  {
+   "id": "deltoid-clavicular-part.r",
+   "name": "Deltoid (clavicular part)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightShoulder",
+   "anchor": [
+    -0.1792,
+    1.4487,
+    0.0114
+   ],
+   "normal": [
+    -0.3831,
+    0.4752,
+    0.7921
+   ]
+  },
+  {
+   "id": "deltoid-scapular-spinal-part.r",
+   "name": "Deltoid (scapular spinal part)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightShoulder",
+   "anchor": [
+    -0.1984,
+    1.4193,
+    -0.0835
+   ],
+   "normal": [
+    -0.6564,
+    0.1904,
+    -0.73
+   ]
+  },
+  {
+   "id": "pectoralis-major-clavicular-head.r",
+   "name": "Pectoralis major (clavicular head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightShoulder",
+   "anchor": [
+    -0.1191,
+    1.4593,
+    0.0467
+   ],
+   "normal": [
+    -0.3602,
+    0.5625,
+    0.7442
+   ]
+  },
+  {
+   "id": "deltoid-acromial-part.l",
+   "name": "Deltoid (acromial part)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftShoulder",
+   "anchor": [
+    0.2242,
+    1.4372,
+    -0.0315
+   ],
+   "normal": [
+    0.883,
+    0.3688,
+    0.2903
+   ]
+  },
+  {
+   "id": "deltoid-clavicular-part.l",
+   "name": "Deltoid (clavicular part)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftShoulder",
+   "anchor": [
+    0.1808,
+    1.4517,
+    0.0114
+   ],
+   "normal": [
+    0.3707,
+    0.4687,
+    0.8018
+   ]
+  },
+  {
+   "id": "deltoid-scapular-spinal-part.l",
+   "name": "Deltoid (scapular spinal part)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftShoulder",
+   "anchor": [
+    0.2089,
+    1.4178,
+    -0.1069
+   ],
+   "normal": [
+    0.6596,
+    0.2021,
+    -0.7239
+   ]
+  },
+  {
+   "id": "pectoralis-major-clavicular-head.l",
+   "name": "Pectoralis major (clavicular head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftShoulder",
+   "anchor": [
+    0.1178,
+    1.4611,
+    0.0488
+   ],
+   "normal": [
+    0.3663,
+    0.5971,
+    0.7136
+   ]
+  },
+  {
+   "id": "pectoralis-major-abdominal-part.l",
+   "name": "Pectoralis major (abdominal part)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "chest",
+   "anchor": [
+    0.1365,
+    1.3204,
+    0.0778
+   ],
+   "normal": [
+    0.7838,
+    -0.1257,
+    0.6081
+   ]
+  },
+  {
+   "id": "pectoralis-major-abdominal-part.r",
+   "name": "Pectoralis major (abdominal part)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "chest",
+   "anchor": [
+    -0.1337,
+    1.3132,
+    0.0798
+   ],
+   "normal": [
+    -0.7417,
+    -0.0711,
+    0.667
+   ]
+  },
+  {
+   "id": "pectoralis-major-sternocostal-head.l",
+   "name": "Pectoralis major (sternocostal head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "chest",
+   "anchor": [
+    0.09,
+    1.3837,
+    0.1095
+   ],
+   "normal": [
+    0.2673,
+    0.2902,
+    0.9189
+   ]
+  },
+  {
+   "id": "pectoralis-major-sternocostal-head.r",
+   "name": "Pectoralis major (sternocostal head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "chest",
+   "anchor": [
+    -0.0941,
+    1.3828,
+    0.108
+   ],
+   "normal": [
+    -0.2729,
+    0.3001,
+    0.914
+   ]
+  },
+  {
+   "id": "platysma.l",
+   "name": "Platysma",
+   "side": "left",
+   "kind": "muscle",
+   "region": "chest",
+   "anchor": [
+    0.0391,
+    1.5303,
+    0.0207
+   ],
+   "normal": [
+    0.5106,
+    0.222,
+    0.8307
+   ]
+  },
+  {
+   "id": "platysma.r",
+   "name": "Platysma",
+   "side": "right",
+   "kind": "muscle",
+   "region": "chest",
+   "anchor": [
+    -0.0407,
+    1.5267,
+    0.0231
+   ],
+   "normal": [
+    -0.5246,
+    0.244,
+    0.8156
+   ]
+  },
+  {
+   "id": "external-abdominal-oblique.l",
+   "name": "External abdominal oblique",
+   "side": "left",
+   "kind": "muscle",
+   "region": "abdomen",
+   "anchor": [
+    0.095,
+    1.1319,
+    0.0757
+   ],
+   "normal": [
+    0.5381,
+    -0.104,
+    0.8364
+   ]
+  },
+  {
+   "id": "external-abdominal-oblique.r",
+   "name": "External abdominal oblique",
+   "side": "right",
+   "kind": "muscle",
+   "region": "abdomen",
+   "anchor": [
+    -0.0865,
+    1.1319,
+    0.0855
+   ],
+   "normal": [
+    -0.5386,
+    -0.1064,
+    0.8358
+   ]
+  },
+  {
+   "id": "internal-abdominal-oblique.l",
+   "name": "Internal abdominal oblique",
+   "side": "left",
+   "kind": "muscle",
+   "region": "abdomen",
+   "anchor": [
+    0.0572,
+    1.0126,
+    0.0717
+   ],
+   "normal": [
+    0.4086,
+    -0.2247,
+    0.8846
+   ]
+  },
+  {
+   "id": "internal-abdominal-oblique.r",
+   "name": "Internal abdominal oblique",
+   "side": "right",
+   "kind": "muscle",
+   "region": "abdomen",
+   "anchor": [
+    -0.0516,
+    0.9921,
+    0.0775
+   ],
+   "normal": [
+    -0.1316,
+    -0.2501,
+    0.9592
+   ]
+  },
+  {
+   "id": "linea-alba",
+   "name": "Linea alba",
+   "side": "midline",
+   "kind": "tendon",
+   "region": "abdomen",
+   "anchor": [
+    -0.0023,
+    1.0948,
+    0.104
+   ],
+   "normal": [
+    -0.0143,
+    -0.1225,
     0.9924
    ]
   },
   {
-   "id": "obliques",
-   "name": "Sides of waist (obliques)",
+   "id": "rectus-abdominis.l",
+   "name": "Rectus abdominis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "abdomen",
    "anchor": [
-    0.1196,
-    1.103,
-    0.0335
+    0.0364,
+    1.0023,
+    0.0739
    ],
    "normal": [
-    0.6501,
-    0.128,
-    0.749
+    0.124,
+    -0.2778,
+    0.9526
    ]
   },
   {
-   "id": "serratus",
-   "name": "Side of ribs (serratus anterior)",
+   "id": "rectus-abdominis.r",
+   "name": "Rectus abdominis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "abdomen",
    "anchor": [
-    0.158,
-    1.2785,
-    0.0048
+    -0.0217,
+    1.1264,
+    0.093
    ],
    "normal": [
-    0.685,
-    -0.4025,
-    0.6073
+    0.556,
+    -0.0973,
+    0.8255
    ]
   },
   {
-   "id": "lats",
-   "name": "Mid back (latissimus dorsi)",
+   "id": "infraspinatus.l",
+   "name": "Infraspinatus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "upperBack",
    "anchor": [
-    0.1442,
-    1.2699,
-    -0.1253
+    0.129,
+    1.3936,
+    -0.1438
    ],
    "normal": [
-    0.5328,
-    -0.3585,
-    -0.7666
+    0.3644,
+    -0.1441,
+    -0.92
    ]
   },
   {
-   "id": "erectors",
-   "name": "Lower back (spinal erectors)",
+   "id": "infraspinatus.r",
+   "name": "Infraspinatus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "upperBack",
    "anchor": [
-    -0.0104,
-    1.1156,
-    -0.1149
+    -0.1303,
+    1.3897,
+    -0.1431
    ],
    "normal": [
-    0.0924,
-    -0.0456,
-    -0.9947
+    -0.3852,
+    -0.1424,
+    -0.9118
    ]
   },
   {
-   "id": "glutes",
-   "name": "Buttocks (glutes)",
+   "id": "latissimus-dorsi.l",
+   "name": "Latissimus dorsi",
+   "side": "left",
+   "kind": "muscle",
+   "region": "upperBack",
    "anchor": [
-    0.0859,
-    0.9561,
-    -0.1488
+    0.0804,
+    1.1879,
+    -0.1028
    ],
    "normal": [
-    0.3432,
-    -0.1053,
-    -0.9334
+    0.3439,
+    -0.1512,
+    -0.9268
    ]
   },
   {
-   "id": "quadriceps",
-   "name": "Front of thigh (quadriceps)",
+   "id": "latissimus-dorsi.r",
+   "name": "Latissimus dorsi",
+   "side": "right",
+   "kind": "muscle",
+   "region": "upperBack",
    "anchor": [
-    0.1381,
-    0.7087,
-    0.0563
+    -0.0835,
+    1.1865,
+    -0.1018
    ],
    "normal": [
+    -0.349,
+    -0.1464,
+    -0.9256
+   ]
+  },
+  {
+   "id": "levator-scapulae.r",
+   "name": "Levator scapulae",
+   "side": "right",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    -0.0545,
+    1.5713,
+    -0.0245
+   ],
+   "normal": [
+    -0.9356,
+    0.0348,
+    0.3514
+   ]
+  },
+  {
+   "id": "longissimus-thoracis.l",
+   "name": "Longissimus thoracis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    0.0126,
+    1.0216,
+    -0.0964
+   ],
+   "normal": [
+    0.2688,
+    -0.4438,
+    0.8548
+   ]
+  },
+  {
+   "id": "longissimus-thoracis.r",
+   "name": "Longissimus thoracis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    -0.0081,
+    1.0158,
+    -0.0993
+   ],
+   "normal": [
+    0.3173,
+    -0.3921,
+    0.8635
+   ]
+  },
+  {
+   "id": "serratus-anterior.l",
+   "name": "Serratus anterior",
+   "side": "left",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    0.1594,
+    1.3137,
+    0.0006
+   ],
+   "normal": [
+    0.9796,
+    0.0228,
+    0.1995
+   ]
+  },
+  {
+   "id": "serratus-anterior.r",
+   "name": "Serratus anterior",
+   "side": "right",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    -0.1617,
+    1.3023,
+    0.0118
+   ],
+   "normal": [
+    -0.9804,
+    0.0276,
+    0.1949
+   ]
+  },
+  {
+   "id": "teres-major.l",
+   "name": "Teres major",
+   "side": "left",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    0.1476,
+    1.3546,
+    -0.087
+   ],
+   "normal": [
+    0.4275,
+    0.4207,
+    -0.8002
+   ]
+  },
+  {
+   "id": "teres-major.r",
+   "name": "Teres major",
+   "side": "right",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    -0.1523,
+    1.3466,
+    -0.0865
+   ],
+   "normal": [
+    -0.5334,
+    0.3202,
+    -0.7829
+   ]
+  },
+  {
+   "id": "teres-minor.l",
+   "name": "Teres minor",
+   "side": "left",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    0.1488,
+    1.3777,
+    -0.1067
+   ],
+   "normal": [
+    0.6775,
+    -0.5184,
+    -0.5217
+   ]
+  },
+  {
+   "id": "teres-minor.r",
+   "name": "Teres minor",
+   "side": "right",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    -0.1419,
+    1.3854,
+    -0.1103
+   ],
+   "normal": [
+    -0.6187,
+    -0.4033,
+    -0.6742
+   ]
+  },
+  {
+   "id": "trapezius-descending-part.l",
+   "name": "Trapezius (descending part)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    0.0485,
+    1.3869,
+    -0.1372
+   ],
+   "normal": [
+    -0.1694,
+    0.0482,
+    -0.9844
+   ]
+  },
+  {
+   "id": "trapezius-descending-part.r",
+   "name": "Trapezius (descending part)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    -0.0543,
+    1.3796,
+    -0.1371
+   ],
+   "normal": [
+    0.1633,
+    0.0418,
+    -0.9857
+   ]
+  },
+  {
+   "id": "trapezius-transverse-part.l",
+   "name": "Trapezius (transverse part)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    0.0785,
+    1.506,
+    -0.1041
+   ],
+   "normal": [
+    0.1661,
+    0.649,
+    -0.7424
+   ]
+  },
+  {
+   "id": "trapezius-transverse-part.r",
+   "name": "Trapezius (transverse part)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    -0.0808,
+    1.5002,
+    -0.1076
+   ],
+   "normal": [
+    -0.1722,
+    0.6138,
+    -0.7704
+   ]
+  },
+  {
+   "id": "triceps-brachii-long-head.l",
+   "name": "Triceps brachii (long head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    0.193,
+    1.2538,
+    -0.0955
+   ],
+   "normal": [
+    -0.2038,
+    -0.1393,
+    -0.969
+   ]
+  },
+  {
+   "id": "triceps-brachii-long-head.r",
+   "name": "Triceps brachii (long head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "upperBack",
+   "anchor": [
+    -0.2019,
+    1.2505,
+    -0.0967
+   ],
+   "normal": [
+    0.2209,
+    -0.1328,
+    -0.9662
+   ]
+  },
+  {
+   "id": "iliocostalis-lumborum.l",
+   "name": "Iliocostalis lumborum",
+   "side": "left",
+   "kind": "muscle",
+   "region": "lowerBack",
+   "anchor": [
+    0.0114,
+    0.9757,
+    -0.1172
+   ],
+   "normal": [
+    0.091,
+    0.0622,
+    -0.9939
+   ]
+  },
+  {
+   "id": "iliocostalis-lumborum.r",
+   "name": "Iliocostalis lumborum",
+   "side": "right",
+   "kind": "muscle",
+   "region": "lowerBack",
+   "anchor": [
+    -0.0195,
+    0.9826,
+    -0.1131
+   ],
+   "normal": [
+    -0.3867,
+    0.022,
+    -0.922
+   ]
+  },
+  {
+   "id": "biceps-brachii-long-head.r",
+   "name": "Biceps brachii (long head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightUpperArm",
+   "anchor": [
+    -0.2377,
+    1.2821,
+    0.0073
+   ],
+   "normal": [
+    -0.6184,
+    0.0759,
+    0.7822
+   ]
+  },
+  {
+   "id": "biceps-brachii-short-head.r",
+   "name": "Biceps brachii (short head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightUpperArm",
+   "anchor": [
+    -0.1994,
+    1.2758,
+    0.0142
+   ],
+   "normal": [
+    0.068,
+    -0.0932,
+    0.9933
+   ]
+  },
+  {
+   "id": "brachialis.r",
+   "name": "Brachialis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightUpperArm",
+   "anchor": [
+    -0.239,
+    1.243,
+    -0.022
+   ],
+   "normal": [
+    -0.7302,
+    0.1274,
+    0.6713
+   ]
+  },
+  {
+   "id": "triceps-brachii-lateral-head.r",
+   "name": "Triceps brachii (lateral head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightUpperArm",
+   "anchor": [
+    -0.2409,
+    1.2776,
+    -0.08
+   ],
+   "normal": [
+    -0.7971,
+    0.0431,
+    -0.6023
+   ]
+  },
+  {
+   "id": "triceps-brachii-medial-head.r",
+   "name": "Triceps brachii (medial head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightUpperArm",
+   "anchor": [
+    -0.1809,
+    1.1937,
+    -0.0602
+   ],
+   "normal": [
+    0.9186,
+    -0.2702,
+    -0.2883
+   ]
+  },
+  {
+   "id": "biceps-brachii-long-head.l",
+   "name": "Biceps brachii (long head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftUpperArm",
+   "anchor": [
+    0.2324,
+    1.2829,
+    0.0096
+   ],
+   "normal": [
+    0.5857,
+    0.0753,
+    0.807
+   ]
+  },
+  {
+   "id": "biceps-brachii-short-head.l",
+   "name": "Biceps brachii (short head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftUpperArm",
+   "anchor": [
+    0.1985,
+    1.2712,
+    0.0137
+   ],
+   "normal": [
+    -0.0818,
+    -0.0998,
+    0.9916
+   ]
+  },
+  {
+   "id": "brachialis.l",
+   "name": "Brachialis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftUpperArm",
+   "anchor": [
+    0.2452,
+    1.2434,
+    -0.0179
+   ],
+   "normal": [
+    0.7185,
+    0.118,
+    0.6855
+   ]
+  },
+  {
+   "id": "triceps-brachii-lateral-head.l",
+   "name": "Triceps brachii (lateral head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftUpperArm",
+   "anchor": [
+    0.2408,
+    1.2784,
+    -0.0804
+   ],
+   "normal": [
+    0.7954,
+    0.0387,
+    -0.6048
+   ]
+  },
+  {
+   "id": "triceps-brachii-medial-head.l",
+   "name": "Triceps brachii (medial head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftUpperArm",
+   "anchor": [
+    0.1773,
+    1.1936,
+    -0.0546
+   ],
+   "normal": [
+    -0.9392,
+    -0.2627,
+    -0.221
+   ]
+  },
+  {
+   "id": "anconeus.r",
+   "name": "Anconeus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightElbow",
+   "anchor": [
+    -0.2349,
+    1.1163,
+    -0.071
+   ],
+   "normal": [
+    -0.1377,
+    -0.1922,
+    -0.9717
+   ]
+  },
+  {
+   "id": "abductor-pollicis-longus.r",
+   "name": "Abductor pollicis longus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2907,
+    0.9443,
+    -0.0001
+   ],
+   "normal": [
+    -0.7408,
+    -0.0466,
+    -0.6701
+   ]
+  },
+  {
+   "id": "brachioradialis.r",
+   "name": "Brachioradialis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2846,
+    1.1074,
+    -0.0036
+   ],
+   "normal": [
+    -0.842,
+    0.2086,
+    0.4976
+   ]
+  },
+  {
+   "id": "extensor-carpi-radialis-brevis.r",
+   "name": "Extensor carpi radialis brevis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2763,
+    1.0649,
+    -0.0335
+   ],
+   "normal": [
+    -0.7304,
+    -0.0743,
+    -0.679
+   ]
+  },
+  {
+   "id": "extensor-carpi-radialis-longus.r",
+   "name": "Extensor carpi radialis longus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2864,
+    1.0952,
+    -0.0361
+   ],
+   "normal": [
+    -0.898,
+    0.0242,
+    -0.4394
+   ]
+  },
+  {
+   "id": "extensor-carpi-ulnaris-humeral-head.r",
+   "name": "Extensor carpi ulnaris (humeral head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2483,
+    1.0265,
+    -0.0424
+   ],
+   "normal": [
+    -0.0727,
+    -0.28,
+    -0.9572
+   ]
+  },
+  {
+   "id": "extensor-carpi-ulnaris-ulnar-head.r",
+   "name": "Extensor carpi ulnaris (ulnar head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2379,
+    0.9418,
+    0.0089
+   ],
+   "normal": [
+    0.8165,
+    -0.4788,
+    -0.3227
+   ]
+  },
+  {
+   "id": "extensor-digiti-minimi.r",
+   "name": "Extensor digiti minimi",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2577,
+    0.9487,
+    -0.0161
+   ],
+   "normal": [
+    -0.1646,
+    -0.3099,
+    -0.9364
+   ]
+  },
+  {
+   "id": "extensor-digitorum.r",
+   "name": "Extensor digitorum",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2765,
+    0.9651,
+    -0.0146
+   ],
+   "normal": [
+    -0.4294,
+    -0.2398,
+    -0.8707
+   ]
+  },
+  {
+   "id": "extensor-pollicis-brevis.r",
+   "name": "Extensor pollicis brevis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.3018,
+    0.9037,
+    0.0105
+   ],
+   "normal": [
+    -0.6004,
+    -0.0061,
+    -0.7997
+   ]
+  },
+  {
+   "id": "extensor-pollicis-longus.r",
+   "name": "Extensor pollicis longus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.3122,
+    0.8763,
+    0.0255
+   ],
+   "normal": [
+    -0.2974,
+    -0.468,
+    -0.8322
+   ]
+  },
+  {
+   "id": "flexor-carpi-radialis.r",
+   "name": "Flexor carpi radialis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2438,
+    1.0348,
+    0.026
+   ],
+   "normal": [
+    -0.1056,
+    0.2001,
+    0.9741
+   ]
+  },
+  {
+   "id": "flexor-carpi-ulnaris-humeral-head.r",
+   "name": "Flexor carpi ulnaris (humeral head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2158,
+    1.0195,
+    0.0047
+   ],
+   "normal": [
+    0.9025,
+    -0.1356,
+    0.4087
+   ]
+  },
+  {
+   "id": "flexor-carpi-ulnaris-ulnar-head.r",
+   "name": "Flexor carpi ulnaris (ulnar head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.212,
+    1.0587,
+    -0.0457
+   ],
+   "normal": [
+    0.5085,
+    -0.3421,
+    -0.7902
+   ]
+  },
+  {
+   "id": "flexor-digitorum-superficialis-humero-ulnar-head.r",
+   "name": "Flexor digitorum superficialis (humero-ulnar head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2534,
+    0.9397,
+    0.0333
+   ],
+   "normal": [
+    0.5758,
+    0.0456,
+    0.8163
+   ]
+  },
+  {
+   "id": "flexor-digitorum-superficialis-radial-head.r",
+   "name": "Flexor digitorum superficialis (radial head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2729,
+    1.0033,
+    0.0152
+   ],
+   "normal": [
+    -0.7402,
+    0.1938,
+    0.6439
+   ]
+  },
+  {
+   "id": "palmaris-longus.r",
+   "name": "Palmaris longus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.246,
+    0.9713,
+    0.0303
+   ],
+   "normal": [
+    0.1881,
+    0.0879,
+    0.9782
+   ]
+  },
+  {
+   "id": "pronator-teres-superficial-head.r",
+   "name": "Pronator teres (superficial head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightForearm",
+   "anchor": [
+    -0.2328,
+    1.1394,
+    0.006
+   ],
+   "normal": [
+    0.0612,
+    0.1376,
+    0.9886
+   ]
+  },
+  {
+   "id": "abductor-pollicis-longus.l",
+   "name": "Abductor pollicis longus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.291,
+    0.9419,
+    -0.0
+   ],
+   "normal": [
+    0.6616,
+    -0.0915,
+    -0.7443
+   ]
+  },
+  {
+   "id": "anconeus.l",
+   "name": "Anconeus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2362,
+    1.1155,
+    -0.0761
+   ],
+   "normal": [
+    0.1126,
+    -0.1328,
+    -0.9847
+   ]
+  },
+  {
+   "id": "brachioradialis.l",
+   "name": "Brachioradialis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2821,
+    1.1116,
+    -0.0016
+   ],
+   "normal": [
+    0.837,
+    0.2067,
+    0.5066
+   ]
+  },
+  {
+   "id": "extensor-carpi-radialis-brevis.l",
+   "name": "Extensor carpi radialis brevis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2782,
+    1.051,
+    -0.0304
+   ],
+   "normal": [
+    0.7208,
+    -0.0867,
+    -0.6877
+   ]
+  },
+  {
+   "id": "extensor-carpi-radialis-longus.l",
+   "name": "Extensor carpi radialis longus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2872,
+    1.0938,
+    -0.0316
+   ],
+   "normal": [
+    0.8868,
+    0.0246,
+    -0.4616
+   ]
+  },
+  {
+   "id": "extensor-carpi-ulnaris-humeral-head.l",
+   "name": "Extensor carpi ulnaris (humeral head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2488,
+    1.0237,
+    -0.0471
+   ],
+   "normal": [
+    0.0559,
+    -0.2943,
+    -0.9541
+   ]
+  },
+  {
+   "id": "extensor-carpi-ulnaris-ulnar-head.l",
+   "name": "Extensor carpi ulnaris (ulnar head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2388,
+    0.9323,
+    0.0078
+   ],
+   "normal": [
+    -0.3225,
+    -0.2347,
+    -0.917
+   ]
+  },
+  {
+   "id": "extensor-digiti-minimi.l",
+   "name": "Extensor digiti minimi",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2601,
+    0.9439,
+    -0.014
+   ],
+   "normal": [
+    0.253,
+    -0.3204,
+    -0.9129
+   ]
+  },
+  {
+   "id": "extensor-digitorum.l",
+   "name": "Extensor digitorum",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2713,
+    0.9668,
+    -0.0154
+   ],
+   "normal": [
+    0.4593,
+    -0.2232,
+    -0.8598
+   ]
+  },
+  {
+   "id": "extensor-pollicis-brevis.l",
+   "name": "Extensor pollicis brevis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.3013,
+    0.9024,
+    0.0092
+   ],
+   "normal": [
+    0.5654,
+    -0.0806,
+    -0.8209
+   ]
+  },
+  {
+   "id": "extensor-pollicis-longus.l",
+   "name": "Extensor pollicis longus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.3135,
+    0.8749,
+    0.026
+   ],
+   "normal": [
+    0.6662,
+    -0.1826,
+    -0.7231
+   ]
+  },
+  {
+   "id": "flexor-carpi-radialis.l",
+   "name": "Flexor carpi radialis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2471,
+    1.0365,
+    0.0259
+   ],
+   "normal": [
+    0.0872,
+    0.1941,
+    0.9771
+   ]
+  },
+  {
+   "id": "flexor-carpi-ulnaris-humeral-head.l",
+   "name": "Flexor carpi ulnaris (humeral head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2169,
+    1.0132,
+    0.0038
+   ],
+   "normal": [
+    -0.8888,
+    -0.0987,
+    0.4475
+   ]
+  },
+  {
+   "id": "flexor-carpi-ulnaris-ulnar-head.l",
+   "name": "Flexor carpi ulnaris (ulnar head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2133,
+    1.0588,
+    -0.0454
+   ],
+   "normal": [
+    -0.5018,
+    -0.3457,
+    -0.7929
+   ]
+  },
+  {
+   "id": "flexor-digitorum-superficialis-humero-ulnar-head.l",
+   "name": "Flexor digitorum superficialis (humero-ulnar head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2513,
+    0.949,
+    0.0316
+   ],
+   "normal": [
+    -0.6024,
+    -0.0778,
+    0.7944
+   ]
+  },
+  {
+   "id": "flexor-digitorum-superficialis-radial-head.l",
+   "name": "Flexor digitorum superficialis (radial head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2681,
+    1.0012,
+    0.0195
+   ],
+   "normal": [
+    0.7109,
+    0.1966,
+    0.6752
+   ]
+  },
+  {
+   "id": "palmaris-longus.l",
+   "name": "Palmaris longus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2453,
+    0.9761,
+    0.0289
+   ],
+   "normal": [
+    -0.1878,
+    0.0855,
+    0.9785
+   ]
+  },
+  {
+   "id": "pronator-teres-superficial-head.l",
+   "name": "Pronator teres (superficial head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftForearm",
+   "anchor": [
+    0.2313,
+    1.1366,
+    0.0072
+   ],
+   "normal": [
+    -0.1047,
+    0.1289,
+    0.9861
+   ]
+  },
+  {
+   "id": "abductor-digiti-minimi-of-hand.r",
+   "name": "Abductor digiti minimi of hand",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHand",
+   "anchor": [
+    -0.2463,
+    0.86,
+    0.0471
+   ],
+   "normal": [
+    0.3489,
     0.1327,
-    -0.1887,
-    0.973
+    0.9277
    ]
   },
   {
-   "id": "adductors",
-   "name": "Inner thigh (adductors)",
+   "id": "abductor-pollicis-brevis.r",
+   "name": "Abductor pollicis brevis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHand",
    "anchor": [
-    0.0451,
-    0.7992,
-    0.0218
+    -0.2954,
+    0.8892,
+    0.0581
    ],
    "normal": [
-    -0.7512,
-    -0.1144,
-    0.6501
+    0.1876,
+    0.1908,
+    0.9636
    ]
   },
   {
-   "id": "hamstrings",
-   "name": "Back of thigh (hamstrings)",
+   "id": "adductor-pollicis-oblique-head.r",
+   "name": "Adductor pollicis (oblique head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHand",
    "anchor": [
-    0.1293,
-    0.6855,
-    -0.1025
+    -0.3074,
+    0.8626,
+    0.0444
    ],
    "normal": [
-    0.1479,
-    -0.1042,
-    -0.9835
+    0.1609,
+    -0.5001,
+    0.8509
    ]
   },
   {
-   "id": "calves",
-   "name": "Calves (gastrocnemius & soleus)",
+   "id": "adductor-pollicis-transverse-head.r",
+   "name": "Adductor pollicis (transverse head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHand",
    "anchor": [
-    0.1815,
-    0.3567,
-    -0.1276
+    -0.318,
+    0.8515,
+    0.0421
    ],
    "normal": [
-    0.0372,
-    -0.1197,
-    -0.9921
+    -0.9713,
+    -0.1701,
+    0.1664
    ]
   },
   {
-   "id": "tibialis",
-   "name": "Front of shin (tibialis anterior)",
+   "id": "dorsal-interossei-of-hand.r",
+   "name": "Dorsal interossei of hand",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHand",
    "anchor": [
-    0.1919,
-    0.3475,
-    -0.0068
+    -0.2982,
+    0.8378,
+    0.0301
    ],
    "normal": [
-    -0.0439,
-    -0.0711,
-    0.9965
+    -0.3983,
+    -0.2737,
+    -0.8755
+   ]
+  },
+  {
+   "id": "flexor-digiti-minimi-of-hand.r",
+   "name": "Flexor digiti minimi of hand",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHand",
+   "anchor": [
+    -0.2513,
+    0.8471,
+    0.0491
+   ],
+   "normal": [
+    -0.7645,
+    -0.242,
+    0.5975
+   ]
+  },
+  {
+   "id": "flexor-pollicis-brevis-deep-head.r",
+   "name": "Flexor pollicis brevis (deep head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHand",
+   "anchor": [
+    -0.2896,
+    0.8891,
+    0.047
+   ],
+   "normal": [
+    -0.0503,
+    0.2316,
+    0.9715
+   ]
+  },
+  {
+   "id": "flexor-pollicis-brevis-superficial-head.r",
+   "name": "Flexor pollicis brevis (superficial head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHand",
+   "anchor": [
+    -0.2988,
+    0.8772,
+    0.0544
+   ],
+   "normal": [
+    0.1645,
+    0.1176,
+    0.9793
+   ]
+  },
+  {
+   "id": "lumbricals-of-hand.r",
+   "name": "Lumbricals of hand",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHand",
+   "anchor": [
+    -0.2953,
+    0.8159,
+    0.0478
+   ],
+   "normal": [
+    -0.7297,
+    0.475,
+    0.4919
+   ]
+  },
+  {
+   "id": "opponens-digiti-minimi-of-hand.r",
+   "name": "Opponens digiti minimi of hand",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHand",
+   "anchor": [
+    -0.2551,
+    0.8577,
+    0.0443
+   ],
+   "normal": [
+    0.0962,
+    -0.0315,
+    0.9949
+   ]
+  },
+  {
+   "id": "opponens-pollicis.r",
+   "name": "Opponens pollicis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHand",
+   "anchor": [
+    -0.3098,
+    0.8702,
+    0.0467
+   ],
+   "normal": [
+    -0.0933,
+    -0.7829,
+    -0.6152
+   ]
+  },
+  {
+   "id": "abductor-digiti-minimi-of-hand.l",
+   "name": "Abductor digiti minimi of hand",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHand",
+   "anchor": [
+    0.2448,
+    0.8597,
+    0.0458
+   ],
+   "normal": [
+    -0.5276,
+    0.1584,
+    0.8346
+   ]
+  },
+  {
+   "id": "abductor-pollicis-brevis.l",
+   "name": "Abductor pollicis brevis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHand",
+   "anchor": [
+    0.2945,
+    0.8903,
+    0.0589
+   ],
+   "normal": [
+    -0.1714,
+    0.1934,
+    0.966
+   ]
+  },
+  {
+   "id": "adductor-pollicis-oblique-head.l",
+   "name": "Adductor pollicis (oblique head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHand",
+   "anchor": [
+    0.3022,
+    0.8644,
+    0.0404
+   ],
+   "normal": [
+    -0.1739,
+    -0.2112,
+    0.9618
+   ]
+  },
+  {
+   "id": "adductor-pollicis-transverse-head.l",
+   "name": "Adductor pollicis (transverse head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHand",
+   "anchor": [
+    0.315,
+    0.8497,
+    0.0426
+   ],
+   "normal": [
+    0.8585,
+    -0.3565,
+    0.3687
+   ]
+  },
+  {
+   "id": "dorsal-interossei-of-hand.l",
+   "name": "Dorsal interossei of hand",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHand",
+   "anchor": [
+    0.2981,
+    0.8394,
+    0.0282
+   ],
+   "normal": [
+    0.3897,
+    -0.272,
+    -0.8799
+   ]
+  },
+  {
+   "id": "flexor-digiti-minimi-of-hand.l",
+   "name": "Flexor digiti minimi of hand",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHand",
+   "anchor": [
+    0.2537,
+    0.8548,
+    0.052
+   ],
+   "normal": [
+    0.5053,
+    -0.0062,
+    0.8629
+   ]
+  },
+  {
+   "id": "flexor-pollicis-brevis-deep-head.l",
+   "name": "Flexor pollicis brevis (deep head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHand",
+   "anchor": [
+    0.3025,
+    0.8821,
+    0.0497
+   ],
+   "normal": [
+    0.294,
+    0.0198,
+    0.9556
+   ]
+  },
+  {
+   "id": "flexor-pollicis-brevis-superficial-head.l",
+   "name": "Flexor pollicis brevis (superficial head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHand",
+   "anchor": [
+    0.2966,
+    0.8788,
+    0.0548
+   ],
+   "normal": [
+    -0.2653,
+    -0.0843,
+    0.9605
+   ]
+  },
+  {
+   "id": "lumbricals-of-hand.l",
+   "name": "Lumbricals of hand",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHand",
+   "anchor": [
+    0.2791,
+    0.8136,
+    0.0467
+   ],
+   "normal": [
+    0.354,
+    0.4759,
+    0.8051
+   ]
+  },
+  {
+   "id": "opponens-digiti-minimi-of-hand.l",
+   "name": "Opponens digiti minimi of hand",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHand",
+   "anchor": [
+    0.2556,
+    0.8574,
+    0.042
+   ],
+   "normal": [
+    -0.6682,
+    0.0722,
+    0.7405
+   ]
+  },
+  {
+   "id": "opponens-pollicis.l",
+   "name": "Opponens pollicis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHand",
+   "anchor": [
+    0.3067,
+    0.8689,
+    0.0474
+   ],
+   "normal": [
+    -0.3421,
+    -0.6718,
+    0.657
+   ]
+  },
+  {
+   "id": "adductor-hallucis-transverse-head.l",
+   "name": "Adductor hallucis (transverse head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "hips",
+   "anchor": [
+    0.1088,
+    0.0143,
+    0.0622
+   ],
+   "normal": [
+    0.1433,
+    -0.984,
+    -0.1063
+   ]
+  },
+  {
+   "id": "adductor-hallucis-transverse-head.r",
+   "name": "Adductor hallucis (transverse head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "hips",
+   "anchor": [
+    -0.104,
+    0.0141,
+    0.0689
+   ],
+   "normal": [
+    0.0615,
+    -0.9971,
+    -0.0458
+   ]
+  },
+  {
+   "id": "inguinal-ligament.l",
+   "name": "Inguinal ligament",
+   "side": "left",
+   "kind": "tendon",
+   "region": "hips",
+   "anchor": [
+    0.0802,
+    0.9382,
+    0.0661
+   ],
+   "normal": [
+    -0.0382,
+    -0.0083,
+    0.9992
+   ]
+  },
+  {
+   "id": "inguinal-ligament.r",
+   "name": "Inguinal ligament",
+   "side": "right",
+   "kind": "tendon",
+   "region": "hips",
+   "anchor": [
+    -0.0797,
+    0.9377,
+    0.0657
+   ],
+   "normal": [
+    -0.1291,
+    -0.1425,
+    0.9813
+   ]
+  },
+  {
+   "id": "pectineus.l",
+   "name": "Pectineus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "hips",
+   "anchor": [
+    0.0492,
+    0.8595,
+    0.061
+   ],
+   "normal": [
+    0.1029,
+    -0.0285,
+    0.9943
+   ]
+  },
+  {
+   "id": "pectineus.r",
+   "name": "Pectineus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "hips",
+   "anchor": [
+    -0.0508,
+    0.8568,
+    0.0606
+   ],
+   "normal": [
+    -0.0922,
+    -0.0539,
+    0.9943
+   ]
+  },
+  {
+   "id": "gluteus-maximus.r",
+   "name": "Gluteus maximus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHip",
+   "anchor": [
+    -0.0906,
+    0.9031,
+    -0.1069
+   ],
+   "normal": [
+    -0.3397,
+    -0.0684,
+    -0.938
+   ]
+  },
+  {
+   "id": "gluteus-medius.r",
+   "name": "Gluteus medius",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHip",
+   "anchor": [
+    -0.1392,
+    1.0119,
+    -0.0564
+   ],
+   "normal": [
+    -0.7361,
+    0.3595,
+    -0.5735
+   ]
+  },
+  {
+   "id": "tensor-fasciae-latae.r",
+   "name": "Tensor fasciae latae",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightHip",
+   "anchor": [
+    -0.1553,
+    0.9392,
+    0.0508
+   ],
+   "normal": [
+    -0.6764,
+    0.0381,
+    0.7355
+   ]
+  },
+  {
+   "id": "gluteus-maximus.l",
+   "name": "Gluteus maximus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHip",
+   "anchor": [
+    0.09,
+    0.9023,
+    -0.1066
+   ],
+   "normal": [
+    0.3323,
+    -0.0674,
+    -0.9408
+   ]
+  },
+  {
+   "id": "gluteus-medius.l",
+   "name": "Gluteus medius",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHip",
+   "anchor": [
+    0.1387,
+    1.0132,
+    -0.0586
+   ],
+   "normal": [
+    0.7297,
+    0.3485,
+    -0.5883
+   ]
+  },
+  {
+   "id": "tensor-fasciae-latae.l",
+   "name": "Tensor fasciae latae",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftHip",
+   "anchor": [
+    0.1559,
+    0.929,
+    0.0525
+   ],
+   "normal": [
+    0.6858,
+    0.045,
+    0.7264
+   ]
+  },
+  {
+   "id": "adductor-longus.r",
+   "name": "Adductor longus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightThigh",
+   "anchor": [
+    -0.0342,
+    0.7994,
+    0.0502
+   ],
+   "normal": [
+    0.2986,
+    -0.1473,
+    0.9429
+   ]
+  },
+  {
+   "id": "adductor-magnus.r",
+   "name": "Adductor magnus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightThigh",
+   "anchor": [
+    -0.0091,
+    0.7632,
+    -0.018
+   ],
+   "normal": [
+    0.9881,
+    -0.0833,
+    -0.1295
+   ]
+  },
+  {
+   "id": "biceps-femoris-long-head.r",
+   "name": "Biceps femoris (long head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightThigh",
+   "anchor": [
+    -0.1157,
+    0.6436,
+    -0.0802
+   ],
+   "normal": [
+    -0.5772,
+    -0.0128,
+    -0.8165
+   ]
+  },
+  {
+   "id": "biceps-femoris-short-head.r",
+   "name": "Biceps femoris (short head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightThigh",
+   "anchor": [
+    -0.1304,
+    0.5182,
+    -0.038
+   ],
+   "normal": [
+    -0.9775,
+    0.0941,
+    0.1887
+   ]
+  },
+  {
+   "id": "gracilis.r",
+   "name": "Gracilis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightThigh",
+   "anchor": [
+    -0.018,
+    0.6496,
+    0.0005
+   ],
+   "normal": [
+    0.8954,
+    -0.1455,
+    0.4209
+   ]
+  },
+  {
+   "id": "iliotibial-tract.r",
+   "name": "Iliotibial tract",
+   "side": "right",
+   "kind": "tendon",
+   "region": "rightThigh",
+   "anchor": [
+    -0.1697,
+    0.7516,
+    -0.0141
+   ],
+   "normal": [
+    -0.9805,
+    -0.0493,
+    -0.1903
+   ]
+  },
+  {
+   "id": "rectus-femoris.r",
+   "name": "Rectus femoris",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightThigh",
+   "anchor": [
+    -0.1138,
+    0.6668,
+    0.0455
+   ],
+   "normal": [
+    -0.2816,
+    -0.0552,
+    0.9579
+   ]
+  },
+  {
+   "id": "sartorius.r",
+   "name": "Sartorius",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightThigh",
+   "anchor": [
+    -0.0612,
+    0.7045,
+    0.0447
+   ],
+   "normal": [
+    0.4542,
+    -0.0593,
+    0.8889
+   ]
+  },
+  {
+   "id": "semimembranosus.r",
+   "name": "Semimembranosus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightThigh",
+   "anchor": [
+    -0.0381,
+    0.6047,
+    -0.0652
+   ],
+   "normal": [
+    0.5835,
+    -0.065,
+    -0.8095
+   ]
+  },
+  {
+   "id": "semitendinosus.r",
+   "name": "Semitendinosus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightThigh",
+   "anchor": [
+    -0.0469,
+    0.6559,
+    -0.0874
+   ],
+   "normal": [
+    0.4723,
+    -0.0077,
+    -0.8814
+   ]
+  },
+  {
+   "id": "vastus-lateralis.r",
+   "name": "Vastus lateralis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightThigh",
+   "anchor": [
+    -0.1454,
+    0.6109,
+    0.0287
+   ],
+   "normal": [
+    -0.8213,
+    -0.203,
+    0.5331
+   ]
+  },
+  {
+   "id": "vastus-medialis.r",
+   "name": "Vastus medialis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightThigh",
+   "anchor": [
+    -0.0557,
+    0.5921,
+    0.0472
+   ],
+   "normal": [
+    0.498,
+    -0.0992,
+    0.8615
+   ]
+  },
+  {
+   "id": "adductor-longus.l",
+   "name": "Adductor longus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftThigh",
+   "anchor": [
+    0.031,
+    0.7975,
+    0.0473
+   ],
+   "normal": [
+    -0.3474,
+    -0.142,
+    0.9269
+   ]
+  },
+  {
+   "id": "adductor-magnus.l",
+   "name": "Adductor magnus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftThigh",
+   "anchor": [
+    0.0135,
+    0.7534,
+    -0.0243
+   ],
+   "normal": [
+    -0.987,
+    -0.0831,
+    0.1377
+   ]
+  },
+  {
+   "id": "biceps-femoris-long-head.l",
+   "name": "Biceps femoris (long head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftThigh",
+   "anchor": [
+    0.1161,
+    0.6461,
+    -0.0802
+   ],
+   "normal": [
+    0.5649,
+    -0.0141,
+    -0.825
+   ]
+  },
+  {
+   "id": "biceps-femoris-short-head.l",
+   "name": "Biceps femoris (short head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftThigh",
+   "anchor": [
+    0.1298,
+    0.5114,
+    -0.0412
+   ],
+   "normal": [
+    0.9885,
+    0.0805,
+    0.128
+   ]
+  },
+  {
+   "id": "gracilis.l",
+   "name": "Gracilis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftThigh",
+   "anchor": [
+    0.0155,
+    0.6538,
+    -0.0053
+   ],
+   "normal": [
+    -0.883,
+    -0.155,
+    0.443
+   ]
+  },
+  {
+   "id": "iliotibial-tract.l",
+   "name": "Iliotibial tract",
+   "side": "left",
+   "kind": "tendon",
+   "region": "leftThigh",
+   "anchor": [
+    0.1666,
+    0.7578,
+    -0.0184
+   ],
+   "normal": [
+    0.9844,
+    -0.0495,
+    -0.169
+   ]
+  },
+  {
+   "id": "rectus-femoris.l",
+   "name": "Rectus femoris",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftThigh",
+   "anchor": [
+    0.1213,
+    0.6739,
+    0.0678
+   ],
+   "normal": [
+    0.2906,
+    -0.0685,
+    0.9544
+   ]
+  },
+  {
+   "id": "sartorius.l",
+   "name": "Sartorius",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftThigh",
+   "anchor": [
+    0.0583,
+    0.7086,
+    0.0437
+   ],
+   "normal": [
+    -0.45,
+    -0.0541,
+    0.8914
+   ]
+  },
+  {
+   "id": "semimembranosus.l",
+   "name": "Semimembranosus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftThigh",
+   "anchor": [
+    0.0402,
+    0.6001,
+    -0.0646
+   ],
+   "normal": [
+    -0.5985,
+    -0.0592,
+    -0.799
+   ]
+  },
+  {
+   "id": "semitendinosus.l",
+   "name": "Semitendinosus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftThigh",
+   "anchor": [
+    0.0367,
+    0.6561,
+    -0.0817
+   ],
+   "normal": [
+    -0.4664,
+    -0.0127,
+    -0.8845
+   ]
+  },
+  {
+   "id": "vastus-lateralis.l",
+   "name": "Vastus lateralis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftThigh",
+   "anchor": [
+    0.1457,
+    0.6124,
+    0.0297
+   ],
+   "normal": [
+    0.8181,
+    -0.2001,
+    0.5391
+   ]
+  },
+  {
+   "id": "vastus-medialis.l",
+   "name": "Vastus medialis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftThigh",
+   "anchor": [
+    0.0578,
+    0.5929,
+    0.0496
+   ],
+   "normal": [
+    -0.519,
+    -0.0992,
+    0.849
+   ]
+  },
+  {
+   "id": "lateral-patellar-retinaculum.r",
+   "name": "Lateral patellar retinaculum",
+   "side": "right",
+   "kind": "tendon",
+   "region": "rightKnee",
+   "anchor": [
+    -0.1242,
+    0.4703,
+    -0.004
+   ],
+   "normal": [
+    -0.9877,
+    -0.035,
+    0.1523
+   ]
+  },
+  {
+   "id": "medial-patellar-retinaculum.r",
+   "name": "Medial patellar retinaculum",
+   "side": "right",
+   "kind": "tendon",
+   "region": "rightKnee",
+   "anchor": [
+    -0.0446,
+    0.4701,
+    0.0053
+   ],
+   "normal": [
+    0.7514,
+    0.0929,
+    0.6533
+   ]
+  },
+  {
+   "id": "plantaris.r",
+   "name": "Plantaris",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightKnee",
+   "anchor": [
+    -0.0528,
+    0.2314,
+    -0.0701
+   ],
+   "normal": [
+    0.386,
+    0.1786,
+    -0.905
+   ]
+  },
+  {
+   "id": "lateral-patellar-retinaculum.l",
+   "name": "Lateral patellar retinaculum",
+   "side": "left",
+   "kind": "tendon",
+   "region": "leftKnee",
+   "anchor": [
+    0.1234,
+    0.4693,
+    0.0012
+   ],
+   "normal": [
+    0.9921,
+    -0.046,
+    0.1168
+   ]
+  },
+  {
+   "id": "medial-patellar-retinaculum.l",
+   "name": "Medial patellar retinaculum",
+   "side": "left",
+   "kind": "tendon",
+   "region": "leftKnee",
+   "anchor": [
+    0.0452,
+    0.472,
+    0.0075
+   ],
+   "normal": [
+    -0.8261,
+    -0.0612,
+    0.5602
+   ]
+  },
+  {
+   "id": "plantaris.l",
+   "name": "Plantaris",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftKnee",
+   "anchor": [
+    0.0521,
+    0.2172,
+    -0.0704
+   ],
+   "normal": [
+    -0.3092,
+    0.2301,
+    -0.9227
+   ]
+  },
+  {
+   "id": "tibialis-anterior.r",
+   "name": "Tibialis anterior",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightShin",
+   "anchor": [
+    -0.1124,
+    0.2777,
+    0.0041
+   ],
+   "normal": [
+    -0.6024,
+    -0.091,
+    0.793
+   ]
+  },
+  {
+   "id": "tibialis-anterior.l",
+   "name": "Tibialis anterior",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftShin",
+   "anchor": [
+    0.1113,
+    0.2765,
+    0.0046
+   ],
+   "normal": [
+    0.5874,
+    -0.091,
+    0.8042
+   ]
+  },
+  {
+   "id": "calcaneal-tendon.r",
+   "name": "Calcaneal tendon",
+   "side": "right",
+   "kind": "tendon",
+   "region": "rightCalf",
+   "anchor": [
+    -0.0802,
+    0.1536,
+    -0.0769
+   ],
+   "normal": [
+    -0.1894,
+    -0.0401,
+    -0.9811
+   ]
+  },
+  {
+   "id": "extensor-digitorum-longus.r",
+   "name": "Extensor digitorum longus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightCalf",
+   "anchor": [
+    -0.125,
+    0.2742,
+    -0.0247
+   ],
+   "normal": [
+    -0.9768,
+    -0.0513,
+    0.2079
+   ]
+  },
+  {
+   "id": "extensor-hallucis-longus.r",
+   "name": "Extensor hallucis longus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightCalf",
+   "anchor": [
+    -0.0795,
+    0.091,
+    0.0151
+   ],
+   "normal": [
+    -0.4933,
+    0.4711,
+    0.7312
+   ]
+  },
+  {
+   "id": "fibularis-brevis.r",
+   "name": "Fibularis brevis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightCalf",
+   "anchor": [
+    -0.1093,
+    0.1469,
+    -0.0498
+   ],
+   "normal": [
+    -0.8502,
+    -0.0917,
+    -0.5184
+   ]
+  },
+  {
+   "id": "fibularis-longus.r",
+   "name": "Fibularis longus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightCalf",
+   "anchor": [
+    -0.1342,
+    0.2798,
+    -0.0423
+   ],
+   "normal": [
+    -0.9859,
+    -0.0971,
+    -0.1366
+   ]
+  },
+  {
+   "id": "gastrocnemius-lateral-head.r",
+   "name": "Gastrocnemius (lateral head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightCalf",
+   "anchor": [
+    -0.1295,
+    0.3753,
+    -0.0997
+   ],
+   "normal": [
+    -0.6502,
+    0.0174,
+    -0.7596
+   ]
+  },
+  {
+   "id": "gastrocnemius-medial-head.r",
+   "name": "Gastrocnemius (medial head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightCalf",
+   "anchor": [
+    -0.0583,
+    0.3546,
+    -0.0689
+   ],
+   "normal": [
+    0.6389,
+    0.0083,
+    -0.7692
+   ]
+  },
+  {
+   "id": "soleus.r",
+   "name": "Soleus",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightCalf",
+   "anchor": [
+    -0.0638,
+    0.2718,
+    -0.044
+   ],
+   "normal": [
+    0.7555,
+    -0.4897,
+    0.4351
+   ]
+  },
+  {
+   "id": "calcaneal-tendon.l",
+   "name": "Calcaneal tendon",
+   "side": "left",
+   "kind": "tendon",
+   "region": "leftCalf",
+   "anchor": [
+    0.0788,
+    0.1545,
+    -0.0767
+   ],
+   "normal": [
+    0.2201,
+    -0.0425,
+    -0.9745
+   ]
+  },
+  {
+   "id": "extensor-digitorum-longus.l",
+   "name": "Extensor digitorum longus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftCalf",
+   "anchor": [
+    0.1248,
+    0.2795,
+    -0.0243
+   ],
+   "normal": [
+    0.9786,
+    -0.0614,
+    0.1965
+   ]
+  },
+  {
+   "id": "extensor-hallucis-longus.l",
+   "name": "Extensor hallucis longus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftCalf",
+   "anchor": [
+    0.0788,
+    0.0894,
+    0.018
+   ],
+   "normal": [
+    0.4437,
+    0.5125,
+    0.7352
+   ]
+  },
+  {
+   "id": "fibularis-brevis.l",
+   "name": "Fibularis brevis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftCalf",
+   "anchor": [
+    0.1079,
+    0.1505,
+    -0.053
+   ],
+   "normal": [
+    0.8118,
+    -0.0963,
+    -0.576
+   ]
+  },
+  {
+   "id": "fibularis-longus.l",
+   "name": "Fibularis longus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftCalf",
+   "anchor": [
+    0.1347,
+    0.2794,
+    -0.047
+   ],
+   "normal": [
+    0.9897,
+    -0.1019,
+    -0.1007
+   ]
+  },
+  {
+   "id": "gastrocnemius-lateral-head.l",
+   "name": "Gastrocnemius (lateral head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftCalf",
+   "anchor": [
+    0.1264,
+    0.3776,
+    -0.1019
+   ],
+   "normal": [
+    0.6549,
+    0.0172,
+    -0.7555
+   ]
+  },
+  {
+   "id": "gastrocnemius-medial-head.l",
+   "name": "Gastrocnemius (medial head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftCalf",
+   "anchor": [
+    0.0641,
+    0.3518,
+    -0.0733
+   ],
+   "normal": [
+    -0.6679,
+    0.0009,
+    -0.7443
+   ]
+  },
+  {
+   "id": "soleus.l",
+   "name": "Soleus",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftCalf",
+   "anchor": [
+    0.0624,
+    0.2654,
+    -0.0473
+   ],
+   "normal": [
+    -0.8163,
+    -0.5361,
+    0.2153
+   ]
+  },
+  {
+   "id": "extensor-digitorum-brevis.r",
+   "name": "Extensor digitorum brevis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightAnkle",
+   "anchor": [
+    -0.1177,
+    0.0651,
+    0.0241
+   ],
+   "normal": [
+    -0.8343,
+    0.5498,
+    0.0409
+   ]
+  },
+  {
+   "id": "extensor-hallucis-brevis.r",
+   "name": "Extensor hallucis brevis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightAnkle",
+   "anchor": [
+    -0.0846,
+    0.0666,
+    0.0402
+   ],
+   "normal": [
+    0.1548,
+    0.8753,
+    0.4581
+   ]
+  },
+  {
+   "id": "fibularis-tertius.r",
+   "name": "Fibularis tertius",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightAnkle",
+   "anchor": [
+    -0.1075,
+    0.093,
+    -0.0123
+   ],
+   "normal": [
+    -0.9809,
+    0.1843,
+    -0.0616
+   ]
+  },
+  {
+   "id": "extensor-digitorum-brevis.l",
+   "name": "Extensor digitorum brevis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftAnkle",
+   "anchor": [
+    0.1183,
+    0.0669,
+    0.0258
+   ],
+   "normal": [
+    0.8142,
+    0.5802,
+    0.0212
+   ]
+  },
+  {
+   "id": "extensor-hallucis-brevis.l",
+   "name": "Extensor hallucis brevis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftAnkle",
+   "anchor": [
+    0.0839,
+    0.0593,
+    0.0496
+   ],
+   "normal": [
+    -0.1051,
+    0.857,
+    0.5045
+   ]
+  },
+  {
+   "id": "fibularis-tertius.l",
+   "name": "Fibularis tertius",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftAnkle",
+   "anchor": [
+    0.1096,
+    0.09,
+    -0.0118
+   ],
+   "normal": [
+    0.9652,
+    0.2605,
+    0.0241
+   ]
+  },
+  {
+   "id": "abductor-digiti-minimi-of-foot.r",
+   "name": "Abductor digiti minimi of foot",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightFoot",
+   "anchor": [
+    -0.1171,
+    0.019,
+    -0.0201
+   ],
+   "normal": [
+    -0.7042,
+    -0.6583,
+    -0.2661
+   ]
+  },
+  {
+   "id": "abductor-hallucis.r",
+   "name": "Abductor hallucis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightFoot",
+   "anchor": [
+    -0.0549,
+    0.0303,
+    0.003
+   ],
+   "normal": [
+    0.7943,
+    -0.5647,
+    0.2241
+   ]
+  },
+  {
+   "id": "dorsal-interossei-of-foot.r",
+   "name": "Dorsal interossei of foot",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightFoot",
+   "anchor": [
+    -0.1148,
+    0.0509,
+    0.052
+   ],
+   "normal": [
+    -0.3977,
+    0.8201,
+    0.4113
+   ]
+  },
+  {
+   "id": "extensor-digitorum-longus-tendon.r",
+   "name": "Extensor digitorum longus tendon",
+   "side": "right",
+   "kind": "tendon",
+   "region": "rightFoot",
+   "anchor": [
+    -0.1179,
+    0.0545,
+    0.057
+   ],
+   "normal": [
+    -0.4177,
+    0.8295,
+    0.3707
+   ]
+  },
+  {
+   "id": "flexor-digiti-minimi-of-foot.r",
+   "name": "Flexor digiti minimi of foot",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightFoot",
+   "anchor": [
+    -0.1236,
+    0.0127,
+    0.0325
+   ],
+   "normal": [
+    0.1763,
+    -0.9806,
+    -0.0855
+   ]
+  },
+  {
+   "id": "flexor-digitorum-brevis.r",
+   "name": "Flexor digitorum brevis",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightFoot",
+   "anchor": [
+    -0.0956,
+    0.0087,
+    0.0236
+   ],
+   "normal": [
+    0.1334,
+    -0.9906,
+    0.0292
+   ]
+  },
+  {
+   "id": "flexor-hallucis-brevis-lateral-head.r",
+   "name": "Flexor hallucis brevis (lateral head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightFoot",
+   "anchor": [
+    -0.0721,
+    0.0266,
+    0.0538
+   ],
+   "normal": [
+    0.4159,
+    -0.8893,
+    -0.1899
+   ]
+  },
+  {
+   "id": "flexor-hallucis-brevis-medial-head.r",
+   "name": "Flexor hallucis brevis (medial head)",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightFoot",
+   "anchor": [
+    -0.0678,
+    0.0322,
+    0.0577
+   ],
+   "normal": [
+    0.588,
+    0.5341,
+    0.6074
+   ]
+  },
+  {
+   "id": "lumbricals-of-foot.r",
+   "name": "Lumbricals of foot",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightFoot",
+   "anchor": [
+    -0.0826,
+    0.0178,
+    0.0438
+   ],
+   "normal": [
+    0.7588,
+    -0.6498,
+    0.0447
+   ]
+  },
+  {
+   "id": "opponens-digiti-minimi-of-foot.r",
+   "name": "Opponens digiti minimi of foot",
+   "side": "right",
+   "kind": "muscle",
+   "region": "rightFoot",
+   "anchor": [
+    -0.1365,
+    0.0286,
+    0.0246
+   ],
+   "normal": [
+    -0.9218,
+    -0.2623,
+    -0.2853
+   ]
+  },
+  {
+   "id": "abductor-digiti-minimi-of-foot.l",
+   "name": "Abductor digiti minimi of foot",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftFoot",
+   "anchor": [
+    0.117,
+    0.0193,
+    -0.0196
+   ],
+   "normal": [
+    0.7004,
+    -0.6544,
+    -0.2849
+   ]
+  },
+  {
+   "id": "abductor-hallucis.l",
+   "name": "Abductor hallucis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftFoot",
+   "anchor": [
+    0.0562,
+    0.0276,
+    0.0
+   ],
+   "normal": [
+    -0.8058,
+    -0.5496,
+    0.2204
+   ]
+  },
+  {
+   "id": "dorsal-interossei-of-foot.l",
+   "name": "Dorsal interossei of foot",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftFoot",
+   "anchor": [
+    0.1152,
+    0.0502,
+    0.0525
+   ],
+   "normal": [
+    0.3189,
+    0.8267,
+    0.4636
+   ]
+  },
+  {
+   "id": "extensor-digitorum-longus-tendon.l",
+   "name": "Extensor digitorum longus tendon",
+   "side": "left",
+   "kind": "tendon",
+   "region": "leftFoot",
+   "anchor": [
+    0.1163,
+    0.0571,
+    0.0535
+   ],
+   "normal": [
+    0.4328,
+    0.8161,
+    0.383
+   ]
+  },
+  {
+   "id": "flexor-digiti-minimi-of-foot.l",
+   "name": "Flexor digiti minimi of foot",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftFoot",
+   "anchor": [
+    0.1291,
+    0.0113,
+    0.0318
+   ],
+   "normal": [
+    -0.4117,
+    -0.9093,
+    -0.0608
+   ]
+  },
+  {
+   "id": "flexor-digitorum-brevis.l",
+   "name": "Flexor digitorum brevis",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftFoot",
+   "anchor": [
+    0.0935,
+    0.009,
+    0.0196
+   ],
+   "normal": [
+    -0.1167,
+    -0.993,
+    0.0207
+   ]
+  },
+  {
+   "id": "flexor-hallucis-brevis-lateral-head.l",
+   "name": "Flexor hallucis brevis (lateral head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftFoot",
+   "anchor": [
+    0.079,
+    0.024,
+    0.058
+   ],
+   "normal": [
+    -0.2669,
+    -0.9513,
+    -0.1541
+   ]
+  },
+  {
+   "id": "flexor-hallucis-brevis-medial-head.l",
+   "name": "Flexor hallucis brevis (medial head)",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftFoot",
+   "anchor": [
+    0.0696,
+    0.0343,
+    0.0553
+   ],
+   "normal": [
+    -0.8127,
+    0.2696,
+    0.5165
+   ]
+  },
+  {
+   "id": "lumbricals-of-foot.l",
+   "name": "Lumbricals of foot",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftFoot",
+   "anchor": [
+    0.0816,
+    0.0189,
+    0.0442
+   ],
+   "normal": [
+    -0.6977,
+    -0.715,
+    0.0453
+   ]
+  },
+  {
+   "id": "opponens-digiti-minimi-of-foot.l",
+   "name": "Opponens digiti minimi of foot",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftFoot",
+   "anchor": [
+    0.1362,
+    0.0305,
+    0.0219
+   ],
+   "normal": [
+    0.958,
+    -0.0609,
+    -0.2803
+   ]
+  },
+  {
+   "id": "quadratus-plantae.l",
+   "name": "Quadratus plantae",
+   "side": "left",
+   "kind": "muscle",
+   "region": "leftFoot",
+   "anchor": [
+    0.0961,
+    0.016,
+    -0.0139
+   ],
+   "normal": [
+    0.7319,
+    -0.665,
+    0.1484
    ]
   }
  ]
