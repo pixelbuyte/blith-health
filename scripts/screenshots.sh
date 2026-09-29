@@ -16,15 +16,20 @@ rs=[r for r in json.load(sys.stdin)["runtimes"] if r.get("platform")=="iOS" and 
 print(sorted(rs,key=lambda r:[int(x) for x in r["version"].split(".")])[-1]["identifier"])')
 echo "Runtime: $RUNTIME"
 
-pick_type() { # $1 = python predicate on name
-  xcrun simctl list devicetypes -j | python3 -c "
+# Pick a small and a large iPhone among devices that exist for this runtime.
+pick_device() { # $1 = small|large -> "udid|name"
+  xcrun simctl list devices available -j | python3 -c "
 import json,sys
-names=[d for d in json.load(sys.stdin)['devicetypes'] if d['name'].startswith('iPhone')]
-m=[d for d in names if $1]
-print((m or names)[-1]['identifier'])"
+devs=[d for d in json.load(sys.stdin)['devices'].get('$RUNTIME',[]) if d['name'].startswith('iPhone')]
+small=[d for d in devs if 'SE' in d['name'] or d['name'].endswith('e') or 'mini' in d['name']]
+large=[d for d in devs if 'Pro Max' in d['name'] or 'Plus' in d['name']]
+pick=(small if '$1'=='small' else large) or devs
+d=pick[-1] if '$1'=='small' else pick[0]
+print(d['udid']+'|'+d['name'])"
 }
-SMALL=$(pick_type "('SE' in d['name'] or d['name'].endswith('e')) ")
-LARGE=$(pick_type "'Pro Max' in d['name']")
+SMALL=$(pick_device small)
+LARGE=$(pick_device large)
+echo "Devices: $SMALL / $LARGE"
 
 shoot() { # udid label args...
   local udid="$1" label="$2"; shift 2
@@ -35,10 +40,10 @@ shoot() { # udid label args...
   echo "  $label"
 }
 
-for TYPE in "$SMALL" "$LARGE"; do
-  NAME=$(echo "$TYPE" | sed 's/.*SimDeviceType\.//')
-  UDID=$(xcrun simctl create "shot-$NAME" "$TYPE" "$RUNTIME")
-  xcrun simctl boot "$UDID"
+for DEV in "$SMALL" "$LARGE"; do
+  UDID="${DEV%%|*}"
+  NAME=$(echo "${DEV#*|}" | tr -cd '[:alnum:]')
+  xcrun simctl boot "$UDID" 2>/dev/null || true
   xcrun simctl bootstatus "$UDID" -b >/dev/null
   xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
   xcrun simctl install "$UDID" "$APP"
@@ -59,6 +64,5 @@ for TYPE in "$SMALL" "$LARGE"; do
     fi
   done
   xcrun simctl shutdown "$UDID" || true
-  xcrun simctl delete "$UDID" || true
 done
 ls -1 "$OUT"

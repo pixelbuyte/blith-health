@@ -252,3 +252,44 @@ struct AssistantTests {
         #expect(text.count < 1500)
     }
 }
+
+@Suite("Huawei adapter")
+struct HuaweiTests {
+    struct FakeTransport: HuaweiHealthProvider.Transport {
+        func dailyTotals(dataType: String, span: DateSpan, calendar: Calendar) async throws -> [(LocalDate, Double)] {
+            dataType.contains("steps") ? span.days.map { ($0, 5000) } : []
+        }
+        func samples(dataType: String, interval: DateInterval) async throws -> [HuaweiHealthProvider.RawSample] {
+            if dataType.contains("sleep") {
+                let bed = T.date(T.today.adding(days: -1), hour: 23)
+                return [.init(id: "s1", start: bed, end: bed.addingTimeInterval(3 * 3600), value: 1, device: nil),
+                        .init(id: "s2", start: bed.addingTimeInterval(3 * 3600), end: bed.addingTimeInterval(5 * 3600), value: 2, device: nil)]
+            }
+            return [.init(id: "w1", start: T.now, end: T.now, value: 80.4, device: "HUAWEI Scale")]
+        }
+    }
+
+    @Test func unconfiguredProviderIsUnavailable() async {
+        let p = HuaweiHealthProvider()
+        #expect(!p.isAvailable)
+        await #expect(throws: HealthProviderError.self) { try await p.requestAuthorization(for: [.movement]) }
+    }
+
+    @Test func mapsToNormalizedTypesAndMergesWithoutDoubleCounting() async throws {
+        let huawei = HuaweiHealthProvider(configuration: .init(clientID: "id", redirectURI: "blith://huawei"), transport: FakeTransport())
+        let request = ProviderFetch(span: DateSpan(T.today.adding(days: -2), T.today), metrics: [.steps, .hrv], includeHourlySteps: false,
+                                    includeSleep: true, includeBody: true, includeWorkouts: false, includeSources: false)
+        let hb = try await huawei.fetch(request, calendar: T.calendar)
+        #expect(hb.daily[.steps]?.count == 3)
+        #expect(hb.unsupported.contains(.hrv))
+        #expect(hb.weights.first?.source.provider == .huawei)
+        let nights = SleepAssembler.nights(from: hb.sleepSegments, calendar: T.calendar)
+        #expect(nights.first?.hasStages == true && nights.first?.date == T.today)
+
+        var apple = ProviderBatch()
+        apple.daily[.steps] = [DailyAggregate(date: T.today, metric: .steps, value: 5200)]
+        let merged = SourceMerger.merge([apple, hb])
+        #expect(merged.daily[.steps]?.first { $0.date == T.today }?.value == 5200) // max, not 10,200
+        #expect(huawei.authorizationURL(state: "x")?.absoluteString.contains("client_id=id") == true)
+    }
+}
