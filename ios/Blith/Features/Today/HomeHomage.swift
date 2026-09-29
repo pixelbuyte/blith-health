@@ -1,371 +1,490 @@
 import BlithCore
 import SwiftUI
 
-// MARK: - Home homage gallery (design preview, sample data)
+// MARK: - Home top designs (v2)
 //
-// Three vibe-coded homage variations of the Today / Home screen.
-// Standalone file: nothing in the app points at it yet. Open
-// `HomeHomageGalleryView` in Xcode Previews (or present it from a
-// debug gesture) to compare A / B / C side by side, then wire the
-// winner into TodayView. All numbers below are sample data.
+// Three reworks of the top of the home screen — the area in the screenshot: status line, greeting,
+// scores hero, and the block under it. Sample data; nothing here reads HealthKit and nothing in the
+// app points at this file yet.
+//
+// What was wrong with the screen these replace:
+//
+//   1. The largest element on the screen said "0/14 CALIBRATING" — the most prominent thing was the
+//      app admitting it had nothing. Calibration is now a thin strip that states progress once.
+//   2. Two of the three dials were empty ("–" sleep), and three of the four chips under them read
+//      "–". Empty instruments look broken rather than patient.
+//   3. The Health monitor block below spent five tall rows saying "NO READING LAST NIGHT" five
+//      times, and the resting-heart row drew a coral bar that reads as an alert with no reading
+//      behind it. That block is the least valuable thing on the screen, so it is what the live
+//      pulse replaces.
+//
+// A live pulse is the one signal that exists before any history does, which makes it the right
+// thing to lead with on day one. It pounds at the real rate — see `Beat` in HeartBeat.swift.
 
-enum HomeHomageStyle: String, CaseIterable, Identifiable {
-    case midnight, porcelain, aurora
+enum HomeTopStyle: String, CaseIterable, Identifiable {
+    case vitalSign, paperChart, pulseAurora
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .midnight: "Midnight Instrument"
-        case .porcelain: "Dawn Porcelain"
-        case .aurora: "Pulse Aurora"
+        case .vitalSign: "Vital Sign"
+        case .paperChart: "Paper Chart"
+        case .pulseAurora: "Pulse Aurora"
         }
     }
-    var subtitle: String {
+    var caption: String {
         switch self {
-        case .midnight: "A · refined v4 dark"
-        case .porcelain: "B · editorial light"
-        case .aurora: "C · vibe-coded glow"
+        case .vitalSign: "A · dark instrument — the pulse is the hero"
+        case .paperChart: "B · editorial light — clinical chart on paper"
+        case .pulseAurora: "C · vibe glow — the pulse as an orb"
         }
     }
 }
 
-/// Sample numbers shared by all three homages so they can be compared
-/// like-for-like. Mirrors the shape of TodayView (greeting → hero →
-/// movement → vitals → insight → streak).
+/// Sample numbers shared by the three designs so they compare like-for-like. Deliberately mirrors
+/// the *hard* case from the screenshot: a brand-new account with no nights logged yet.
 enum HomageSample {
     static let dateLine = "TUE · SEP 29"
-    static let greeting = "Good evening, Maya"
-    static let status = "Movement is running 12% ahead of a usual Tuesday at this hour."
-    static let readiness = 86
-    static let sleep = 82
-    static let loadText = "4.2"
-    static let loadUsual = "3.1–5.4"
-    static let steps = "6,412"
-    static let stepsDelta = "+12%"
-    static let stepsUsual = "Usually 5,720 by now on a Tuesday."
-    static let weekBars: [Double] = [0.34, 0.48, 0.40, 0.58, 0.78, 0.96, 0.60]
-    static let insightEyebrow = "Worth knowing · Sleep"
-    static let insightHeadline = "Late nights cost you Friday steps — 1,900 fewer on average."
-    static let insightBody = "Compared against your own history, not population averages."
-    static let streakDays = "6"
-    static let weekCount = "5/7"
+    static let greeting = "Good evening, Zen"
+    static let initial = "Z"
+
+    // The live pulse — the only signal a new account already has.
+    static let bpm: Double = 78
+    static let restingBaseline: Double? = 54
+    static var pulse: HeartRatePulse {
+        HeartRatePulse(reading: LiveHeartRate(bpm: bpm, at: Date(), sourceName: "Apple Watch", isWatch: true),
+                       restingBaseline: restingBaseline)
+    }
+    static let lowHigh = (low: 61.0, high: 96.0)
+
+    // Still calibrating, exactly as in the screenshot.
+    static let nightsLogged = 0
+    static let nightsNeeded = 14
+    static let load = "1.2"
+    static let loadUsual = "1.9–3.7"
 }
 
-struct HomeHomageGalleryView: View {
-    @State private var style: HomeHomageStyle = .midnight
+// MARK: - Shared pieces
+
+/// Calibration said once, quietly, in a strip — not as the biggest number on the screen.
+struct CalibrationStrip: View {
+    var logged: Int
+    var needed: Int
+    var tint: Color = Palette.signal
+    var onWhy: (() -> Void)?
+
+    private var remaining: Int { max(0, needed - logged) }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Space.m) {
-                    Picker("Variation", selection: $style) {
-                        ForEach(HomeHomageStyle.allCases) { Text($0.title).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    Text(style.subtitle.uppercased())
-                        .font(Typo.eyebrow).foregroundStyle(Palette.tertiaryInk)
-                    switch style {
-                    case .midnight: MidnightHomageView()
-                    case .porcelain: PorcelainHomageView()
-                    case .aurora: AuroraHomageView()
-                    }
-                    Text("Design preview with sample data — nothing here reads HealthKit.")
-                        .font(Typo.caption).foregroundStyle(Palette.tertiaryInk)
-                }
-                .padding(Space.page)
+        VStack(alignment: .leading, spacing: Space.s) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("READINESS & SLEEP").font(Typo.eyebrow).tracking(0.9).foregroundStyle(Palette.secondaryInk)
+                Spacer()
+                Text("\(logged)/\(needed) NIGHTS").font(Typo.mono(11, .medium)).foregroundStyle(Palette.tertiaryInk)
             }
-            .background(Palette.canvas)
-            .navigationTitle("Home homages")
-            .navigationBarTitleDisplayMode(.inline)
+            SegmentedProgress(total: needed, done: logged, color: tint)
+            Text(logged == 0
+                 ? "Wear your watch overnight and scores start after \(needed) nights."
+                 : "\(remaining) more \(remaining == 1 ? "night" : "nights") and your scores unlock.")
+                .font(Typo.geist(13, relativeTo: .footnote))
+                .foregroundStyle(Palette.secondaryInk)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
 
-// MARK: - A · Midnight Instrument (refined v4 dark)
+/// A greeting row that keeps the person's name and the date without eating a third of the screen.
+struct HomageHeader: View {
+    var serif = false
+    var onDark = true
 
-struct MidnightHomageView: View {
+    var body: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(HomageSample.dateLine).font(Typo.eyebrow).tracking(1)
+                    .foregroundStyle(Palette.secondaryInk)
+                Text(HomageSample.greeting)
+                    .font(serif ? .system(.title, design: .serif) : Typo.pageTitle)
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+            }
+            Spacer()
+            Text(HomageSample.initial)
+                .font(Typo.geist(15, .semibold))
+                .foregroundStyle(Palette.ink)
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(Palette.signal.opacity(0.14)))
+                .overlay(Circle().strokeBorder(Palette.signal.opacity(0.55), lineWidth: 1))
+        }
+    }
+}
+
+/// The low / high of the live window, plus where the pulse sits between them.
+struct PulseRangeRow: View {
+    var pulse: HeartRatePulse
+    var low: Double
+    var high: Double
+    var muted: Color = Palette.secondaryInk
+
+    var body: some View {
+        VStack(spacing: 6) {
+            GeometryReader { g in
+                let span = max(high - low, 1)
+                let x = g.size.width * min(1, max(0, (pulse.bpm - low) / span))
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Palette.sunken).frame(height: 4)
+                    Capsule()
+                        .fill(LinearGradient(colors: [Palette.recovery, pulse.zone.tint], startPoint: .leading, endPoint: .trailing))
+                        .frame(width: x, height: 4)
+                    Circle().fill(Palette.ink).frame(width: 9, height: 9).offset(x: max(0, x - 4.5))
+                }
+                .frame(height: 10)
+            }
+            .frame(height: 10)
+            HStack {
+                Text("LOW \(Int(low))").font(Typo.mono(10)).foregroundStyle(muted)
+                Spacer()
+                Text("LAST 3 MIN").font(Typo.mono(10)).foregroundStyle(muted)
+                Spacer()
+                Text("HIGH \(Int(high))").font(Typo.mono(10)).foregroundStyle(muted)
+            }
+        }
+    }
+}
+
+// MARK: - A · Vital Sign (dark instrument)
+
+/// The pulse is the hero: a pounding heart, the rate as a tall numeral, a live ECG, and the
+/// comparison against the person's own resting rate. Calibration sits underneath as one strip.
+struct VitalSignTop: View {
+    var bpm: Double = HomageSample.bpm
+
+    private var pulse: HeartRatePulse {
+        HeartRatePulse(reading: LiveHeartRate(bpm: bpm, at: Date(), sourceName: "Apple Watch", isWatch: true),
+                       restingBaseline: HomageSample.restingBaseline)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Space.m) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(HomageSample.dateLine).font(Typo.eyebrow).foregroundStyle(Palette.secondaryInk)
-                Text(HomageSample.greeting).font(Typo.pageTitle).foregroundStyle(Palette.ink)
-                Text(HomageSample.status).font(Typo.story).foregroundStyle(Palette.secondaryInk)
-            }
-            VStack(spacing: Space.m) {
-                HStack {
-                    Text("READINESS · YOUR RANGE").font(Typo.eyebrow).foregroundStyle(Palette.signalBright)
+            HomageHeader()
+            VStack(alignment: .leading, spacing: Space.m) {
+                HStack(spacing: 6) {
+                    Circle().fill(pulse.zone.tint).frame(width: 6, height: 6)
+                    Text("LIVE · APPLE WATCH").font(Typo.eyebrow).tracking(1).foregroundStyle(pulse.zone.tint)
                     Spacer()
-                    BandChip(band: .high, label: "High readiness")
+                    HStack(spacing: 5) {
+                        Image(systemName: pulse.zone.glyph).font(.system(size: 10, weight: .bold))
+                        Text(pulse.zone.label.uppercased()).font(Typo.eyebrow).tracking(0.9)
+                    }
+                    .foregroundStyle(pulse.zone.tint)
+                    .padding(.horizontal, 9).padding(.vertical, 5)
+                    .background(Capsule().fill(pulse.zone.tint.opacity(0.12)))
+                    .overlay(Capsule().strokeBorder(pulse.zone.tint.opacity(0.3), lineWidth: 1))
                 }
-                HStack(alignment: .center, spacing: 0) {
-                    ScoreDial(fraction: Double(HomageSample.sleep) / 100, valueText: "\(HomageSample.sleep)",
-                              unit: "%", label: "Sleep", color: Palette.sleep, size: 92, usual: nil)
-                        .frame(maxWidth: .infinity)
-                    ScoreDial(fraction: Double(HomageSample.readiness) / 100, valueText: "\(HomageSample.readiness)",
-                              unit: "%", label: "Readiness", color: Palette.band(.high), size: 160, usual: nil)
-                    ScoreDial(fraction: 0.62, valueText: HomageSample.loadText,
-                              label: "Load", color: Palette.cyan, size: 92, usual: 0.45...0.78)
-                        .frame(maxWidth: .infinity)
+                HStack(alignment: .center, spacing: Space.l) {
+                    PoundingHeart(bpm: bpm, tint: pulse.zone.tint, size: 76)
+                    VStack(alignment: .leading, spacing: -4) {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text("\(Int(bpm.rounded()))")
+                                .font(Typo.score(64))
+                                .foregroundStyle(Palette.ink)
+                                .contentTransition(.numericText())
+                            Text("BPM").font(Typo.mono(13, .medium)).foregroundStyle(Palette.secondaryInk)
+                        }
+                        Text(pulse.summary).font(Typo.geist(13, relativeTo: .footnote)).foregroundStyle(Palette.secondaryInk)
+                    }
+                    Spacer()
                 }
-                HStack(spacing: 0) {
-                    homageStat("HRV", "48 ms")
-                    Rectangle().fill(Palette.hairline).frame(width: 1, height: 28)
-                    homageStat("RHR", "52 bpm")
-                    Rectangle().fill(Palette.hairline).frame(width: 1, height: 28)
-                    homageStat("ASLEEP", "7h 12m")
-                }
+                ECGTrace(bpm: bpm, tint: pulse.zone.tint).frame(height: 54)
+                PulseRangeRow(pulse: pulse, low: HomageSample.lowHigh.low, high: HomageSample.lowHigh.high)
             }
             .card(padding: Space.l, tone: .hero)
-            VStack(alignment: .leading, spacing: Space.s) {
-                HStack {
-                    Eyebrow(text: "Movement · \(HomageSample.steps) steps", color: Palette.signal)
-                    Spacer()
-                    Text(HomageSample.stepsDelta).font(Typo.geist(14, .semibold)).foregroundStyle(Palette.recovery)
-                }
-                Text(HomageSample.steps).font(Typo.score(56)).foregroundStyle(Palette.ink)
-                Text(HomageSample.stepsUsual).font(Typo.caption).foregroundStyle(Palette.secondaryInk)
-                HStack(alignment: .bottom, spacing: 5) {
-                    ForEach(Array(HomageSample.weekBars.enumerated()), id: \.offset) { i, f in
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(i == 5 ? Palette.signalBright : Palette.quiet)
-                            .frame(height: 74 * f)
-                            .frame(maxWidth: .infinity)
-                    }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(pulse.spokenLabel)
+
+            VStack(spacing: Space.m) {
+                CalibrationStrip(logged: HomageSample.nightsLogged, needed: HomageSample.nightsNeeded)
+                Rectangle().fill(Palette.hairline).frame(height: 1)
+                HStack(spacing: 0) {
+                    miniStat("LOAD", HomageSample.load, "usual \(HomageSample.loadUsual)", Palette.cyan)
+                    Rectangle().fill(Palette.hairline).frame(width: 1, height: 34)
+                    miniStat("SLEEP", "–", "not tracked yet", Palette.sleep)
+                    Rectangle().fill(Palette.hairline).frame(width: 1, height: 34)
+                    miniStat("HRV", "–", "after 1st night", Palette.recovery)
                 }
             }
             .card(padding: Space.l)
-            VStack(alignment: .leading, spacing: Space.s) {
-                Eyebrow(text: "Health monitor · 4 of 5 in range")
-                homageVital(symbol: "heart.fill", tint: Palette.heart, name: "Resting heart rate", value: "52 bpm")
-                homageVital(symbol: "waveform.path.ecg", tint: Palette.recovery, name: "HRV", value: "48 ms")
-                homageVital(symbol: "thermometer.medium", tint: Palette.note, name: "Wrist temperature", value: "ABOVE RANGE")
-            }
-            .card(padding: Space.l)
-            VStack(alignment: .leading, spacing: Space.s) {
-                Eyebrow(text: HomageSample.insightEyebrow, color: Palette.sleep)
-                Text(HomageSample.insightHeadline).font(Typo.story).foregroundStyle(Palette.ink)
-                Text(HomageSample.insightBody).font(Typo.caption).foregroundStyle(Palette.tertiaryInk)
-            }
-            .card(padding: Space.l, tone: .tinted(Palette.sleep))
         }
-        .blithBackground(wash: Palette.signal.opacity(0.16))
+        .blithBackground(wash: Palette.heart.opacity(0.14))
     }
 
-    func homageStat(_ title: String, _ value: String) -> some View {
+    func miniStat(_ title: String, _ value: String, _ caption: String, _ tint: Color) -> some View {
         VStack(spacing: 2) {
-            Text(title).font(Typo.eyebrow).foregroundStyle(Palette.tertiaryInk)
-            Text(value).font(Typo.number(16)).foregroundStyle(Palette.ink)
+            Text(title).font(Typo.eyebrow).tracking(0.9).foregroundStyle(tint)
+            Text(value).font(Typo.number(19)).foregroundStyle(value == "–" ? Palette.tertiaryInk : Palette.ink)
+            Text(caption).font(Typo.geist(10.5, relativeTo: .caption2)).foregroundStyle(Palette.tertiaryInk)
+                .lineLimit(1).minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity)
-    }
-
-    func homageVital(symbol: String, tint: Color, name: String, value: String) -> some View {
-        HStack(spacing: Space.m) {
-            Image(systemName: symbol).font(.system(size: 14)).foregroundStyle(tint).frame(width: 24)
-            Text(name).font(Typo.geist(15, .medium)).foregroundStyle(Palette.ink)
-            Spacer()
-            Text(value).font(Typo.number(15)).foregroundStyle(Palette.secondaryInk)
-        }
+        .accessibilityElement(children: .combine)
     }
 }
 
-// MARK: - B · Dawn Porcelain (editorial light)
+// MARK: - B · Paper Chart (editorial light)
 
-struct PorcelainHomageView: View {
-    private let paper = Color(hex: 0xF3EEE4)
+/// A clinical chart on warm paper: the rate in serif numerals on an ink slab, the ECG drawn on a
+/// measurement grid the way a real trace is printed.
+struct PaperChartTop: View {
+    var bpm: Double = HomageSample.bpm
+
+    private let paper = Color(hex: 0xF4F0E8)
     private let slab = Color(hex: 0x101828)
     private let paperInk = Color(hex: 0x101828)
     private let paperSub = Color(hex: 0x4C5665)
+    private let grid = Color(hex: 0xC9BFA9)
+
+    private var pulse: HeartRatePulse {
+        HeartRatePulse(reading: LiveHeartRate(bpm: bpm, at: Date(), sourceName: "Apple Watch", isWatch: true),
+                       restingBaseline: HomageSample.restingBaseline)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.m) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Tuesday, September 29").font(Typo.eyebrow).foregroundStyle(Color(hex: 0x8A7A5F))
-                Text(HomageSample.greeting + ".")
-                    .font(.system(.title, design: .serif))
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("TUESDAY, SEPTEMBER 29").font(Typo.eyebrow).tracking(1).foregroundStyle(Color(hex: 0x8A7A5F))
+                    Text("Good evening, Zen.").font(.system(.title, design: .serif)).foregroundStyle(paperInk)
+                }
+                Spacer()
+                Text(HomageSample.initial).font(.system(.subheadline, design: .serif))
                     .foregroundStyle(paperInk)
-                Text("Your 30-day average is the highest in six months.")
-                    .font(.system(.subheadline, design: .serif).italic())
-                    .foregroundStyle(paperSub)
+                    .frame(width: 38, height: 38)
+                    .overlay(Circle().strokeBorder(paperInk.opacity(0.35), lineWidth: 1))
             }
-            VStack(alignment: .leading, spacing: Space.s) {
-                Text("READINESS · HIGH").font(Typo.eyebrow).foregroundStyle(Color(hex: 0xC9BFA9))
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("\(HomageSample.readiness)").font(.system(size: 64, design: .serif)).foregroundStyle(.white)
-                    Text("/ 100").font(Typo.body).foregroundStyle(.white.opacity(0.6))
-                    Spacer()
-                    Text("▲ HIGH").font(Typo.eyebrow).foregroundStyle(slab)
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(Capsule().fill(Palette.recovery))
-                }
-                Capsule().fill(.white.opacity(0.16)).frame(height: 6)
-                    .overlay(alignment: .leading) {
-                        Capsule().fill(.white).frame(width: 220, height: 6)
-                    }
+
+            VStack(alignment: .leading, spacing: Space.m) {
                 HStack {
-                    Text("SLEEP \(HomageSample.sleep)").font(Typo.eyebrow).foregroundStyle(.white.opacity(0.75))
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: 0xFF6B5E)).frame(width: 6, height: 6)
+                        Text("LIVE PULSE").font(Typo.eyebrow).tracking(1.2).foregroundStyle(Color(hex: 0xC9BFA9))
+                    }
                     Spacer()
-                    Text("LOAD \(HomageSample.loadText) · USUAL \(HomageSample.loadUsual)")
-                        .font(Typo.eyebrow).foregroundStyle(.white.opacity(0.75))
+                    HStack(spacing: 5) {
+                        Image(systemName: pulse.zone.glyph).font(.system(size: 10, weight: .bold))
+                        Text(pulse.zone.label.uppercased()).font(Typo.eyebrow).tracking(0.9)
+                    }
+                    .foregroundStyle(slab)
+                    .padding(.horizontal, 9).padding(.vertical, 4)
+                    .background(Capsule().fill(Color(hex: 0xF4F0E8)))
                 }
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("\(Int(bpm.rounded()))")
+                        .font(.system(size: 66, design: .serif))
+                        .foregroundStyle(.white)
+                        .contentTransition(.numericText())
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("bpm").font(.system(.body, design: .serif)).foregroundStyle(.white.opacity(0.7))
+                        Text(pulse.summary).font(.system(.caption, design: .serif).italic())
+                            .foregroundStyle(.white.opacity(0.75))
+                    }
+                    Spacer()
+                    PoundingHeart(bpm: bpm, tint: Color(hex: 0xFF8D82), size: 54, shockwave: false)
+                }
+                ZStack {
+                    PaperGrid(color: .white.opacity(0.14), step: 13)
+                    ECGTrace(bpm: bpm, tint: Color(hex: 0x7DFCD0), lineWidth: 1.8, fadeIn: false)
+                }
+                .frame(height: 62)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             .padding(Space.l)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(slab))
-            .shadow(color: slab.opacity(0.25), radius: 20, y: 10)
-            HStack(spacing: Space.m) {
-                porcelainTile("Steps", HomageSample.steps, "+12% vs usual", Palette.signal)
-                porcelainTile("Sleep", "7h 12m", "needs 7h 30m", Palette.sleep)
-            }
+            .shadow(color: slab.opacity(0.22), radius: 18, y: 9)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(pulse.spokenLabel)
+
             VStack(alignment: .leading, spacing: Space.s) {
-                HStack {
-                    Text("MOVEMENT · YOUR USUAL DAY").font(Typo.eyebrow).foregroundStyle(paperSub)
+                HStack(alignment: .firstTextBaseline) {
+                    Text("READINESS & SLEEP").font(Typo.eyebrow).tracking(0.9).foregroundStyle(paperSub)
                     Spacer()
-                    Text("AVG 8,204").font(Typo.eyebrow).foregroundStyle(paperSub)
+                    Text("\(HomageSample.nightsLogged)/\(HomageSample.nightsNeeded) NIGHTS")
+                        .font(Typo.mono(11, .medium)).foregroundStyle(paperSub)
                 }
-                HStack(alignment: .bottom, spacing: 5) {
-                    ForEach(Array(HomageSample.weekBars.enumerated()), id: \.offset) { i, f in
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(i == 5 ? slab : Color(hex: 0xD8DEE8))
-                            .frame(height: 74 * f)
-                            .frame(maxWidth: .infinity)
+                HStack(spacing: 3) {
+                    ForEach(0..<HomageSample.nightsNeeded, id: \.self) { i in
+                        Capsule()
+                            .fill(i < HomageSample.nightsLogged ? slab : paperInk.opacity(0.13))
+                            .frame(height: 5)
                     }
                 }
+                Text("Wear your watch overnight and scores start after \(HomageSample.nightsNeeded) nights.")
+                    .font(.system(.footnote, design: .serif)).foregroundStyle(paperSub)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(Space.l)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.white))
-            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(paperInk.opacity(0.09), lineWidth: 1))
-            VStack(alignment: .leading, spacing: Space.s) {
-                Text("INSIGHT · WEEKLY RHYTHM").font(Typo.eyebrow).foregroundStyle(paperSub)
-                Text("Saturdays are your strongest days — 11,200 on average.")
-                    .font(.system(.headline, design: .serif)).foregroundStyle(paperInk)
-                HStack(spacing: Space.s) {
-                    Text("See the days").font(Typo.geist(14, .semibold)).foregroundStyle(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(slab))
-                    Text("Why this?").font(Typo.geist(14, .semibold)).foregroundStyle(Palette.signal)
-                        .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Palette.signal.opacity(0.12)))
-                }
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(paperInk.opacity(0.10), lineWidth: 1))
+
+            HStack(spacing: Space.m) {
+                paperTile("Load today", HomageSample.load, "usual \(HomageSample.loadUsual)")
+                paperTile("Resting", "54", "learned from nights")
             }
-            .padding(Space.l)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.white))
-            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(paperInk.opacity(0.09), lineWidth: 1))
         }
         .padding(Space.page)
         .background(paper)
         .preferredColorScheme(.light)
     }
 
-    func porcelainTile(_ title: String, _ value: String, _ caption: String, _ tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title.uppercased()).font(Typo.eyebrow).foregroundStyle(paperSub)
-            Text(value).font(.system(size: 34, design: .serif)).foregroundStyle(paperInk).minimumScaleFactor(0.7).lineLimit(1)
-            Text(caption).font(Typo.geist(12)).foregroundStyle(tint)
+    func paperTile(_ title: String, _ value: String, _ caption: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title.uppercased()).font(Typo.eyebrow).tracking(0.9).foregroundStyle(paperSub)
+            Text(value).font(.system(size: 32, design: .serif)).foregroundStyle(paperInk)
+            Text(caption).font(Typo.geist(11, relativeTo: .caption)).foregroundStyle(paperSub).lineLimit(1).minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Space.m + 2)
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.white))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(paperInk.opacity(0.09), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(paperInk.opacity(0.10), lineWidth: 1))
     }
 }
 
-// MARK: - C · Pulse Aurora (vibe-coded glow)
+/// The faint printed grid an ECG is drawn on.
+struct PaperGrid: View {
+    var color: Color
+    var step: CGFloat = 13
 
-struct AuroraHomageView: View {
+    var body: some View {
+        Canvas { ctx, size in
+            var path = Path()
+            var x: CGFloat = 0
+            while x <= size.width { path.move(to: CGPoint(x: x, y: 0)); path.addLine(to: CGPoint(x: x, y: size.height)); x += step }
+            var y: CGFloat = 0
+            while y <= size.height { path.move(to: CGPoint(x: 0, y: y)); path.addLine(to: CGPoint(x: size.width, y: y)); y += step }
+            ctx.stroke(path, with: .color(color), lineWidth: 0.5)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+// MARK: - C · Pulse Aurora (vibe glow)
+
+/// The pulse as a glowing orb: a conic ring holding a pounding heart, shockwaves on every beat,
+/// and the rate in gradient numerals.
+struct AuroraPulseTop: View {
+    var bpm: Double = HomageSample.bpm
+
+    private var pulse: HeartRatePulse {
+        HeartRatePulse(reading: LiveHeartRate(bpm: bpm, at: Date(), sourceName: "Apple Watch", isWatch: true),
+                       restingBaseline: HomageSample.restingBaseline)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Space.m) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("● LIVE · TUESDAY").font(Typo.eyebrow).foregroundStyle(Color(hex: 0x7DFCD0))
-                Text("Your body, in signal.")
-                    .font(Typo.pageTitle).foregroundStyle(.white)
-            }
-            VStack(spacing: Space.s) {
-                Text("READINESS · HIGH ▸").font(Typo.eyebrow).foregroundStyle(Palette.ice)
-                ZStack {
-                    Circle().trim(from: 0, to: 0.86)
-                        .stroke(AngularGradient(colors: [Palette.recovery, Palette.signal, Palette.sleep, Palette.weight, Palette.recovery],
-                                                center: .center),
-                                style: StrokeStyle(lineWidth: 13, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .shadow(color: Palette.signal.opacity(0.6), radius: 18)
-                    Text("\(HomageSample.readiness)").font(Typo.score(52)).foregroundStyle(.white)
-                        .shadow(color: Color(hex: 0x7DFCD0).opacity(0.55), radius: 16)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 5) {
+                        Circle().fill(Color(hex: 0x7DFCD0)).frame(width: 6, height: 6)
+                        Text("LIVE · TUESDAY").font(Typo.eyebrow).tracking(1).foregroundStyle(Color(hex: 0x7DFCD0))
+                    }
+                    Text("Good evening, Zen")
+                        .font(Typo.pageTitle)
+                        .foregroundStyle(LinearGradient(colors: [.white, Palette.ice], startPoint: .leading, endPoint: .trailing))
                 }
-                .frame(width: 132, height: 132)
+                Spacer()
+                Text(HomageSample.initial).font(Typo.geist(15, .semibold)).foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(.white.opacity(0.10)))
+                    .overlay(Circle().strokeBorder(.white.opacity(0.28), lineWidth: 1))
+            }
+
+            VStack(spacing: Space.s) {
+                ZStack {
+                    Circle()
+                        .stroke(AngularGradient(colors: [Palette.recovery, Palette.signal, pulse.zone.tint, Palette.weight, Palette.recovery],
+                                                center: .center),
+                                style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                        .shadow(color: pulse.zone.tint.opacity(0.55), radius: 16)
+                    PoundingHeart(bpm: bpm, tint: Color(hex: 0xFF8D82), size: 86)
+                }
+                .frame(width: 150, height: 150)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(Int(bpm.rounded()))")
+                        .font(Typo.score(50))
+                        .foregroundStyle(LinearGradient(colors: [Color(hex: 0x7DFCD0), .white], startPoint: .top, endPoint: .bottom))
+                        .contentTransition(.numericText())
+                    Text("BPM").font(Typo.mono(12, .medium)).foregroundStyle(Palette.ice)
+                }
+                Text(pulse.summary).font(Typo.geist(13, relativeTo: .footnote)).foregroundStyle(Palette.ice.opacity(0.85))
                 HStack(spacing: Space.s) {
-                    auroraChip("SLEEP \(HomageSample.sleep)")
-                    auroraChip("LOAD \(HomageSample.loadText)")
-                    Text("▲ HIGH").font(Typo.eyebrow).foregroundStyle(Color(hex: 0x06302B))
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(Capsule().fill(Color(hex: 0x7DFCD0)))
+                    auroraChip("\(pulse.zone.label.uppercased())", glyph: pulse.zone.glyph, solid: true, tint: pulse.zone.tint)
+                    auroraChip("LOW \(Int(HomageSample.lowHigh.low))")
+                    auroraChip("HIGH \(Int(HomageSample.lowHigh.high))")
                 }
             }
             .auroraGlass()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(pulse.spokenLabel)
+
             VStack(alignment: .leading, spacing: Space.s) {
-                HStack {
-                    Eyebrow(text: "Movement · \(HomageSample.steps)", color: Palette.signalBright)
+                HStack(alignment: .firstTextBaseline) {
+                    Text("READINESS & SLEEP").font(Typo.eyebrow).tracking(0.9).foregroundStyle(Palette.ice)
                     Spacer()
-                    Text(HomageSample.stepsDelta).font(Typo.geist(14, .semibold)).foregroundStyle(Color(hex: 0x7DFCD0))
+                    Text("\(HomageSample.nightsLogged)/\(HomageSample.nightsNeeded) NIGHTS")
+                        .font(Typo.mono(11, .medium)).foregroundStyle(Palette.ice.opacity(0.7))
                 }
-                HStack(alignment: .bottom, spacing: 5) {
-                    ForEach(Array(HomageSample.weekBars.enumerated()), id: \.offset) { i, f in
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(i == 5 ? Color(hex: 0x7DFCD0) : Palette.signal.opacity(0.35 + 0.5 * f))
-                            .shadow(color: i == 5 ? Color(hex: 0x7DFCD0).opacity(0.7) : .clear, radius: 8)
-                            .frame(height: 74 * f)
-                            .frame(maxWidth: .infinity)
+                HStack(spacing: 3) {
+                    ForEach(0..<HomageSample.nightsNeeded, id: \.self) { i in
+                        Capsule()
+                            .fill(i < HomageSample.nightsLogged
+                                  ? AnyShapeStyle(LinearGradient(colors: [Palette.recovery, Palette.signal], startPoint: .leading, endPoint: .trailing))
+                                  : AnyShapeStyle(Color.white.opacity(0.14)))
+                            .frame(height: 5)
                     }
                 }
+                Text("Your pulse is live now. Scores arrive after \(HomageSample.nightsNeeded) nights of sleep.")
+                    .font(Typo.geist(13, relativeTo: .footnote)).foregroundStyle(Palette.ice.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .auroraGlass()
-            VStack(alignment: .leading, spacing: Space.s) {
-                Eyebrow(text: "✦ Insight · sleep × steps", color: Palette.weight)
-                Text(HomageSample.insightHeadline).font(Typo.geist(16, .semibold)).foregroundStyle(.white)
-                Text("−1,900 avg · confidence ▮▮▯ moderate").font(Typo.caption).foregroundStyle(Palette.secondaryInk)
-                HStack(spacing: Space.s) {
-                    Text("✦ Ask about this").font(Typo.geist(14, .semibold)).foregroundStyle(Color(hex: 0x04121F))
-                        .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(LinearGradient(colors: [Palette.recovery, Palette.signal], startPoint: .leading, endPoint: .trailing)))
-                    Text("Evidence").font(Typo.geist(14, .semibold)).foregroundStyle(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.white.opacity(0.10)))
-                }
-            }
-            .auroraGlass()
+
             HStack(spacing: Space.m) {
-                VStack(spacing: 2) {
-                    Text("🔥").font(.title3)
-                    Text(HomageSample.streakDays).font(Typo.score(30)).foregroundStyle(.white)
-                    Text("STREAK").font(Typo.eyebrow).foregroundStyle(Palette.secondaryInk)
-                }.frame(maxWidth: .infinity).auroraGlass()
-                VStack(spacing: 2) {
-                    Text("◍").font(.title3).foregroundStyle(Palette.signalBright)
-                    Text(HomageSample.weekCount).font(Typo.score(30)).foregroundStyle(.white)
-                    Text("NEAR USUAL").font(Typo.eyebrow).foregroundStyle(Palette.secondaryInk)
-                }.frame(maxWidth: .infinity).auroraGlass()
+                VStack(spacing: 1) {
+                    Text("LOAD").font(Typo.eyebrow).foregroundStyle(Palette.ice)
+                    Text(HomageSample.load).font(Typo.score(28)).foregroundStyle(.white)
+                    Text("usual \(HomageSample.loadUsual)").font(Typo.geist(10.5, relativeTo: .caption2)).foregroundStyle(Palette.ice.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity).auroraGlass()
+                VStack(spacing: 1) {
+                    Text("RESTING").font(Typo.eyebrow).foregroundStyle(Palette.ice)
+                    Text("54").font(Typo.score(28)).foregroundStyle(.white)
+                    Text("from your nights").font(Typo.geist(10.5, relativeTo: .caption2)).foregroundStyle(Palette.ice.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity).auroraGlass()
             }
         }
         .padding(Space.page)
         .background {
             ZStack {
                 Color(hex: 0x07070D)
-                RadialGradient(colors: [Palette.recovery.opacity(0.30), .clear], center: .topLeading, startRadius: 0, endRadius: 300)
-                RadialGradient(colors: [Palette.sleep.opacity(0.35), .clear], center: .topTrailing, startRadius: 0, endRadius: 320)
-                RadialGradient(colors: [Palette.signal.opacity(0.20), .clear], center: .center, startRadius: 0, endRadius: 380)
+                RadialGradient(colors: [Palette.heart.opacity(0.30), .clear], center: .topLeading, startRadius: 0, endRadius: 320)
+                RadialGradient(colors: [Palette.sleep.opacity(0.32), .clear], center: .topTrailing, startRadius: 0, endRadius: 330)
+                RadialGradient(colors: [Palette.recovery.opacity(0.22), .clear], center: .center, startRadius: 0, endRadius: 400)
             }
             .ignoresSafeArea()
         }
         .preferredColorScheme(.dark)
     }
 
-    func auroraChip(_ text: String) -> some View {
-        Text(text).font(Typo.eyebrow).foregroundStyle(.white)
-            .padding(.horizontal, 10).padding(.vertical, 5)
-            .background(Capsule().fill(.white.opacity(0.10)))
-            .overlay(Capsule().stroke(.white.opacity(0.2), lineWidth: 1))
+    func auroraChip(_ text: String, glyph: String? = nil, solid: Bool = false, tint: Color = .white) -> some View {
+        HStack(spacing: 4) {
+            if let glyph { Image(systemName: glyph).font(.system(size: 9, weight: .bold)) }
+            Text(text).font(Typo.eyebrow).tracking(0.9)
+        }
+        .foregroundStyle(solid ? Color(hex: 0x06121F) : .white)
+        .padding(.horizontal, 9).padding(.vertical, 5)
+        .background(Capsule().fill(solid ? AnyShapeStyle(tint) : AnyShapeStyle(Color.white.opacity(0.10))))
+        .overlay(Capsule().strokeBorder(.white.opacity(solid ? 0 : 0.22), lineWidth: 1))
     }
 }
 
@@ -373,7 +492,7 @@ private struct AuroraGlass: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(Space.l)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(.white.opacity(0.16), lineWidth: 1))
     }
@@ -383,9 +502,61 @@ private extension View {
     func auroraGlass() -> some View { modifier(AuroraGlass()) }
 }
 
+// MARK: - Gallery
+
+/// Compare the three tops, and drag the rate to watch the pounding speed follow it.
+struct HomeTopGalleryView: View {
+    @State private var style: HomeTopStyle = .vitalSign
+    @State private var bpm: Double = HomageSample.bpm
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                switch style {
+                case .vitalSign: VitalSignTop(bpm: bpm)
+                case .paperChart: PaperChartTop(bpm: bpm)
+                case .pulseAurora: AuroraPulseTop(bpm: bpm)
+                }
+            }
+            .scrollIndicators(.hidden)
+            VStack(spacing: Space.s) {
+                Picker("Design", selection: $style) {
+                    ForEach(HomeTopStyle.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                Text(style.caption).font(Typo.caption).foregroundStyle(Palette.secondaryInk)
+                HStack(spacing: Space.m) {
+                    Text("\(Int(bpm)) BPM").font(Typo.mono(12, .medium)).foregroundStyle(Palette.ink).frame(width: 72, alignment: .leading)
+                    Slider(value: $bpm, in: 44...170, step: 1)
+                }
+                Text("Drag to change the rate — the heart pounds that many times a minute.")
+                    .font(Typo.geist(11, relativeTo: .caption2)).foregroundStyle(Palette.tertiaryInk)
+            }
+            .padding(Space.l)
+            .background(.bar)
+        }
+    }
+}
+
 // MARK: - Previews
 
-#Preview("Homages · Gallery") { HomeHomageGalleryView() }
-#Preview("Homage · A Midnight") { ScrollView { MidnightHomageView() } }
-#Preview("Homage · B Porcelain") { ScrollView { PorcelainHomageView() } }
-#Preview("Homage · C Aurora") { ScrollView { AuroraHomageView() } }
+#Preview("Tops · Gallery") { HomeTopGalleryView() }
+#Preview("Top · A Vital Sign") { ScrollView { VitalSignTop() } }
+#Preview("Top · B Paper Chart") { ScrollView { PaperChartTop() } }
+#Preview("Top · C Pulse Aurora") { ScrollView { AuroraPulseTop() } }
+#Preview("Pulse · rate ladder") {
+    VStack(spacing: Space.xl) {
+        ForEach([48.0, 78, 122, 158], id: \.self) { rate in
+            HStack(spacing: Space.l) {
+                PoundingHeart(bpm: rate, tint: HeartRateZone.of(bpm: rate, resting: 54).tint, size: 60)
+                VStack(alignment: .leading) {
+                    Text("\(Int(rate)) BPM").font(Typo.number(20)).foregroundStyle(Palette.ink)
+                    Text(HeartRateZone.of(bpm: rate, resting: 54).label).font(Typo.caption).foregroundStyle(Palette.secondaryInk)
+                }
+                ECGTrace(bpm: rate, tint: HeartRateZone.of(bpm: rate, resting: 54).tint).frame(height: 44)
+            }
+        }
+    }
+    .padding(Space.page)
+    .background(Palette.canvas)
+}

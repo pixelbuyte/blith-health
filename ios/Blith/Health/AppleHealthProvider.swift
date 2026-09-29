@@ -66,6 +66,9 @@ final class AppleHealthProvider: HealthDataProvider, @unchecked Sendable {
             }
             if category == .sleep { types.insert(HKCategoryType(.sleepAnalysis)) }
             if category == .movement { types.insert(HKObjectType.workoutType()) }
+            // Beat-by-beat heart rate has no `HealthMetric` case: it is only ever shown live,
+            // never aggregated into the daily history.
+            if category == .heart { types.insert(HKQuantityType(.heartRate)) }
         }
         return types
     }
