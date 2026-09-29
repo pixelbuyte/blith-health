@@ -306,6 +306,21 @@ extension Insight {
         }
     }
 
+    var label: String {
+        switch kind {
+        case .baselineChange, .momentum, .longTermChange: "Trend"
+        case .consistency: "Consistency"
+        case .dayOfWeek, .weekdayDecline: "Weekly rhythm"
+        case .timing: "Timing"
+        case .personalBest: "Personal best"
+        case .pace: "Pace"
+        case .weightTrend, .weightActivity: "Weight"
+        case .rebound: "Rebound"
+        case .sleepMovement, .sleepTiming: "Sleep"
+        case .noteContext: "Body note"
+        }
+    }
+
     var icon: String {
         switch kind {
         case .baselineChange, .momentum, .longTermChange: "bl.trend"
@@ -384,7 +399,7 @@ struct InsightCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.m) {
             HStack {
-                Eyebrow(text: featured ? "Worth knowing" : insight.kind.family, icon: insight.icon, color: insight.tint)
+                Eyebrow(text: featured ? "Worth knowing" : insight.label, icon: insight.icon, color: insight.tint)
                 Spacer()
                 Text("confidence \(insight.confidence.label.lowercased())")
                     .font(Typo.eyebrow).foregroundStyle(Palette.secondaryInk)

@@ -21,7 +21,7 @@ public enum InsightKind: String, Codable, Sendable, CaseIterable {
     case longTermChange, pace, weightTrend, weightActivity, rebound, sleepMovement, sleepTiming, noteContext
 
     /// Insights in the same family never appear together on Today.
-    var family: String {
+    public var family: String {
         switch self {
         case .baselineChange, .momentum, .longTermChange: "volume"
         case .weightTrend, .weightActivity: "weight"
