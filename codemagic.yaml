@@ -91,6 +91,63 @@ workflows:
       - build/xcodebuild.log
       - core-tests.log
 
+  # One-time / idempotent: registers com.blith.health with the HealthKit capability using the team's
+  # App Store Connect integration and reports what exists in the account. Safe to re-run.
+  ios-setup:
+    name: iOS Setup - App ID and HealthKit
+    max_build_duration: 15
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: codemagic1
+    environment:
+      vars:
+        BUNDLE_ID: "com.blith.health"
+        APP_NAME: "Blith"
+    scripts:
+      - name: CLI reference
+        script: |
+          app-store-connect bundle-ids --help 2>&1 | head -30 || true
+          app-store-connect bundle-ids create --help 2>&1 | head -30 || true
+          app-store-connect bundle-ids capabilities --help 2>&1 | head -30 || true
+      - name: Account status
+        script: |
+          python3 - <<'PY'
+          import json, subprocess
+          def cli(*a):
+              r = subprocess.run(["app-store-connect", *a, "--json"], capture_output=True, text=True)
+              try: return json.loads(r.stdout)
+              except Exception: print("cli", a, "->", (r.stderr or r.stdout)[-300:]); return []
+          apps = cli("apps", "list")
+          print("apps:", [(a["attributes"].get("bundleId"), a["attributes"].get("name")) for a in apps])
+          ids = cli("bundle-ids", "list", "--bundle-id-identifier", "com.blith.health")
+          print("blith bundle ids:", [(b["id"], b["attributes"].get("identifier"), b["attributes"].get("seedId")) for b in ids])
+          certs = cli("certificates", "list", "--type", "DISTRIBUTION")
+          print("distribution certs:", [(c["id"], c["attributes"].get("name"), c["attributes"].get("expirationDate")) for c in certs])
+          PY
+      - name: Register bundle ID
+        script: |
+          set -uo pipefail
+          EXISTING=$(app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --json 2>/dev/null \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["id"] if d else "")' || true)
+          if [ -z "$EXISTING" ]; then
+            echo "Creating bundle ID $BUNDLE_ID"
+            app-store-connect bundle-ids create IOS --bundle-id-identifier "$BUNDLE_ID" --name "$APP_NAME" || \
+              app-store-connect bundle-ids create --platform IOS --bundle-id-identifier "$BUNDLE_ID" --name "$APP_NAME"
+          else
+            echo "Bundle ID exists: $EXISTING"
+          fi
+      - name: Enable HealthKit
+        script: |
+          set -uo pipefail
+          RID=$(app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --json \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["id"])')
+          echo "Bundle ID resource: $RID"
+          app-store-connect bundle-ids capabilities enable "$RID" --capability HEALTHKIT 2>&1 \
+            || app-store-connect bundle-ids enable-capabilities "$RID" HEALTHKIT 2>&1 \
+            || echo "(capability call failed; see CLI reference above)"
+          app-store-connect bundle-ids capabilities list "$RID" --json 2>&1 | head -20 \
+            || app-store-connect bundle-ids list-capabilities "$RID" --json 2>&1 | head -20 || true
+
   ios-release:
     name: iOS Release - TestFlight
     max_build_duration: 60
