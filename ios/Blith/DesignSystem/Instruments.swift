@@ -290,11 +290,22 @@ struct ScoreHeatmap: View {
     func color(_ d: DayScores) -> Color? {
         switch mode {
         case .readiness:
-            return d.readiness.map { Palette.band(d.band).opacity(0.3 + 0.7 * Double($0) / 100) }
+            return d.readiness.map { step(Palette.band(d.band), Double($0) / 100) }
         case .sleep:
-            return d.sleep.map { Palette.sleep.opacity(0.15 + 0.85 * relative(Double($0), days.compactMap(\.sleep).map(Double.init))) }
+            return d.sleep.map { step(Palette.sleep, relative(Double($0), days.compactMap(\.sleep).map(Double.init))) }
         case .load:
-            return d.load.map { Palette.signal.opacity(0.15 + 0.85 * relative($0, days.compactMap(\.load))) }
+            return d.load.map { step(Palette.signal, relative($0, days.compactMap(\.load))) }
+        }
+    }
+
+    /// Five steps from a neutral to the full tint, so the high days stand out instead of a wall of colour.
+    func step(_ tint: Color, _ v: Double) -> Color {
+        switch min(4, Int(v * 5)) {
+        case 0: Palette.sunken
+        case 1: tint.opacity(0.3)
+        case 2: tint.opacity(0.5)
+        case 3: tint.opacity(0.75)
+        default: tint
         }
     }
 
