@@ -106,9 +106,11 @@ workflows:
     scripts:
       - name: CLI reference
         script: |
-          app-store-connect bundle-ids --help 2>&1 | head -30 || true
-          app-store-connect bundle-ids create --help 2>&1 | head -30 || true
-          app-store-connect bundle-ids capabilities --help 2>&1 | head -30 || true
+          for c in "create" "enable-capabilities"; do
+            echo "== bundle-ids $c"
+            app-store-connect bundle-ids $c --help 2>&1 | sed 's/\x1b\[[0-9;]*m//g' \
+              | sed -n '/arguments for command/,$p' | grep -vE "issuer|key-id|private-key|certificates-dir|profiles-dir|api-|jwt|log-|json|-h, --help|^$" | cut -c1-200 | head -30
+          done
       - name: Account status
         script: |
           python3 - <<'PY'
@@ -131,8 +133,7 @@ workflows:
             | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["id"] if d else "")' || true)
           if [ -z "$EXISTING" ]; then
             echo "Creating bundle ID $BUNDLE_ID"
-            app-store-connect bundle-ids create IOS --bundle-id-identifier "$BUNDLE_ID" --name "$APP_NAME" || \
-              app-store-connect bundle-ids create --platform IOS --bundle-id-identifier "$BUNDLE_ID" --name "$APP_NAME"
+            app-store-connect bundle-ids create "$BUNDLE_ID" --name "$APP_NAME" --platform IOS
           else
             echo "Bundle ID exists: $EXISTING"
           fi
@@ -142,11 +143,10 @@ workflows:
           RID=$(app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --json \
             | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["id"])')
           echo "Bundle ID resource: $RID"
-          app-store-connect bundle-ids capabilities enable "$RID" --capability HEALTHKIT 2>&1 \
-            || app-store-connect bundle-ids enable-capabilities "$RID" HEALTHKIT 2>&1 \
-            || echo "(capability call failed; see CLI reference above)"
-          app-store-connect bundle-ids capabilities list "$RID" --json 2>&1 | head -20 \
-            || app-store-connect bundle-ids list-capabilities "$RID" --json 2>&1 | head -20 || true
+          app-store-connect bundle-ids enable-capabilities "$RID" --capabilities HEALTHKIT
+          app-store-connect bundle-ids capabilities "$RID" --json | python3 -c '
+          import json,sys
+          print("capabilities:", [c["attributes"]["capabilityType"] for c in json.load(sys.stdin)])'
 
   ios-release:
     name: iOS Release - TestFlight
