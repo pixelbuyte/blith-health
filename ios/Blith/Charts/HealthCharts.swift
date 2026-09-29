@@ -217,7 +217,7 @@ struct StepHistoryChart: View {
                     .foregroundStyle(Palette.tertiaryInk)
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 4]))
                     .annotation(position: .bottom, alignment: .trailing) {
-                        Text("BEFORE \(Fmt.int(previousAverage))").font(Typo.mono(10)).foregroundStyle(Palette.tertiaryInk)
+                        ruleLabel("BEFORE \(Fmt.int(previousAverage))", Palette.tertiaryInk)
                     }
             }
             if let average, selectedBucket == nil {
@@ -225,7 +225,7 @@ struct StepHistoryChart: View {
                     .foregroundStyle(Palette.ink.opacity(0.55))
                     .lineStyle(StrokeStyle(lineWidth: 1))
                     .annotation(position: .top, alignment: .leading) {
-                        Text("AVG \(Fmt.int(average))").font(Typo.mono(10, .medium)).foregroundStyle(Palette.secondaryInk)
+                        ruleLabel("AVG \(Fmt.int(average))", Palette.ink)
                     }
             }
             if let b = selectedBucket {
@@ -285,6 +285,17 @@ struct StepHistoryChart: View {
         case .month: "\(Fmt.monthNames[b.start.month - 1].uppercased()) \(b.start.year)"
         }
     }
+}
+
+/// A rule-line label on a solid chip, so it stays legible where it crosses bars.
+func ruleLabel(_ text: String, _ color: Color) -> some View {
+    Text(text)
+        .font(Typo.mono(10, .medium))
+        .foregroundStyle(color)
+        .padding(.horizontal, 5)
+        .padding(.vertical, 2)
+        .background(Palette.surface.opacity(0.92), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(Palette.hairline, lineWidth: 1))
 }
 
 func tooltip(title: String, value: String) -> some View {
