@@ -132,7 +132,128 @@ struct ECGTrace: View {
     }
 }
 
-/// The beat-to-beat reading as words, for VoiceOver and for the "what am I looking at" line.
+/// A heart drawn as a real curve rather than a glyph: wide round lobes, a soft cleft and a blunt
+/// tip. The right half is defined and the left is mirrored, so it is always perfectly symmetric.
+struct HeartShape: Shape {
+    /// Height as a fraction of width — the heart is slightly wider than it is tall.
+    static let aspect: CGFloat = 0.96
+    static let tip = CGPoint(x: 0.5, y: 0.955)
+    /// Right half, bottom tip → outer lobe → into the centre cleft. (control1, control2, end)
+    ///
+    /// The last control point sits well to the right of the cleft on purpose: it makes the tangent
+    /// there nearly horizontal, so the two halves meet as a rounded U instead of a sharp notch.
+    static let segments: [(CGPoint, CGPoint, CGPoint)] = [
+        (CGPoint(x: 0.640, y: 0.915), CGPoint(x: 1.000, y: 0.645), CGPoint(x: 1.000, y: 0.330)),
+        (CGPoint(x: 1.000, y: 0.070), CGPoint(x: 0.780, y: -0.035), CGPoint(x: 0.615, y: 0.032)),
+        (CGPoint(x: 0.556, y: 0.078), CGPoint(x: 0.560, y: 0.235), CGPoint(x: 0.500, y: 0.285)),
+    ]
+
+    func path(in rect: CGRect) -> Path {
+        let w = min(rect.width, rect.height / Self.aspect)
+        let h = w * Self.aspect
+        let x = rect.midX - w / 2
+        let y = rect.midY - h / 2
+        func p(_ pt: CGPoint) -> CGPoint { CGPoint(x: x + pt.x * w, y: y + pt.y * h) }
+        func mirror(_ pt: CGPoint) -> CGPoint { CGPoint(x: x + (1 - pt.x) * w, y: y + pt.y * h) }
+
+        var path = Path()
+        path.move(to: p(Self.tip))
+        for s in Self.segments {
+            path.addCurve(to: p(s.2), control1: p(s.0), control2: p(s.1))
+        }
+        for i in Self.segments.indices.reversed() {
+            let s = Self.segments[i]
+            let end = i == 0 ? mirror(Self.tip) : mirror(Self.segments[i - 1].2)
+            path.addCurve(to: end, control1: mirror(s.1), control2: mirror(s.0))
+        }
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// The hero heart: a soft, inflated body with a broad gloss over the upper half, a darkened rim
+/// that gives it volume, bounce light along the bottom, and the rate read inside it.
+///
+/// It pounds on the same envelope as `PoundingHeart` — the body swells, the glow flares and the
+/// rim light sharpens on each beat, so the whole object breathes rather than just scaling.
+struct GlossyHeart: View {
+    var bpm: Double?
+    /// Shown inside the heart. Usually the rate.
+    var value: String?
+    var caption: String?
+    var size: CGFloat = 220
+    /// Base body colour; the gradient is derived from it.
+    var body_: Color = Color(hex: 0xF76C76)
+    var highlight: Color = Color(hex: 0xFF838A)
+    var shade: Color = Color(hex: 0xE24A5C)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var interval: TimeInterval { 60 / min(max(bpm ?? 60, 30), 220) }
+
+    var body: some View {
+        TimelineView(.animation(paused: reduceMotion)) { timeline in
+            let live = bpm != nil
+            let k = reduceMotion ? 0.3 : (live ? Beat.thump(Beat.phase(timeline.date, interval: interval))
+                                               : Beat.idle(timeline.date) * 0.5)
+            ZStack {
+                HeartShape()
+                    .fill(LinearGradient(colors: [highlight, body_, shade], startPoint: .top, endPoint: .bottom))
+                    .overlay {
+                        // Rim darkening: transparent through most of the body, deep only at the edge.
+                        HeartShape().fill(
+                            RadialGradient(gradient: Gradient(stops: [
+                                .init(color: .clear, location: 0),
+                                .init(color: .clear, location: 0.80),
+                                .init(color: Color(hex: 0x8C142D, opacity: 0.38), location: 1),
+                            ]), center: UnitPoint(x: 0.5, y: 0.48), startRadius: size * 0.14, endRadius: size * 0.60))
+                    }
+                    .overlay {
+                        // One broad specular sweep, not a tight dot — this is what reads as "soft".
+                        HeartShape().fill(
+                            RadialGradient(gradient: Gradient(stops: [
+                                .init(color: .white.opacity(0.48), location: 0),
+                                .init(color: .white.opacity(0.22 + 0.08 * k), location: 0.35),
+                                .init(color: .white.opacity(0.04), location: 0.72),
+                                .init(color: .white.opacity(0), location: 1),
+                            ]), center: UnitPoint(x: 0.44, y: 0.16), startRadius: 0, endRadius: size * 0.58))
+                    }
+                    .overlay {
+                        // Bounce light off the bottom, so the tip doesn't go flat.
+                        HeartShape().fill(
+                            RadialGradient(gradient: Gradient(stops: [
+                                .init(color: Color(hex: 0xFFBEC8, opacity: 0.20), location: 0),
+                                .init(color: Color(hex: 0xFFBEC8, opacity: 0), location: 1),
+                            ]), center: UnitPoint(x: 0.5, y: 0.93), startRadius: 0, endRadius: size * 0.32))
+                    }
+                    .shadow(color: body_.opacity(0.30 + 0.35 * k), radius: size * (0.07 + 0.05 * k))
+                    .scaleEffect(1 + 0.055 * k)
+
+                if value != nil || caption != nil {
+                    VStack(spacing: 0) {
+                        if let value {
+                            Text(value)
+                                .font(Typo.geist(size * 0.25, .semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(.white)
+                                .shadow(color: Color(hex: 0x7A0A1E, opacity: 0.30), radius: size * 0.04)
+                                .contentTransition(.numericText())
+                        }
+                        if let caption {
+                            Text(caption.uppercased())
+                                .font(Typo.mono(max(9, size * 0.05), .medium))
+                                .tracking(1)
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+                    }
+                    .offset(y: size * 0.09)
+                }
+            }
+            .frame(width: size, height: size * HeartShape.aspect)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 extension HeartRatePulse {
     var spokenLabel: String {
         "Heart rate \(Int(bpm.rounded())) beats per minute, \(zone.label.lowercased()). \(summary)"
