@@ -292,6 +292,38 @@ GENITAL_RADII = np.array([0.043, 0.056, 0.066])
 CROTCH_Y = 0.712                                  # perineum height on the midline
 
 
+def smoothstep(e0, e1, x):
+    t = np.clip((x - e0) / (e1 - e0), 0, 1)
+    return t * t * (3 - 2 * t)
+
+
+def face_weight(V):
+    """1 over the front of the face (brow to chin), fading out; BodyParts3D frame."""
+    x, y, z = V[:, 0], V[:, 1], V[:, 2]
+    return (smoothstep(1.405, 1.435, y) * (1 - smoothstep(1.545, 1.57, y)) * smoothstep(0.095, 0.125, z)
+            * (1 - smoothstep(0.065, 0.085, np.abs(x))))
+
+
+def refine_face(V, F, iters=40):
+    """Sculpt-like face: low-pass the scan's eye, lid, lip and nostril detail (Taubin, so the head
+    keeps its volume, jaw and profile), partly sparing the nose tip so the silhouette stays."""
+    w = face_weight(V)
+    near = (np.abs(V[:, 0]) < 0.012) & (V[:, 1] > 1.46) & (V[:, 1] < 1.53)
+    tip = V[near][np.argmax(V[near][:, 2])]
+    w = w * (1 - 0.6 * np.exp(-(np.linalg.norm(V - tip, axis=1) / 0.016) ** 2))
+    A = adjacency(len(V), F)
+    deg = np.asarray(A.sum(1)).ravel()[:, None]
+    # closed lids: flatten the crease around the filled eye openings first
+    we = sum(np.exp(-(np.linalg.norm((V - [sx * 0.031, 1.518, 0.152]) / [0.024, 0.014, 0.03], axis=1)) ** 2)
+             for sx in (-1, 1))
+    for _ in range(30):
+        V = V + (0.5 * we)[:, None] * ((A @ V) / deg - V)
+    for _ in range(iters):
+        for k in (0.6, -0.62):
+            V = V + (w * k)[:, None] * ((A @ V) / deg - V)
+    return V
+
+
 def build_skin():
     V, F = outer_shell(*bp3d_obj('FJ2810'))
     # neutral groin: drop everything inside the genital ellipsoid, keep the main piece, membrane-fill
@@ -317,8 +349,9 @@ def build_skin():
     for loop in boundary_loops(F):
         P = V[loop]
         eye = abs(abs(P[:, 0].mean()) - 0.031) < 0.01 and abs(P[:, 1].mean() - 1.518) < 0.01
-        V, F, _ = fill_hole(V, F, loop, bulge=0.003 if eye else 0.0)
+        V, F, _ = fill_hole(V, F, loop, bulge=0.0045 if eye else 0.0)
     V = taubin(V, F, iters=4)
+    V = refine_face(V, F)
     V, F = decimate(V, F, SKIN_TRIS)
     assert not boundary_loops(F), 'skin must be closed'
     return V, F
@@ -713,7 +746,7 @@ SKIP_NAME = ('Cross Section', 'intercostal', 'Diaphragm', 'Transversus thoracis'
              'Coracobrachialis', 'Serratus posterior', 'Semispinalis', 'Spinalis', 'Longissimus colli',
              'Iliocostalis colli', 'Subscapularis', 'Transverse arytenoid', 'Deep part of masseter', 'Palatopharyngeus',
              'Genioglossus', 'Hyoglossus', 'Stylopharyngeus', 'Stylohyoid', 'Geniohyoid', 'Mylohyoid', 'Pyramidalis',
-             'Vastus intermedius', 'Adductor brevis', 'Adductor minimus', 'Pectoralis minor', 'Rhomboid minor',
+             'Linea alba', 'Palpebral part', 'Vastus intermedius', 'Adductor brevis', 'Adductor minimus', 'Pectoralis minor', 'Rhomboid minor',
              'Flexor digitorum profundus', 'Flexor pollicis longus', 'Extensor indicis')
 TENDON_WORDS = ('tendon', 'aponeurosis', 'Linea alba', 'tract', 'ligament', 'retinaculum')
 MIDLINE_NAMES = ('Linea alba',)
@@ -748,6 +781,8 @@ def load_muscles(to_bp):
     d = np.load(cf, allow_pickle=True)
     out = []
     for n, V, F in zip(d['names'], d['V'], d['F']):
+        if any(k.lower() in str(n).lower() for k in SKIP_NAME):
+            continue
         V, F = weld(to_bp(V.astype(np.float64)), F.astype(np.int64), 1e-7)
         if len(F) >= 8:
             out.append(dict(name=str(n), V=V, F=F))
@@ -777,6 +812,24 @@ def snap_field(parts, skin_V, skin_F, skin_N, skin_tree, gap=0.0015, max_shift=0
 def apply_snap(V, D, skin_V, skin_N, skin_tree):
     _, j = skin_tree.query(V)
     return V - skin_N[j] * D[j][:, None]
+
+
+def rectus_to_midline(V, gap=0.0012):
+    """Stretch a rectus abdominis medially (lateral border fixed) so left and right meet at the
+    midline and the front of the abdomen reads as one continuous surface."""
+    ax, y = np.abs(V[:, 0]), V[:, 1]
+    ys = np.arange(y.min(), y.max() + 0.01, 0.01)
+    med = np.array([ax[np.abs(y - b) < 0.008].min() if (np.abs(y - b) < 0.008).any() else np.nan for b in ys])
+    lat = np.array([ax[np.abs(y - b) < 0.008].max() if (np.abs(y - b) < 0.008).any() else np.nan for b in ys])
+    ok = ~np.isnan(med)
+    med = ndimage.gaussian_filter1d(np.interp(ys, ys[ok], med[ok]), 2, mode='nearest')
+    lat = ndimage.gaussian_filter1d(np.interp(ys, ys[ok], lat[ok]), 2, mode='nearest')
+    m, l = np.interp(y, ys, med), np.interp(y, ys, lat)
+    k = (l - gap) / np.maximum(l - m, 1e-6)
+    new = np.maximum(l - (l - ax) * k, gap * 0.5)
+    V = V.copy()
+    V[:, 0] = np.sign(V[:, 0]) * new
+    return V
 
 
 def sphere_dirs():
@@ -1024,6 +1077,10 @@ def main():
     print(f'  snap shift: median {np.median(np.abs(D)) * 1000:.1f} mm, max {np.abs(D).max() * 1000:.1f} mm')
     for q in parts:
         q['V'] = apply_snap(q['V'], D, sV, sN, stree)
+        if q['name'].startswith('Rectus abdominis'):
+            q['V'] = rectus_to_midline(q['V'])
+        if face_weight(q['V']).mean() > 0.5:               # soften the scan-like facial rings
+            q['V'] = taubin(q['V'], q['F'], iters=12)
         q['pre'] = decimate(q['V'], q['F'], max(250, len(q['F']) * 0.4))
     pre = [dict(V=q['pre'][0], F=q['pre'][1]) for q in parts]
     V, F, pid = merge(pre)
