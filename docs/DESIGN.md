@@ -33,15 +33,15 @@ Every token is adaptive (light / dark). Dark is the signature look; light is equ
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| canvas | #080B10 | #F2F4F7 | screen background |
-| surface | #0F131A | #FFFFFF | cards |
-| raised | #161B24 | #F7F8FA | insets, tiles inside cards |
-| sunken | #1C2330 | #E8ECF2 | tracks, empty bars, input fields |
-| hairline | white 8% | #0B1220 9% | borders, separators |
-| ink | #F4F6FA | #0B1220 | primary text, key numbers |
-| secondaryInk | #A7AFBC | #48505F | supporting text |
-| tertiaryInk | #7C8594 | #6A7282 | metadata, axis labels (AA on surface) |
-| quiet | #3A4352 | #C9D0DA | historical/context data in charts |
+| canvas | #06090F | #EFF2F7 | screen background |
+| surface | #0E131B | #FFFFFF | cards |
+| raised | #161C26 | #F7F8FA | insets, tiles inside cards |
+| sunken | #1D2431 | #E4E9F1 | tracks, empty bars, input fields |
+| hairline | white 9% | #0B1220 10% | borders, separators |
+| ink | #F5F7FB | #0A1120 | primary text, key numbers |
+| secondaryInk | #AAB3C2 | #454E5E | supporting text |
+| tertiaryInk | #828B9B | #646D7E | metadata, axis labels (AA on surface) |
+| quiet | #3D4656 | #B4BDC9 | historical/context data in charts |
 
 ### Brand blue family
 
@@ -59,12 +59,12 @@ Every token is adaptive (light / dark). Dark is the signature look; light is equ
 |---|---|---|---|
 | Movement / steps / load | signal | #4F8EFF | #2563EB |
 | Walking performance | signal → cyan | | |
-| Sleep | sleep (indigo) | #8B8CFF | #4F46E5 |
-| Recovery / readiness | recovery (teal-cyan) | #4FD1C5 | #0F9488 |
-| Heart | heart (coral) | #FF6B5E | #E0473B |
-| Weight | weight (slate violet) | #A3ADFF | #5B63D3 |
-| Body notes (the person's own) | note (amber) | #F5B04C | #B96F0A |
-| Worth a look (non-critical) | review (amber) | #F5B04C | #B96F0A |
+| Sleep | sleep (indigo) | #8587FF | #4338CA |
+| Recovery / readiness | recovery (teal-cyan) | #45D0C2 | #0E7C72 |
+| Heart | heart (coral) | #FF6B5E | #D63A2F |
+| Weight | weight (violet, split ≥30° from sleep) | #B9A3FF | #7A4FD0 |
+| Body notes (the person's own) | note (amber) | #F5B04C | #A85E07 |
+| Worth a look (non-critical) | review (amber) | #F5B04C | #A85E07 |
 
 Sleep stages are one indigo ramp (deep darkest → REM lightest); awake is the only warm stage.
 

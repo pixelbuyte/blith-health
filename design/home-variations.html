@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blith — Home homage · 3 vibe-coded variations (fixed color + design)</title>
+<style>
+  :root{
+    --page:#0B0E14; --page2:#11151d; --ink:#F2F5FA; --sub:#9AA4B5; --faint:#6b7484;
+    --line:rgba(255,255,255,.09); --card:#141a24;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Geist",sans-serif;
+    background:radial-gradient(1100px 500px at 50% -120px, rgba(79,142,255,.16), transparent 60%),
+               radial-gradient(900px 500px at 90% 0%, rgba(133,135,255,.10), transparent 60%), var(--page);
+    color:var(--ink); min-height:100vh; padding:48px 28px 90px;
+  }
+  .wrap{max-width:1280px; margin:0 auto}
+  .eyebrow{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:11px; letter-spacing:.14em; color:#7DB2FF; text-transform:uppercase}
+  h1{font-size:clamp(30px,4.4vw,52px); letter-spacing:-.02em; line-height:1.04; margin:12px 0 10px; font-weight:700}
+  h1 .serif{font-family:New York,Georgia,serif; font-weight:400; font-style:italic}
+  .lede{color:var(--sub); font-size:16px; line-height:1.6; max-width:760px}
+  .lede b{color:var(--ink); font-weight:600}
+  .fixbar{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; margin:26px 0 8px}
+  .fix{background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:14px; padding:12px 14px; font-size:13px; line-height:1.5; color:var(--sub)}
+  .fix b{display:block; color:var(--ink); font-size:13px; margin-bottom:2px}
+  .fix code{font-family:ui-monospace,Menlo,monospace; font-size:11.5px; color:#B9DAFF}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:26px; margin-top:30px; align-items:start}
+  .variant-label{display:flex; align-items:baseline; gap:10px; margin-bottom:12px}
+  .variant-label .tag{font-family:ui-monospace,Menlo,monospace; font-size:11px; letter-spacing:.12em; padding:4px 10px; border-radius:99px; border:1px solid var(--line)}
+  .variant-label h2{font-size:20px; letter-spacing:-.01em}
+  .variant-label p{font-size:12.5px; color:var(--faint)}
+  .desc{font-size:13px; color:var(--sub); line-height:1.6; margin-bottom:14px; min-height:64px}
+  .desc b{color:var(--ink)}
+  .swatches{display:flex; gap:6px; margin:0 0 12px; flex-wrap:wrap}
+  .sw{flex:1 1 0; min-width:56px; border-radius:10px; padding:8px 8px 7px; font-family:ui-monospace,Menlo,monospace; font-size:9.5px; line-height:1.5; border:1px solid rgba(255,255,255,.1)}
+  .sw b{display:block; font-size:9.5px}
+  .phone{border-radius:44px; padding:12px; border:1px solid rgba(255,255,255,.12); box-shadow:0 30px 80px rgba(0,0,0,.5); position:relative}
+  .screen{border-radius:34px; overflow:hidden; height:780px; overflow-y:auto; scrollbar-width:none; position:relative}
+  .screen::-webkit-scrollbar{display:none}
+  .notch{position:sticky; top:10px; margin:10px auto 0; width:110px; height:26px; border-radius:99px; z-index:5}
+
+  /* ---------- shared phone interior ---------- */
+  .s-status{display:flex; justify-content:space-between; padding:8px 22px 0; font-size:12px; font-weight:600}
+  .s-body{padding:14px 16px 26px; display:flex; flex-direction:column; gap:12px}
+  .s-eyebrow{font-family:ui-monospace,Menlo,monospace; font-size:10px; letter-spacing:.12em; text-transform:uppercase}
+  .card{border-radius:20px; padding:16px}
+  .row{display:flex; align-items:center; gap:10px}
+  .bars{display:flex; align-items:flex-end; gap:5px; height:74px; margin-top:10px}
+  .bars i{flex:1; border-radius:4px; min-height:6px}
+  .vital{display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid}
+  .vital:first-of-type{border-top:none}
+  .dot{width:30px; height:30px; border-radius:99px; display:grid; place-items:center; font-size:14px; flex:none}
+  .meter{height:4px; border-radius:99px; flex:1; position:relative; overflow:hidden}
+  .meter i{position:absolute; inset:0 auto 0 0; border-radius:99px}
+  .btnrow{display:flex; gap:8px}
+  .pill{flex:1; text-align:center; font-size:12.5px; font-weight:600; padding:10px; border-radius:12px}
+  pre.snip{font-family:ui-monospace,Menlo,monospace; font-size:10.5px; line-height:1.6; background:#0a0d13; color:#b9c6da;
+    border:1px solid var(--line); border-radius:12px; padding:12px; margin-top:12px; white-space:pre-wrap}
+  .copybtn{margin-top:8px; width:100%; padding:9px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--ink); font-size:12px; cursor:pointer}
+  .copybtn:hover{background:rgba(255,255,255,.1)}
+
+  /* ---------- Variation A : Midnight Instrument ---------- */
+  .phone-a{background:#04060b}
+  .screen-a{background:radial-gradient(420px 300px at 50% -60px, rgba(79,142,255,.28), transparent 65%), #06090F; color:#F5F7FB}
+  .screen-a .notch{background:#000; border:1px solid rgba(255,255,255,.08)}
+  .screen-a .s-eyebrow{color:#8b95a9}
+  .screen-a h3.greet{font-size:24px; letter-spacing:-.02em; font-weight:650}
+  .screen-a .story{font-family:New York,Georgia,serif; font-size:14.5px; color:#AAB3C2; line-height:1.5}
+  .screen-a .hero{background:linear-gradient(180deg,#101D3D,#090E1B); border:1px solid rgba(125,178,255,.28); border-radius:22px; padding:18px 16px; box-shadow:0 0 0 1px rgba(0,0,0,.4), 0 18px 50px rgba(31,80,200,.25)}
+  .screen-a .dial{display:flex; justify-content:space-around; text-align:center; margin:6px 0 4px}
+  .screen-a .dial .num{font-size:30px; font-weight:250; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+  .screen-a .dial .lab{font-family:ui-monospace,Menlo,monospace; font-size:9px; letter-spacing:.12em; color:#8b95a9}
+  .screen-a .card{background:#0E131B; border:1px solid rgba(255,255,255,.08)}
+  .screen-a .vital{border-color:rgba(255,255,255,.07)}
+  .screen-a .chip{font-family:ui-monospace,Menlo,monospace; font-size:9.5px; letter-spacing:.1em; padding:4px 9px; border-radius:99px}
+
+  /* ---------- Variation B : Dawn Porcelain ---------- */
+  .phone-b{background:#e8e2d6}
+  .screen-b{background:linear-gradient(180deg,#FDFBF7,#F3EEE4); color:#101828}
+  .screen-b .notch{background:#101828}
+  .screen-b .s-status{color:#101828}
+  .screen-b .s-eyebrow{color:#8a7a5f}
+  .screen-b h3.greet{font-family:New York,Georgia,serif; font-size:27px; font-weight:500; letter-spacing:-.01em}
+  .screen-b .story{font-family:New York,Georgia,serif; font-style:italic; font-size:14.5px; color:#4C5665; line-height:1.55}
+  .screen-b .hero{background:#101828; color:#FAF7F0; border-radius:22px; padding:18px 16px; box-shadow:0 20px 40px rgba(16,24,40,.25)}
+  .screen-b .hero .s-eyebrow{color:#C9BFA9}
+  .screen-b .bento{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .screen-b .card{background:#FFFFFF; border:1px solid rgba(16,24,40,.09); box-shadow:0 8px 22px rgba(16,24,40,.06)}
+  .screen-b .vital{border-color:rgba(16,24,40,.08)}
+  .screen-b .bignum{font-family:New York,Georgia,serif; font-size:38px; line-height:1}
+  .screen-b .chip{display:inline-block; font-size:10px; font-weight:700; letter-spacing:.08em; padding:4px 10px; border-radius:99px}
+
+  /* ---------- Variation C : Pulse Vibe ---------- */
+  .phone-c{background:#050508; border-color:rgba(125,255,209,.3)}
+  .screen-c{background:#07070d; color:#F2FFF9; position:relative}
+  .screen-c::before{content:""; position:absolute; inset:0;
+    background:radial-gradient(300px 220px at 15% 0%, rgba(69,208,194,.35), transparent 60%),
+               radial-gradient(340px 240px at 90% 8%, rgba(133,135,255,.4), transparent 60%),
+               radial-gradient(420px 300px at 50% 38%, rgba(79,142,255,.22), transparent 65%);
+    pointer-events:none}
+  .screen-c .notch{background:#000; border:1px solid rgba(255,255,255,.14)}
+  .screen-c .s-body{position:relative}
+  .screen-c .glass{background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.16); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border-radius:22px; padding:16px; box-shadow:0 12px 40px rgba(0,0,0,.35)}
+  .screen-c h3.greet{font-size:24px; font-weight:800; letter-spacing:-.02em}
+  .screen-c h3.greet .grad{background:linear-gradient(90deg,#7DFCD0,#7DB2FF,#B9A3FF); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .screen-c .glow-num{font-size:52px; font-weight:200; letter-spacing:-.03em; text-shadow:0 0 24px rgba(125,252,208,.55); font-variant-numeric:tabular-nums}
+  .screen-c .orb{width:120px; height:120px; border-radius:99px; margin:4px auto;
+    background:conic-gradient(from 200deg, #45D0C2, #4F8EFF, #8587FF, #B9A3FF, #45D0C2);
+    -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 13px));
+    mask:radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 13px));
+    filter:drop-shadow(0 0 18px rgba(79,142,255,.6))}
+  .screen-c .vital{border-color:rgba(255,255,255,.1)}
+  .screen-c .chip{font-size:10px; font-weight:800; letter-spacing:.1em; padding:5px 10px; border-radius:99px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2)}
+
+  footer{margin-top:44px; color:var(--faint); font-size:12.5px; line-height:1.7; max-width:820px}
+  footer code{font-family:ui-monospace,Menlo,monospace; color:#B9DAFF; font-size:11.5px}
+  @media (max-width:420px){ body{padding:28px 14px 60px} .screen{height:700px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Blith · Today / Home homage · fixed color + design</div>
+  <h1>One home screen, <span class="serif">three vibe-coded homages.</span></h1>
+  <p class="lede">The current <b>Today</b> view is a solid instrument but reads flat: canvas is muddy, <b>sleep indigo vs weight violet collide</b> (#4F46E5 vs #5B63D3), quiet history bars are too faint, and every card has the same weight. Below are <b>three full-screen homage variations</b> built from the same data (greeting → readiness hero → movement → vitals → insight → streak). The canonical color fixes already landed in <b>Theme.swift</b>; each variation shows how far you can push the same tokens.</p>
+
+  <div class="fixbar">
+    <div class="fix"><b>1 · Canvas deepened, hairlines tuned</b>canvas <code>#080B10 → #06090F</code> · light <code>#F2F4F7 → #EFF2F7</code> · hairline 8% → 9–10% so cards separate without shadows.</div>
+    <div class="fix"><b>2 · Sleep ≠ Weight (≥30° hue split)</b>sleep <code>#4F46E5 → #4338CA</code> (true indigo) · weight <code>#5B63D3 → #7A4FD0</code> (true violet) · darks <code>#8B8CFF / #B9A3FF</code>.</div>
+    <div class="fix"><b>3 · History is visible again</b>quiet light <code>#C9D0DA → #B4BDC9</code> · dark <code>#3A4352 → #3D4656</code> · tertiary ink darkened for AA on surface.</div>
+    <div class="fix"><b>4 · Signal ramp re-lit</b>recovery <code>#0F9488 → #0E7C72</code> · heart <code>#E0473B → #D63A2F</code> · amber <code>#B96F0A → #A85E07</code> — alerts stay loud, calm stays calm.</div>
+  </div>
+
+  <div class="grid">
+
+    <!-- ============ A ============ -->
+    <div>
+      <div class="variant-label"><span class="tag">A · DARK</span><h2>Midnight Instrument</h2></div>
+      <p class="desc"><b>Refined v4.</b> Same Signal language, fixed properly: deeper imaging-chamber canvas, one lit tip per dial, translucent usual-band, mono eyebrows. Pick this to <b>ship safely</b> — it is the current app, corrected.</p>
+      <div class="swatches">
+        <div class="sw" style="background:#06090F;color:#fff"><b>canvas</b>#06090F</div>
+        <div class="sw" style="background:#4F8EFF;color:#04122e"><b>signal</b>#4F8EFF</div>
+        <div class="sw" style="background:#8587FF;color:#14143a"><b>sleep</b>#8587FF</div>
+        <div class="sw" style="background:#45D0C2;color:#06302b"><b>recovery</b>#45D0C2</div>
+        <div class="sw" style="background:#F5B04C;color:#3a2404"><b>amber</b>#F5B04C</div>
+      </div>
+      <div class="phone phone-a"><div class="screen screen-a">
+        <div class="notch"></div>
+        <div class="s-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="s-body">
+          <div><div class="s-eyebrow">Tue · Sep 29</div><h3 class="greet">Good evening, Maya</h3>
+            <div class="story">Movement is running 12% ahead of a usual Tuesday at this hour.</div></div>
+          <div class="hero">
+            <div class="row" style="justify-content:space-between"><span class="s-eyebrow" style="color:#7DB2FF">Readiness · your range</span><span class="chip" style="background:rgba(125,178,255,.14);color:#9CC8FF;border:1px solid rgba(125,178,255,.35)">▲ HIGH</span></div>
+            <div class="dial">
+              <div><div class="num" style="color:#8587FF">82</div><div class="lab">SLEEP</div></div>
+              <div><div class="num" style="font-size:52px">86</div><div class="lab">READINESS</div></div>
+              <div><div class="num" style="color:#55D8E8">4.2</div><div class="lab">LOAD</div></div>
+            </div>
+            <svg viewBox="0 0 300 44" width="100%" height="44"><path d="M6 36 A140 140 0 0 1 294 36" fill="none" stroke="#1D2431" stroke-width="7" stroke-linecap="round"/><path d="M6 36 A140 140 0 0 1 244 12" fill="none" stroke="#4F8EFF" stroke-width="4" stroke-linecap="round"/><circle cx="244" cy="12" r="5" fill="#F5F7FB"/><circle cx="244" cy="12" r="9" fill="none" stroke="#4F8EFF" opacity=".5"/></svg>
+            <div class="row" style="justify-content:space-between;font-size:11px;color:#AAB3C2"><span>HRV 48 ms</span><span>RHR 52 bpm</span><span>ASLEEP 7h 12m</span></div>
+          </div>
+          <div class="card">
+            <div class="row" style="justify-content:space-between"><span class="s-eyebrow" style="color:#4F8EFF">Movement · 6,412 steps</span><span style="font-size:11px;color:#45D0C2">▲ +12%</span></div>
+            <div class="bars"><i style="background:#3D4656;height:34%"></i><i style="background:#3D4656;height:48%"></i><i style="background:#3D4656;height:40%"></i><i style="background:#3D4656;height:58%"></i><i style="background:#4F8EFF;height:78%"></i><i style="background:#7DB2FF;height:96%"></i><i style="background:rgba(79,142,255,.25);height:60%"></i></div>
+            <div style="font-size:11.5px;color:#828B9B;margin-top:8px">Usually 5,720 by now on a Tuesday. Shaded area is your usual day.</div>
+          </div>
+          <div class="card">
+            <div class="s-eyebrow" style="margin-bottom:4px">Health monitor · 4 of 5 in range</div>
+            <div class="vital"><span class="dot" style="background:rgba(255,107,94,.12);color:#FF6B5E">♥</span><span style="font-size:13px">Resting heart rate</span><span style="margin-left:auto;font-size:13px;font-variant-numeric:tabular-nums">52 bpm</span></div>
+            <div class="vital"><span class="dot" style="background:rgba(69,208,194,.12);color:#45D0C2">◍</span><span style="font-size:13px">HRV</span><span style="margin-left:auto;font-size:13px">48 ms</span></div>
+            <div class="vital"><span class="dot" style="background:rgba(245,176,76,.12);color:#F5B04C">◎</span><span style="font-size:13px">Wrist temperature</span><span style="margin-left:auto;font-size:11px;color:#F5B04C">ABOVE RANGE</span></div>
+          </div>
+          <div class="card" style="border-color:rgba(133,135,255,.35)">
+            <div class="s-eyebrow" style="color:#8587FF">Worth knowing · Sleep</div>
+            <div style="font-family:Georgia,serif;font-size:15px;margin:6px 0">Late nights cost you Friday steps — 1,900 fewer on average.</div>
+            <div class="bars" style="height:52px"><i style="background:#3D4656"></i><i style="background:#3D4656"></i><i style="background:#8587FF"></i><i style="background:#3D4656"></i><i style="background:#3D4656"></i></div>
+          </div>
+        </div>
+      </div></div>
+      <pre class="snip">signal #4F8EFF · sleep #8587FF · recovery #45D0C2
+canvas #06090F · surface #0E131B · quiet #3D4656
+dials: track sunken 3% · value 4.5% + lit tip</pre>
+      <button class="copybtn" onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText)">Copy tokens</button>
+    </div>
+
+    <!-- ============ B ============ -->
+    <div>
+      <div class="variant-label"><span class="tag">B · LIGHT</span><h2>Dawn Porcelain</h2></div>
+      <p class="desc"><b>Editorial light homage.</b> Warm paper canvas, ink-black hero slab, New York sentences, bento tiles with sparklines. Pick this to <b>win light-mode users</b> — calm, premium, readable in sunlight.</p>
+      <div class="swatches">
+        <div class="sw" style="background:#F3EEE4;color:#101828"><b>paper</b>#F3EEE4</div>
+        <div class="sw" style="background:#101828;color:#FAF7F0"><b>slab</b>#101828</div>
+        <div class="sw" style="background:#1D4ED8;color:#fff"><b>signal</b>#1D4ED8</div>
+        <div class="sw" style="background:#4338CA;color:#fff"><b>sleep</b>#4338CA</div>
+        <div class="sw" style="background:#A85E07;color:#fff"><b>amber</b>#A85E07</div>
+      </div>
+      <div class="phone phone-b"><div class="screen screen-b">
+        <div class="notch"></div>
+        <div class="s-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="s-body">
+          <div><div class="s-eyebrow">Tuesday, September 29</div><h3 class="greet">Good evening, Maya.</h3>
+            <div class="story">Your 30-day average is the highest in six months — the evening still to come.</div></div>
+          <div class="hero">
+            <div class="s-eyebrow">Readiness · high</div>
+            <div class="row" style="align-items:baseline;gap:8px;margin:4px 0"><span class="bignum" style="font-size:64px">86</span><span style="opacity:.6">/ 100</span><span class="chip" style="margin-left:auto;background:#45D0C2;color:#06302b">▲ HIGH</span></div>
+            <svg viewBox="0 0 300 40" width="100%" height="40"><rect x="0" y="18" width="300" height="6" rx="3" fill="rgba(255,255,255,.16)"/><rect x="40" y="14" width="140" height="14" rx="7" fill="rgba(255,255,255,.22)"/><circle cx="232" cy="21" r="9" fill="#FAF7F0"/><circle cx="232" cy="21" r="4" fill="#101828"/></svg>
+            <div class="row" style="justify-content:space-between;font-size:11px;opacity:.75"><span>SLEEP 82</span><span>LOAD 4.2</span><span>USUAL 68–84</span></div>
+          </div>
+          <div class="bento">
+            <div class="card"><div class="s-eyebrow">Steps</div><div class="bignum">6,412</div><div style="font-size:11px;color:#0E7C72;font-weight:700">▲ 12% vs usual</div></div>
+            <div class="card"><div class="s-eyebrow">Sleep</div><div class="bignum">7h12</div><div style="font-size:11px;color:#4338CA;font-weight:700">needs 7h30 · −18m</div></div>
+          </div>
+          <div class="card">
+            <div class="row" style="justify-content:space-between"><span class="s-eyebrow">Movement · your usual day</span><span style="font-size:11px;color:#646D7E">AVG 8,204</span></div>
+            <div class="bars"><i style="background:#D8DEE8;height:36%"></i><i style="background:#D8DEE8;height:50%"></i><i style="background:#D8DEE8;height:42%"></i><i style="background:#D8DEE8;height:60%"></i><i style="background:#1D4ED8;height:80%"></i><i style="background:#101828;height:98%"></i><i style="background:#E4E9F1;height:62%"></i></div>
+          </div>
+          <div class="card">
+            <div class="s-eyebrow">Insight · weekly rhythm</div>
+            <div style="font-family:Georgia,serif;font-size:16px;margin:6px 0;line-height:1.45">Saturdays are your strongest days — 11,200 on average.</div>
+            <div class="btnrow"><span class="pill" style="background:#101828;color:#fff">See the days</span><span class="pill" style="background:#EDF2FA;color:#1D4ED8">Why this?</span></div>
+          </div>
+        </div>
+      </div></div>
+      <pre class="snip">paper #F3EEE4 · slab #101828 · signal #1D4ED8
+sleep #4338CA · amber #A85E07 (AA on white)
+hero slab carries the score; tiles stay white</pre>
+      <button class="copybtn" onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText)">Copy tokens</button>
+    </div>
+
+    <!-- ============ C ============ -->
+    <div>
+      <div class="variant-label"><span class="tag">C · VIBE</span><h2>Pulse Aurora</h2></div>
+      <p class="desc"><b>Full vibe-code homage.</b> Aurora mesh, glass bento, glowing conic readiness orb, gradient headline. Pick this to <b>look AI-native</b> — maximalist, alive, demo-stopping. Keep motion behind Reduce Motion.</p>
+      <div class="swatches">
+        <div class="sw" style="background:#07070D;color:#fff"><b>void</b>#07070D</div>
+        <div class="sw" style="background:linear-gradient(90deg,#45D0C2,#4F8EFF);color:#04121f"><b>mint→blue</b>pulse</div>
+        <div class="sw" style="background:#8587FF;color:#14143a"><b>sleep</b>#8587FF</div>
+        <div class="sw" style="background:#B9A3FF;color:#241b4d"><b>weight</b>#B9A3FF</div>
+        <div class="sw" style="background:#7DFCD0;color:#06302b"><b>glow</b>#7DFCD0</div>
+      </div>
+      <div class="phone phone-c"><div class="screen screen-c">
+        <div class="notch"></div>
+        <div class="s-status"><span>9:41</span><span>● ● ●</span></div>
+        <div class="s-body">
+          <div><div class="s-eyebrow" style="color:#7DFCD0">● live · Tuesday</div><h3 class="greet">Your body, <span class="grad">in signal.</span></h3></div>
+          <div class="glass" style="text-align:center">
+            <div class="s-eyebrow" style="color:#B9C6DA">Readiness · high ▸</div>
+            <div class="orb"></div>
+            <div class="glow-num">86</div>
+            <div class="row" style="justify-content:center;gap:8px"><span class="chip">SLEEP 82</span><span class="chip">LOAD 4.2</span><span class="chip" style="background:#7DFCD0;color:#06302b;border-color:transparent">▲ HIGH</span></div>
+          </div>
+          <div class="glass">
+            <div class="row" style="justify-content:space-between"><span class="s-eyebrow" style="color:#7DB2FF">Movement · 6,412</span><span class="chip">▲ +12%</span></div>
+            <div class="bars"><i style="background:rgba(255,255,255,.18);height:34%"></i><i style="background:rgba(255,255,255,.18);height:48%"></i><i style="background:rgba(255,255,255,.18);height:42%"></i><i style="background:#45D0C2;height:62%"></i><i style="background:#4F8EFF;height:82%"></i><i style="background:#7DFCD0;height:100%;box-shadow:0 0 14px #7DFCD0"></i><i style="background:rgba(255,255,255,.14);height:58%"></i></div>
+          </div>
+          <div class="glass">
+            <div class="s-eyebrow" style="color:#B9A3FF">✦ Insight · sleep × steps</div>
+            <div style="font-size:15px;font-weight:650;margin:6px 0;line-height:1.45">Late nights cost you Friday steps.</div>
+            <div style="font-size:12px;color:#B9C6DA">−1,900 avg · confidence ▮▮▯ moderate</div>
+            <div class="btnrow" style="margin-top:10px"><span class="pill" style="background:linear-gradient(90deg,#45D0C2,#4F8EFF);color:#04121f">Ask about this ✦</span><span class="pill" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2)">Evidence</span></div>
+          </div>
+          <div class="row" style="justify-content:space-between">
+            <div class="glass" style="flex:1;text-align:center"><div style="font-size:22px">🔥</div><div style="font-weight:800">6<span style="font-weight:400;font-size:12px;opacity:.7"> days</span></div><div class="s-eyebrow" style="color:#B9C6DA">streak</div></div>
+            <div style="width:10px"></div>
+            <div class="glass" style="flex:1;text-align:center"><div style="font-size:22px">◍</div><div style="font-weight:800">5<span style="font-weight:400;font-size:12px;opacity:.7">/7</span></div><div class="s-eyebrow" style="color:#B9C6DA">near usual</div></div>
+          </div>
+        </div>
+      </div></div>
+      <pre class="snip">void #07070D · glass white 7% / blur 18 · glow #7DFCD0
+orb: conic mint→blue→indigo→violet + drop-shadow
+gradient headline; status never by color alone (▲/ glyphs kept)</pre>
+      <button class="copybtn" onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText)">Copy tokens</button>
+    </div>
+
+  </div>
+
+  <footer>
+    How to use: open this file in a browser (<code>design/home-variations.html</code>), pick A / B / C with the team, then port the winner's tokens into <code>ios/Blith/DesignSystem/Theme.swift</code> (canonical fixes already applied: canvas, sleep/weight split, quiet ramp, alert hues). All three keep the v4 rules — luminance before hue, usual-band motif, status never by color alone, Reduce Motion respected.
+  </footer>
+</div>
+</body>
+</html>
