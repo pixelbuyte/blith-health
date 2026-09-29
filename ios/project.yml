@@ -1,0 +1,101 @@
+# XcodeGen spec — the Xcode project is generated from this file (CI runs `xcodegen generate`).
+#   brew install xcodegen && cd ios && xcodegen generate && open Blith.xcodeproj
+# Info.plist and Blith.entitlements are generated from the `info:` / `entitlements:` blocks below.
+name: Blith
+
+options:
+  bundleIdPrefix: com.blith
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+  groupSortPosition: top
+  defaultConfig: Debug
+
+configs:
+  Debug: debug
+  Release: release
+
+configFiles:
+  Debug: Config/Debug.xcconfig
+  Release: Config/Release.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: "YES"
+    DEAD_CODE_STRIPPING: "YES"
+    SWIFT_EMIT_LOC_STRINGS: "YES"
+    LOCALIZATION_PREFERS_STRING_CATALOGS: "YES"
+  configs:
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+      ONLY_ACTIVE_ARCH: "YES"
+    Release:
+      SWIFT_COMPILATION_MODE: wholemodule
+
+packages:
+  BlithCore:
+    path: BlithCore
+
+targets:
+  Blith:
+    type: application
+    platform: iOS
+    sources:
+      - path: Blith
+        excludes:
+          - "**/.DS_Store"
+          - "Resources/Info.plist"
+    dependencies:
+      - package: BlithCore
+        product: BlithCore
+      - sdk: HealthKit.framework
+    entitlements:
+      path: Blith/Resources/Blith.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    info:
+      path: Blith/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Blith
+        CFBundleName: Blith
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: en
+        CFBundleIconName: AppIcon
+        LSRequiresIPhoneOS: true
+        LSApplicationCategoryType: public.app-category.healthcare-fitness
+        ITSAppUsesNonExemptEncryption: false
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSHealthShareUsageDescription: Blith reads the health data you choose, such as steps, walking, workouts, sleep and weight, to learn your personal baselines and explain how you're changing. It's stored on this iPhone and never used for advertising.
+        # AI configuration, supplied by Config/Secrets.xcconfig (gitignored) or CI.
+        OPENROUTER_API_KEY: $(OPENROUTER_API_KEY)
+        OPENROUTER_MODEL: $(OPENROUTER_MODEL)
+        PRIVACY_POLICY_URL: $(PRIVACY_POLICY_URL)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.blith.health
+        PRODUCT_NAME: Blith
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: $(DEVELOPMENT_TEAM)
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: "YES"
+        SUPPORTS_MACCATALYST: "NO"
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
+        ENABLE_PREVIEWS: "YES"
+    scheme:
+      gatherCoverageData: false

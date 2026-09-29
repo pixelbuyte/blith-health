@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Blith app icon. A calm gradient field; the dashed line is "your usual",
+       the bright line is "you lately", ending on today. No mascot. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7FB2FF"/>
+      <stop offset="0.45" stop-color="#3F6BFF"/>
+      <stop offset="1" stop-color="#2233C9"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.78" cy="0.3" r="0.55">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="dotGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="stroke" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="1"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <g transform="translate(24,-12)">
+  <!-- usual (baseline) -->
+  <path d="M170 640 C 330 610, 480 600, 620 590 S 820 575, 860 572" fill="none" stroke="#FFFFFF" stroke-opacity="0.42"
+        stroke-width="26" stroke-linecap="round" stroke-dasharray="2 58"/>
+  <!-- you -->
+  <path d="M170 720 C 300 730, 360 610, 470 600 S 600 660, 680 520 S 760 360, 800 350" fill="none" stroke="url(#stroke)"
+        stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="800" cy="350" r="120" fill="url(#dotGlow)"/>
+  <circle cx="800" cy="350" r="54" fill="#FFFFFF"/>
+  </g>
+</svg>
