@@ -1,4 +1,3 @@
-import BlithCore
 import SwiftUI
 
 // MARK: - Stat bars
