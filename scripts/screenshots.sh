@@ -48,7 +48,7 @@ for DEV in "$SMALL" "$LARGE"; do
   xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
   xcrun simctl install "$UDID" "$APP"
   echo "$NAME ($UDID)"
-  DEMO=(-BlithDemo balanced -BlithAIConsent NO)
+  DEMO=(-BlithDemo balanced -BlithAIConsent NO -BlithClockHour 15.5)
   for MODE in light dark; do
     xcrun simctl ui "$UDID" appearance "$MODE"
     shoot "$UDID" "$NAME-$MODE-1-today" "${DEMO[@]}" -BlithTab today
@@ -59,7 +59,7 @@ for DEV in "$SMALL" "$LARGE"; do
       shoot "$UDID" "$NAME-$MODE-5-sleep" "${DEMO[@]}" -BlithSheet sleep
       shoot "$UDID" "$NAME-$MODE-6-weight" "${DEMO[@]}" -BlithSheet weight
       shoot "$UDID" "$NAME-$MODE-7-walk-day" "${DEMO[@]}" -BlithTab walk -BlithPeriod day
-      shoot "$UDID" "$NAME-$MODE-8-newuser" -BlithDemo newUser -BlithTab today
+      shoot "$UDID" "$NAME-$MODE-8-newuser" -BlithDemo newUser -BlithClockHour 15.5 -BlithTab today
       shoot "$UDID" "$NAME-$MODE-9-onboarding" -BlithResetOnboarding YES
     fi
   done

@@ -84,7 +84,7 @@ final class AppModel {
         case .appleHealth:
             return healthKit
         case .demo(let s):
-            return MockHealthProvider(scenario: s, now: { Date() })
+            return MockHealthProvider(scenario: s, now: { AppClock.now() })
         }
     }
 
@@ -125,7 +125,7 @@ final class AppModel {
         var h = await store.load(mode.origin) ?? HealthHistory(origin: mode.origin)
         h.requestedCategories = categories
         importProgress = SyncProgress(stage: .connecting, fraction: 0.01, detail: "Starting")
-        let engine = SyncEngine(provider: provider, calendar: .current)
+        let engine = SyncEngine(provider: provider, calendar: .current, now: { AppClock.now() })
         do {
             let result = try await engine.initialImport(into: h) { progress in
                 Task { @MainActor in self.importProgress = progress }
@@ -151,11 +151,11 @@ final class AppModel {
     /// Incremental sync; cheap and idempotent. Called on foreground and pull-to-refresh.
     func refresh(force: Bool = false) async {
         guard let mode, var h = history, !isSyncing, !isImporting else { return }
-        if !force, let last = h.sync.lastSync, Date().timeIntervalSince(last) < 120 { return }
+        if !force, let last = h.sync.lastSync, AppClock.now().timeIntervalSince(last) < 120 { return }
         isSyncing = true
         defer { isSyncing = false }
         do {
-            h = try await SyncEngine(provider: provider(for: mode), calendar: .current).incrementalSync(h)
+            h = try await SyncEngine(provider: provider(for: mode), calendar: .current, now: { AppClock.now() }).incrementalSync(h)
             try? await store.save(h)
             history = h
             await rebuildSnapshot()
@@ -170,7 +170,7 @@ final class AppModel {
         guard let h = history else { snapshot = nil; return }
         let profile = profile
         snapshot = await Task.detached(priority: .userInitiated) {
-            HealthSnapshot.build(history: h, profile: profile, now: Date(), calendar: .current)
+            HealthSnapshot.build(history: h, profile: profile, now: AppClock.now(), calendar: .current)
         }.value
     }
 

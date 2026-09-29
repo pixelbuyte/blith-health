@@ -15,6 +15,11 @@ enum LaunchOptions {
             return
         }
         guard let raw = args.string(forKey: "BlithDemo"), let scenario = DemoScenario(rawValue: raw) else { return }
+        if args.object(forKey: "BlithClockHour") != nil {
+            let hour = args.double(forKey: "BlithClockHour")
+            let target = Calendar.current.startOfDay(for: Date()).addingTimeInterval(hour * 3600)
+            AppClock.offset = target.timeIntervalSince(Date())
+        }
         Persistence.onboardingComplete = true
         Persistence.dataMode = .demo(scenario)
         var p = app.profile

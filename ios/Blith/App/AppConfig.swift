@@ -25,6 +25,13 @@ enum AppConfig {
     }
 }
 
+/// The app's notion of "now". Always the real time, except when CI screenshots of sample data
+/// pin the demo to a fixed time of day (`-BlithClockHour 15.5`).
+enum AppClock {
+    nonisolated(unsafe) static var offset: TimeInterval = 0
+    static func now() -> Date { Date().addingTimeInterval(offset) }
+}
+
 enum Keychain {
     static func read(_ account: String) -> String? {
         let query: [String: Any] = [

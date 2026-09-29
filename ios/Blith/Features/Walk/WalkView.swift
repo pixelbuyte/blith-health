@@ -243,7 +243,7 @@ struct WalkView: View {
 
     @ViewBuilder
     func workouts(_ s: HealthSnapshot) -> some View {
-        let recent = s.ctx.history.workouts.filter { $0.start >= Date().addingTimeInterval(-30 * 86_400) }.sorted { $0.start > $1.start }
+        let recent = s.ctx.history.workouts.filter { $0.start >= AppClock.now().addingTimeInterval(-30 * 86_400) }.sorted { $0.start > $1.start }
         if !recent.isEmpty {
             VStack(alignment: .leading, spacing: Space.m) {
                 SectionHeader(title: "Recent workouts", subtitle: "\(recent.count) in the last 30 days")

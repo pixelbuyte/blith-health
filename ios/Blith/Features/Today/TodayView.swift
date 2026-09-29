@@ -39,7 +39,7 @@ struct TodayView: View {
     }
 
     var greeting: String {
-        let hour = Calendar.current.component(.hour, from: Date())
+        let hour = Calendar.current.component(.hour, from: AppClock.now())
         let part = hour < 12 ? "Good morning" : (hour < 17 ? "Good afternoon" : "Good evening")
         let name = app.profile.name.trimmingCharacters(in: .whitespaces)
         return name.isEmpty ? part : "\(part), \(name)"
@@ -49,7 +49,7 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: Space.s) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(Date().formatted(.dateTime.weekday(.wide).month(.wide).day()).uppercased())
+                    Text(AppClock.now().formatted(.dateTime.weekday(.wide).month(.wide).day()).uppercased())
                         .font(Typo.eyebrow)
                         .foregroundStyle(.secondary)
                     Text(greeting)
@@ -116,7 +116,10 @@ struct TodayView: View {
                 }
                 if let pace = s.pace, let change = pace.change {
                     DeltaBadge(change: change, caption: pace.basis == .sameWeekday ? "vs your usual \(Fmt.weekday(s.ctx.today)) by now" : "vs your usual day by now")
-                } else if s.pace?.usualByNow == nil {
+                } else if let usual = s.pace?.usualByNow {
+                    Text("Usually around \(Fmt.int(usual)) by this time on a \(Fmt.weekday(s.ctx.today)).")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                } else {
                     Text("Your usual pace appears after a few days of history.").font(.subheadline).foregroundStyle(.secondary)
                 }
                 if let pace = s.pace, !pace.usualCurve.isEmpty {
@@ -129,8 +132,8 @@ struct TodayView: View {
                 }
                 Divider()
                 HStack {
-                    StatTile(title: "7-day average", value: s.average7.map { Fmt.int($0.value) } ?? "—")
-                    StatTile(title: "30-day average", value: s.average30.map { Fmt.int($0.value) } ?? "—")
+                    StatTile(title: "7-day average", value: s.average7.map { Fmt.int($0.value) } ?? "—", caption: coverage(s.average7, of: 7))
+                    StatTile(title: "30-day average", value: s.average30.map { Fmt.int($0.value) } ?? "—", caption: coverage(s.average30, of: 30))
                     if let d = s.todayDistance {
                         StatTile(title: "Distance", value: Fmt.distance(d, units: s.ctx.units))
                     }
@@ -140,6 +143,12 @@ struct TodayView: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens walking details")
+    }
+
+    /// "3 days of data" when an average covers fewer days than its window.
+    func coverage(_ a: AverageResult?, of days: Int) -> String? {
+        guard let a, a.days < days else { return nil }
+        return "\(a.days) \(a.days == 1 ? "day" : "days") of data"
     }
 
     func legend(color: Color, dashed: Bool, text: String) -> some View {

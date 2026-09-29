@@ -122,7 +122,7 @@ struct WeightDetailView: View {
 
     @ViewBuilder
     func content(_ w: WeightTrend, units: UnitSystem) -> some View {
-        let cutoff = Date().addingTimeInterval(-Double(range) * 86_400)
+        let cutoff = AppClock.now().addingTimeInterval(-Double(range) * 86_400)
         let points = range == 0 ? w.points : w.points.filter { $0.date >= cutoff }
         VStack(alignment: .leading, spacing: Space.m) {
             Text("SMOOTHED TREND").font(Typo.eyebrow).foregroundStyle(Palette.weight)

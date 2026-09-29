@@ -203,7 +203,7 @@ struct SourcesView: View {
         List {
             if let h = app.history {
                 let cal = Calendar.current
-                let today = LocalDate(Date(), calendar: cal)
+                let today = LocalDate(AppClock.now(), calendar: cal)
                 ForEach([HealthMetric.steps, .distanceWalkingRunning, .weight], id: \.self) { metric in
                     if let shares = h.sources[metric], !shares.isEmpty {
                         let total = shares.reduce(0) { $0 + $1.value }

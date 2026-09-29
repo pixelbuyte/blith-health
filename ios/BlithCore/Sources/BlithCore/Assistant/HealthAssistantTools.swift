@@ -467,13 +467,13 @@ public struct HealthAssistantTools: Sendable {
             let week = DateSpan(best.start, best.start.adding(days: 6))
             return ToolOutput(result: ["best_week": .string("\(week.start) to \(week.end)"), "total": fmt(best.total, m), "daily_average": fmt(best.average, m),
                                        "searched": .string("\(range.start) to \(range.end)")],
-                              evidence: [EvidenceItem(label: "Best week", detail: "Searched \(Fmt.shortDate(range.start)) – \(Fmt.shortDate(range.end))")],
+                              evidence: [EvidenceItem(label: "Best week", detail: "Searched \(range.start) – \(range.end)")],
                               suggestedBlock: .metricCard(MetricCardBlock(metric: m, title: "Week of \(Fmt.shortDate(best.start))", value: best.average, caption: "Daily average, your best week")))
         }
         guard let best = a.personalBest(m, in: range, highest: !lowest) else { return ToolOutput(result: ["error": "No data in range"]) }
         return ToolOutput(result: [lowest ? "lowest_day" : "best_day": .string("\(best.date) (\(Fmt.weekday(best.date)))"), "value": fmt(best.value, m),
                                    "searched": .string("\(range.start) to \(range.end)")],
-                          evidence: [EvidenceItem(label: lowest ? "Lowest day" : "Best day", detail: "Searched \(Fmt.shortDate(range.start)) – \(Fmt.shortDate(range.end))")],
+                          evidence: [EvidenceItem(label: lowest ? "Lowest day" : "Best day", detail: "Searched \(range.start) – \(range.end)")],
                           suggestedBlock: .metricCard(MetricCardBlock(metric: m, title: Fmt.dayLabel(best.date), value: best.value, caption: lowest ? "Lowest day" : "Best day")))
     }
 

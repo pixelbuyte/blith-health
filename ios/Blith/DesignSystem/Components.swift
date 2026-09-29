@@ -32,10 +32,11 @@ struct DeltaBadge: View {
     var caption: String?
 
     var body: some View {
+        let flat = Int((change * 100).rounded()) == 0
         HStack(spacing: Space.xs) {
-            Image(systemName: change >= 0 ? "arrow.up.right" : "arrow.down.right")
+            Image(systemName: flat ? "equal" : (change >= 0 ? "arrow.up.right" : "arrow.down.right"))
                 .font(.caption.weight(.bold))
-            Text(Fmt.signedPercent(change))
+            Text(flat ? "About the same" : Fmt.signedPercent(change))
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
             if let caption {
@@ -44,7 +45,7 @@ struct DeltaBadge: View {
         }
         .foregroundStyle(Palette.accent)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(Fmt.percent(change)) \(change >= 0 ? "above" : "below") \(caption ?? "")")
+        .accessibilityLabel(flat ? "About the same \(caption ?? "")" : "\(Fmt.percent(change)) \(change >= 0 ? "above" : "below") \(caption ?? "")")
     }
 }
 
