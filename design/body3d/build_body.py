@@ -51,7 +51,7 @@ BP3D_ZIP = 'https://dbarchive.biosciencedbc.jp/data/bodyparts3d/LATEST/isa_BP3D_
 ZA_RAW = 'https://raw.githubusercontent.com/LluisV/Z-Anatomy/PC-Version/Resources/Models/FBX/'
 
 HEIGHT = 1.80            # metres, final figure height
-SKIN_TRIS = 58000
+SKIN_TRIS = 53000        # before region-border splitting (adds ~12 %)
 MUSCLE_TRIS = 128000     # muscles + tendons
 UNDER_TRIS = 18000       # continuous underlayer
 
@@ -593,7 +593,7 @@ def classify_regions(p, part, L):
     yn = L.y_navel
     y_chest = L.y_xiph + 0.01 - 0.55 * np.minimum(ax, 0.15)      # costal arch
     y_hipf = yn - 0.075
-    y_back, y_crest = yn + 0.07, L.y_crest - 0.01
+    y_back, y_crest = yn + 0.11, L.y_crest - 0.04
     f = tr & front
     reg[f & (y >= y_chest)] = RI['chest']
     reg[f & (y < y_chest) & (y >= y_hipf)] = RI['abdomen']
@@ -645,15 +645,59 @@ def classify_regions(p, part, L):
     return reg
 
 
-def label_skin(V, F, part, L):
-    lab = classify_regions(V, part, L)
+def label_skin(V, F, classify):
+    """Per-vertex labels (majority-smoothed), then triangles that straddle a boundary are split
+    where the classifier's label changes along each edge, so region borders are clean lines.
+    Returns (V, F, vertex labels, triangle labels)."""
+    lab = classify(V)
     A = adjacency(len(V), F) + sparse.identity(len(V), format='csr')
-    for _ in range(2):
+    for _ in range(6):
         oh = sparse.csr_matrix((np.ones(len(lab)), (np.arange(len(lab)), lab)), shape=(len(lab), len(REGION_IDS)))
         lab = np.asarray((A @ oh).argmax(1)).ravel()
     L3 = lab[F]
-    tri = np.where(L3[:, 1] == L3[:, 2], L3[:, 1], L3[:, 0])
-    return lab, tri
+    diff = ~((L3[:, 0] == L3[:, 1]) & (L3[:, 1] == L3[:, 2]))
+    ce = np.unique(np.concatenate([np.sort(F[diff & (L3[:, i] != L3[:, j])][:, [i, j]], 1)
+                                   for i, j in ((0, 1), (1, 2), (2, 0))]), axis=0)
+    e0, e1 = ce[:, 0], ce[:, 1]
+    ts = np.linspace(0, 1, 11)[1:-1]
+    labs = np.stack([classify(V[e0] * (1 - t) + V[e1] * t) for t in ts], 1)
+    ne = labs != lab[e0][:, None]
+    first = np.where(ne.any(1), ne.argmax(1), len(ts) // 2)
+    tc = np.where(ne.any(1), (np.concatenate([[0.0], ts])[first] + ts[first]) / 2, 0.5)
+    nV = len(V)
+    ekey = {(int(a), int(b)): nV + k for k, (a, b) in enumerate(ce)}
+    newV = [V, V[e0] * (1 - tc[:, None]) + V[e1] * tc[:, None]]
+    newL = [lab, np.zeros(len(ce), int)]
+    cross = lambda a, b: ekey[(a, b) if a < b else (b, a)]
+    tris, tl, centres, cl = [], [], [], []
+    base_c = nV + len(ce)
+    for ti in np.nonzero(diff)[0]:
+        g, l = F[ti], L3[ti]
+        if l[0] != l[1] and l[1] != l[2] and l[0] != l[2]:
+            ab, bc, ca = cross(g[0], g[1]), cross(g[1], g[2]), cross(g[2], g[0])
+            c = base_c + len(centres)
+            centres.append(V[g].mean(0))
+            tris += [(g[0], ab, c), (g[0], c, ca), (g[1], bc, c), (g[1], c, ab), (g[2], ca, c), (g[2], c, bc)]
+            tl += [l[0], l[0], l[1], l[1], l[2], l[2]]
+        else:
+            k = 0 if l[1] == l[2] else (1 if l[0] == l[2] else 2)
+            a, b, c = g[k], g[(k + 1) % 3], g[(k + 2) % 3]
+            ab, ac = cross(a, b), cross(a, c)
+            tris += [(a, ab, ac), (ab, b, c), (ab, c, ac)]
+            tl += [l[k], l[(k + 1) % 3], l[(k + 1) % 3]]
+    if centres:
+        newV.append(np.array(centres))
+        newL.append(np.zeros(len(centres), int))
+    V2 = np.concatenate(newV)
+    F2 = np.concatenate([F[~diff], np.array(tris, int).reshape(-1, 3)])
+    T2 = np.concatenate([L3[~diff, 0], np.array(tl, int)])
+    lab2 = np.concatenate(newL)
+    lab2[nV:] = -1
+    # new vertices take the label of any triangle using them (only used for muscle lookups)
+    for i in range(3):
+        m = lab2[F2[:, i]] < 0
+        lab2[F2[m, i]] = T2[m]
+    return V2, F2, lab2, T2
 
 
 # ----------------------------------------------------------------------------------------------
@@ -772,10 +816,11 @@ def merge(parts):
     return np.concatenate(Vs), np.concatenate(Fs), np.concatenate(pid)
 
 
-def build_underlayer(skin_V, skin_F, skin_tree, muscle_pts, bone_pts, below=0.003, bare=0.0045):
+def build_underlayer(skin_V, skin_F, skin_tree, muscle_pts, bone_pts, closed=(), below=0.003):
     """The skin pushed inward so it sits `below` under the outermost muscle beneath each point
-    (`bare` under the skin where no muscle covers, never more than 80 % of the way to bone): one
-    continuous surface that fills every gap between muscles without ever covering one."""
+    (half-way to the bone, at most 4.5 mm, where no muscle covers): one continuous surface that
+    fills every gap between muscles without covering them. `closed` = [(centre, radii)] zones
+    (eye and mouth openings) kept shallow so the face reads as closed lids and lips."""
     N = vertex_normals(skin_V, skin_F)
     _, j = skin_tree.query(muscle_pts)
     sd = ((muscle_pts - skin_V[j]) * N[j]).sum(1)
@@ -783,8 +828,8 @@ def build_underlayer(skin_V, skin_F, skin_tree, muscle_pts, bone_pts, below=0.00
     np.maximum.at(top, j, sd)
     covered = np.isfinite(top)
     db, _ = cKDTree(bone_pts).query(skin_V)
-    need = np.where(covered, -top + below, np.minimum(bare, np.maximum(0.8 * db, 0.002)))
-    need = np.clip(need, 0.002, 0.04)
+    bare = np.clip(0.5 * db, 0.0015, 0.0045)
+    need = np.clip(np.where(covered, -top + below, bare), 0.0015, 0.04)
     A = adjacency(len(skin_V), skin_F).tocsr()
     depth = need.copy()
     for _ in range(2):                                     # dilate so borders dip under muscle edges
@@ -792,6 +837,11 @@ def build_underlayer(skin_V, skin_F, skin_tree, muscle_pts, bone_pts, below=0.00
     deg = np.asarray(A.sum(1)).ravel()
     for _ in range(4):
         depth = np.maximum(need, 0.5 * depth + 0.5 * (A @ depth) / deg)
+    depth = np.minimum(depth, np.maximum(0.85 * db, 0.0015))
+    for c, r in closed:
+        q = np.linalg.norm((skin_V - c) / r, axis=1)
+        w = np.clip((1.6 - q) / 0.6, 0, 1)                 # 1 inside the opening, fading out by 1.6x
+        depth = depth * (1 - w) + 0.002 * w
     return decimate(skin_V - N * depth[:, None], skin_F.copy(), UNDER_TRIS)
 
 
@@ -958,13 +1008,13 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     print('skin')
     sV, sF = build_skin()
-    sN = vertex_normals(sV, sF)
     print('bones and regions')
     bpts, bpart, named = load_bones()
-    _, j = cKDTree(bpts).query(sV)
-    s_part = bpart[j]
+    btree = cKDTree(bpts)
+    s_part = bpart[btree.query(sV)[1]]
     L = landmarks(sV, s_part, named)
-    s_lab, s_reg = label_skin(sV, sF, s_part, L)
+    sV, sF, s_lab, s_reg = label_skin(sV, sF, lambda P: classify_regions(P, bpart[btree.query(P)[1]], L))
+    sN = vertex_normals(sV, sF)
     print(f'  navel y {L.y_navel:.3f}, xiphoid y {L.y_xiph:.3f}, crest y {L.y_crest:.3f}')
 
     print('muscles')
@@ -981,7 +1031,11 @@ def main():
     keep = [i for i in range(len(parts)) if vis[i] >= 40]
     print(f'  pass 1: {len(keep)} of {len(parts)} parts visible')
     kpts = np.concatenate([np.concatenate([pre[i]['V'], pre[i]['V'][pre[i]['F']].mean(1)]) for i in keep])
-    uV, uF = build_underlayer(sV, sF, stree, kpts, bpts)
+    oris = np.concatenate([q['V'] for q in parts if q['name'].startswith('Orbicularis oris')])
+    mouth = np.array([0.0, (oris[:, 1].max() + oris[:, 1].min()) / 2, oris[:, 2].max()])
+    closed = [(np.array([sx * 0.031, 1.518, 0.155]), np.array([0.017, 0.009, 0.03])) for sx in (-1, 1)]
+    closed.append((mouth, np.array([0.024, 0.008, 0.03])))
+    uV, uF = build_underlayer(sV, sF, stree, kpts, bpts, closed)
     V, F, pid = merge([pre[i] for i in keep] + [dict(V=uV, F=uF)])
     cnt = visibility(V, F)
     vis2 = np.bincount(pid, weights=cnt, minlength=len(keep) + 1)[:len(keep)]
