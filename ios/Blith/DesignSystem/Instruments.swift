@@ -1,4 +1,5 @@
 import BlithCore
+import Charts
 import SwiftUI
 
 // Instruments: dials, meters, range bars, strips and heatmaps. v4 "Signal": thin precise
@@ -237,84 +238,121 @@ struct WeekStrip: View {
     }
 }
 
-/// 13 weeks, Monday-first. Days without data are hollow; real values fill on the ramp.
+/// 13 weeks of one score as thin daily bars against the person's usual range (the middle half of
+/// the period, drawn as a soft band). Days above the band are bright, days inside it calm, days
+/// below it quiet — never red. Days without a score draw nothing. Tap or drag to pick a day.
+/// (Kept under its old name so every screen that showed the heatmap now gets this.)
 struct ScoreHeatmap: View {
     enum Mode { case readiness, sleep, load }
     let days: [DayScores]
     var mode: Mode = .readiness
     var selected: LocalDate?
     var onSelect: ((LocalDate) -> Void)?
+    @State private var dragDate: Date?
+
+    func value(_ d: DayScores) -> Double? {
+        switch mode {
+        case .readiness: d.readiness.map(Double.init)
+        case .sleep: d.sleep.map(Double.init)
+        case .load: d.load
+        }
+    }
+
+    var tint: Color {
+        switch mode {
+        case .readiness: Palette.signal
+        case .sleep: Palette.sleep
+        case .load: Palette.cyan
+        }
+    }
+
+    var usual: ClosedRange<Double>? {
+        let vs = days.compactMap(value)
+        guard vs.count >= 7, let lo = Stats.percentile(vs, 0.25), let hi = Stats.percentile(vs, 0.75), hi > lo else { return nil }
+        return lo...hi
+    }
+
+    var yMax: Double {
+        switch mode {
+        case .readiness, .sleep: 100
+        case .load: max(LoadResult.maximum * 0.6, (days.compactMap(\.load).max() ?? 1) * 1.1)
+        }
+    }
+
+    func style(_ d: DayScores, _ v: Double) -> Color {
+        if let selected { return d.date == selected ? Palette.ink : tint.opacity(0.35) }
+        guard let usual else { return tint.opacity(0.7) }
+        if v > usual.upperBound { return tint }
+        if v < usual.lowerBound { return Palette.quiet }
+        return tint.opacity(0.55)
+    }
 
     var body: some View {
-        let first = days.first?.date ?? LocalDate(Date(), calendar: .current)
-        let lead = (first.weekday + 5) % 7 // Monday-first columns
-        let cells: [DayScores?] = Array(repeating: nil, count: lead) + days.map { Optional($0) }
-        let letters = ["M", "T", "W", "T", "F", "S", "S"]
-        VStack(spacing: 6) {
-            HStack(spacing: 5) {
-                ForEach(letters.indices, id: \.self) { i in
-                    Text(letters[i]).font(Typo.eyebrow).foregroundStyle(Palette.tertiaryInk).frame(maxWidth: .infinity)
+        let usual = self.usual
+        let first = days.first?.date.chartDate ?? Date()
+        let last = days.last?.date.chartDate ?? Date()
+        VStack(alignment: .leading, spacing: Space.s) {
+            Chart {
+                if let usual {
+                    RectangleMark(xStart: .value("From", first.addingTimeInterval(-43_200)), xEnd: .value("To", last.addingTimeInterval(43_200)),
+                                  yStart: .value("Usual low", usual.lowerBound), yEnd: .value("Usual high", usual.upperBound))
+                        .foregroundStyle(Palette.usualBand)
                 }
-            }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 7), spacing: 5) {
-                ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
-                    if let cell {
-                        Button { onSelect?(cell.date) } label: {
-                            let shape = RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            Group {
-                                if let c = color(cell) {
-                                    shape.fill(c)
-                                } else {
-                                    shape.strokeBorder(Palette.hairline, lineWidth: 1)
-                                }
-                            }
-                            .aspectRatio(1, contentMode: .fit)
-                            .overlay(shape.strokeBorder(cell.date == selected ? Palette.ink : .clear, lineWidth: 1.5))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(Fmt.dayLabel(cell.date)): \(text(cell))")
-                    } else {
-                        Color.clear.aspectRatio(1, contentMode: .fit)
+                ForEach(days) { d in
+                    if let v = value(d) {
+                        BarMark(x: .value("Day", d.date.chartDate, unit: .day), y: .value("Score", max(v, yMax * 0.02)), width: .ratio(0.62))
+                            .foregroundStyle(style(d, v))
+                            .cornerRadius(1.5)
                     }
                 }
+                if let selected, let d = days.first(where: { $0.date == selected }), let v = value(d) {
+                    RuleMark(x: .value("Selected", selected.chartDate))
+                        .foregroundStyle(Palette.hairline)
+                        .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                            tooltip(title: Fmt.dayLabel(selected).uppercased(), value: text(d, v))
+                        }
+                }
+            }
+            .chartYScale(domain: 0...yMax)
+            .chartYAxis(.hidden)
+            .chartXAxis {
+                AxisMarks(values: .stride(by: .month)) { _ in
+                    AxisTick(stroke: StrokeStyle(lineWidth: 1)).foregroundStyle(Palette.hairline)
+                    AxisValueLabel(format: .dateTime.month(.abbreviated)).font(Typo.mono(10)).foregroundStyle(Palette.tertiaryInk)
+                }
+            }
+            .chartXSelection(value: $dragDate)
+            .onChange(of: dragDate) { _, date in
+                guard let date, let nearest = days.min(by: { abs($0.date.chartDate.timeIntervalSince(date)) < abs($1.date.chartDate.timeIntervalSince(date)) }) else { return }
+                onSelect?(nearest.date)
+            }
+            .sensoryFeedback(.selection, trigger: selected)
+            .frame(height: 150)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Last 13 weeks")
+            .accessibilityValue(summary)
+            HStack(spacing: 6) {
+                RoundedRectangle(cornerRadius: 2).fill(Palette.usualBand).frame(width: 14, height: 8)
+                Text(usual.map { "YOUR USUAL \(label($0.lowerBound))–\(label($0.upperBound)) · MIDDLE HALF OF THESE 13 WEEKS" } ?? "LEARNING YOUR USUAL")
+                    .font(Typo.eyebrow).tracking(0.6).foregroundStyle(Palette.tertiaryInk).lineLimit(1).minimumScaleFactor(0.8)
             }
         }
     }
 
-    /// Intensity relative to the range shown, so personal differences stay visible.
-    func relative(_ v: Double, _ all: [Double]) -> Double {
-        guard let lo = all.min(), let hi = all.max(), hi > lo else { return 0.6 }
-        return (v - lo) / (hi - lo)
-    }
+    func label(_ v: Double) -> String { mode == .load ? Fmt.decimal(v) : Fmt.int(v) }
 
-    func color(_ d: DayScores) -> Color? {
+    func text(_ d: DayScores, _ v: Double) -> String {
         switch mode {
-        case .readiness:
-            return d.readiness.map { step(Palette.band(d.band), Double($0) / 100) }
-        case .sleep:
-            return d.sleep.map { step(Palette.sleep, relative(Double($0), days.compactMap(\.sleep).map(Double.init))) }
-        case .load:
-            return d.load.map { step(Palette.signal, relative($0, days.compactMap(\.load))) }
+        case .readiness: "Readiness \(Fmt.int(v))"
+        case .sleep: "Sleep \(Fmt.int(v))%"
+        case .load: "Load \(Fmt.decimal(v))"
         }
     }
 
-    /// Five steps from a neutral to the full tint, so the high days stand out instead of a wall of colour.
-    func step(_ tint: Color, _ v: Double) -> Color {
-        switch min(4, Int(v * 5)) {
-        case 0: Palette.sunken
-        case 1: tint.opacity(0.3)
-        case 2: tint.opacity(0.5)
-        case 3: tint.opacity(0.75)
-        default: tint
-        }
-    }
-
-    func text(_ d: DayScores) -> String {
-        switch mode {
-        case .readiness: d.readiness.map { "readiness \($0)" } ?? "no score"
-        case .sleep: d.sleep.map { "sleep \($0)%" } ?? "no sleep"
-        case .load: d.load.map { "load \(Fmt.decimal($0))" } ?? "no load"
-        }
+    var summary: String {
+        let vs = days.compactMap(value)
+        guard let avg = Stats.mean(vs) else { return "No scores yet" }
+        return "\(vs.count) days with a score, average \(label(avg))"
     }
 }
 

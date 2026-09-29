@@ -512,7 +512,7 @@ struct LoadSection: View {
                 }
             }
             VStack(alignment: .leading, spacing: Space.s) {
-                Eyebrow(text: "Last 13 weeks · tap a day")
+                Eyebrow(text: "Last 13 weeks · tap or drag")
                 ScoreHeatmap(days: snapshot.scoreHistory, mode: .load, selected: day) { d in withAnimation(Motion.standard) { selected = d } }
             }
             Text("Load combines active energy and exercise minutes. Each point takes more effort than the one before; it isn't a training prescription.")
