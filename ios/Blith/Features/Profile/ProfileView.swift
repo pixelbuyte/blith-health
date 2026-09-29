@@ -145,7 +145,7 @@ struct ProfileView: View {
                         Text(category.title)
                         Spacer()
                         if connected {
-                            Text("Requested").foregroundStyle(.secondary)
+                            Text("Requested").foregroundStyle(Palette.secondaryInk)
                         } else {
                             Button("Connect") { Task { await app.connectMore([category]) } }
                         }
@@ -156,9 +156,9 @@ struct ProfileView: View {
             NavigationLink("Sources and coverage") { SourcesView() }
             HStack {
                 if let last = app.history?.sync.lastSync {
-                    Text("Last updated \(last.formatted(date: .abbreviated, time: .shortened))").foregroundStyle(.secondary)
+                    Text("Last updated \(last.formatted(date: .abbreviated, time: .shortened))").foregroundStyle(Palette.secondaryInk)
                 } else {
-                    Text("Not synced yet").foregroundStyle(.secondary)
+                    Text("Not synced yet").foregroundStyle(Palette.secondaryInk)
                 }
                 Spacer()
                 if app.isSyncing { ProgressView() } else {
@@ -184,7 +184,7 @@ struct ProfileView: View {
                 Toggle("AI answers in Ask", isOn: Binding(get: { Persistence.aiConsent == true }, set: { Persistence.aiConsent = $0 }))
                 LabeledContent("Model", value: AppConfig.model)
             } else {
-                Text("AI answers aren't configured in this build. Ask answers on this iPhone.").foregroundStyle(.secondary)
+                Text("AI answers aren't configured in this build. Ask answers on this iPhone.").foregroundStyle(Palette.secondaryInk)
             }
             #if DEBUG
             SecureField("Developer: OpenRouter key", text: $customKey)
@@ -216,11 +216,11 @@ struct SourcesView: View {
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text(s.source.name)
-                                        if let d = s.source.device { Text(d).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(.secondary) }
+                                        if let d = s.source.device { Text(d).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk) }
                                     }
                                     Spacer()
                                     Text(metric == .weight ? "\(Int(s.value))" : (total > 0 ? Fmt.percent(s.value / total) : "—"))
-                                        .monospacedDigit().foregroundStyle(.secondary)
+                                        .monospacedDigit().foregroundStyle(Palette.secondaryInk)
                                 }
                             }
                         }
@@ -245,7 +245,7 @@ struct SourcesView: View {
                     Text("Apple Health merges overlapping iPhone and Apple Watch samples before totals are calculated, so steps aren't double counted. Blith keeps where each reading came from.")
                 }
             } else {
-                Text("No data connected yet.").foregroundStyle(.secondary)
+                Text("No data connected yet.").foregroundStyle(Palette.secondaryInk)
             }
         }
         .navigationTitle("Sources")

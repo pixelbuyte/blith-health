@@ -64,7 +64,7 @@ struct ChatBlockView: View {
                 header("Steps · \(b.title)", symbol: "bl.walk")
                 HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                     Text(Fmt.int(b.average ?? 0)).font(Typo.number(28)).monospacedDigit()
-                    Text(b.period == .day ? "so far" : "avg / day").foregroundStyle(.secondary)
+                    Text(b.period == .day ? "so far" : "avg / day").foregroundStyle(Palette.secondaryInk)
                     Spacer()
                     if let c = b.change { DeltaBadge(change: c) }
                 }
@@ -73,7 +73,7 @@ struct ChatBlockView: View {
                     HStack(spacing: 0) {
                         ForEach(b.buckets) { bucket in
                             VStack(spacing: 2) {
-                                Text(Fmt.weekdayShort[bucket.start.weekday - 1]).font(Typo.geist(11, relativeTo: .caption2)).foregroundStyle(.secondary)
+                                Text(Fmt.weekdayShort[bucket.start.weekday - 1]).font(Typo.geist(11, relativeTo: .caption2)).foregroundStyle(Palette.secondaryInk)
                                 Text(bucket.value.map { Fmt.decimal($0 / 1000) + "k" } ?? "—").font(Typo.geist(12, .semibold, relativeTo: .caption)).monospacedDigit()
                             }
                             .frame(maxWidth: .infinity)
@@ -120,7 +120,7 @@ struct ChatBlockView: View {
                 HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                     Text(Fmt.duration(b.asleep)).font(Typo.number(28)).monospacedDigit()
                     if let d = b.differenceFromAverage {
-                        Text("\(Fmt.duration(abs(d))) \(d >= 0 ? "more" : "less") than usual").font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(.secondary)
+                        Text("\(Fmt.duration(abs(d))) \(d >= 0 ? "more" : "less") than usual").font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
                     }
                 }
                 SleepTimelineView(night: b.night, height: 90)
@@ -143,7 +143,7 @@ struct ChatBlockView: View {
             VStack(alignment: .leading, spacing: Space.xs) {
                 header(b.title, symbol: "number")
                 Text(Fmt.value(b.value, metric: b.metric, units: units)).font(Typo.number(28)).monospacedDigit()
-                Text(b.caption).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(.secondary)
+                Text(b.caption).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
             }
         case .insight(let i):
             VStack(alignment: .leading, spacing: Space.s) {
@@ -152,10 +152,10 @@ struct ChatBlockView: View {
                 if let e = i.emphasis {
                     HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                         Text(e).font(Typo.number(24))
-                        if let c = i.emphasisCaption { Text(c).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(.secondary) }
+                        if let c = i.emphasisCaption { Text(c).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk) }
                     }
                 }
-                Text(i.explanation).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(.secondary)
+                Text(i.explanation).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
             }
         case .daySteps(let b):
             VStack(alignment: .leading, spacing: Space.s) {
@@ -163,7 +163,7 @@ struct ChatBlockView: View {
                 if let steps = b.steps {
                     HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                         Text(Fmt.int(steps)).font(Typo.number(30)).monospacedDigit()
-                        Text("steps").foregroundStyle(.secondary)
+                        Text("steps").foregroundStyle(Palette.secondaryInk)
                     }
                     if let usual = b.usual {
                         comparisonBars(day: steps, usual: usual, weekday: Fmt.weekday(b.date), n: b.usualObservations)
@@ -202,9 +202,9 @@ struct ChatBlockView: View {
             VStack(alignment: .leading, spacing: Space.xs) {
                 header("Body note · \(n.bodyRegion?.displayName ?? "General")", symbol: "bl.bodynote", color: Palette.note)
                 Text(n.title).font(Typo.geist(17, .semibold, relativeTo: .headline))
-                if let text = n.note, !text.isEmpty { Text(text).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(.secondary) }
+                if let text = n.note, !text.isEmpty { Text(text).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk) }
                 Text("Happened \(Fmt.dayLabel(n.date)) · written \(n.createdAt.formatted(date: .abbreviated, time: .omitted))\(n.resolvedDate.map { " · resolved \(Fmt.shortDate($0))" } ?? "")")
-                    .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(.secondary)
+                    .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
             }
         case .sources(let b):
             VStack(alignment: .leading, spacing: Space.s) {
@@ -235,7 +235,7 @@ struct ChatBlockView: View {
 
     func bar(_ label: String, _ v: Double, _ maxV: Double, _ color: Color) -> some View {
         HStack(spacing: Space.s) {
-            Text(label).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(.secondary).frame(width: 104, alignment: .leading)
+            Text(label).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk).frame(width: 104, alignment: .leading)
             GeometryReader { geo in
                 Capsule().fill(color.gradient).frame(width: max(6, geo.size.width * v / maxV))
             }
@@ -250,7 +250,7 @@ struct ChatBlockView: View {
                 .fill(highlight ? AnyShapeStyle(Palette.signalBright) : AnyShapeStyle(Palette.quiet))
                 .frame(height: max(8, 80 * (maxValue > 0 ? value / maxValue : 0)))
             Text(Fmt.value(value, metric: metric, units: units)).font(Typo.geist(17, .semibold, relativeTo: .headline)).monospacedDigit()
-            Text(label).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(.secondary)
+            Text(label).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

@@ -114,7 +114,7 @@ struct AskView: View {
             .card(padding: 0)
             if !AppConfig.aiConfigured || Persistence.aiConsent == false {
                 Label("Answers are generated on this iPhone.", systemImage: "iphone")
-                    .font(Typo.caption).foregroundStyle(.secondary)
+                    .font(Typo.caption).foregroundStyle(Palette.secondaryInk)
             }
         }
     }
@@ -206,7 +206,7 @@ struct AnswerEvidenceSheet: View {
                     ForEach(message.evidence) { e in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(e.label).font(Typo.geist(15, .semibold, relativeTo: .subheadline))
-                            Text(e.detail).font(Typo.caption).foregroundStyle(.secondary)
+                            Text(e.detail).font(Typo.caption).foregroundStyle(Palette.secondaryInk)
                         }
                     }
                 } header: {
@@ -224,7 +224,7 @@ struct AnswerEvidenceSheet: View {
                     }
                 }
                 Section {
-                    Text("Relationships between records are patterns, not causes. Blith doesn't diagnose.").font(Typo.caption).foregroundStyle(.secondary)
+                    Text("Relationships between records are patterns, not causes. Blith doesn't diagnose.").font(Typo.caption).foregroundStyle(Palette.secondaryInk)
                 }
             }
             .navigationTitle("Why you're seeing this")
@@ -253,7 +253,7 @@ struct AIConsentSheet: View {
                         point("iphone", "Prefer not to? Ask still answers common questions on this iPhone.")
                     }
                     .font(Typo.geist(15, relativeTo: .subheadline))
-                    Text("Blith is not a medical device and doesn't give diagnoses.").font(Typo.caption).foregroundStyle(.secondary)
+                    Text("Blith is not a medical device and doesn't give diagnoses.").font(Typo.caption).foregroundStyle(Palette.secondaryInk)
                     VStack(spacing: Space.m) {
                         Button {
                             decide(true)

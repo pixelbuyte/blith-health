@@ -16,6 +16,7 @@ struct TodayView: View {
                     header
                     if let s = app.snapshot {
                         scores(s).id("scores")
+                        DayRibbon(ctx: s.ctx).id("ribbon")
                         movement(s).id("movement")
                         insights(s).id("insight")
                         week(s).id("week")

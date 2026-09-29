@@ -125,7 +125,7 @@ struct OnboardingView: View {
                     }
                     Text("Blith only reads data. It never writes to Apple Health and never uses health data for advertising.")
                         .font(Typo.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Palette.secondaryInk)
                         .padding(.top, Space.s)
                 }
             }
@@ -143,7 +143,7 @@ struct OnboardingView: View {
                 }
                 .disabled(categories.isEmpty || connecting)
             } else {
-                Text("Apple Health isn't available on this device.").font(Typo.caption).foregroundStyle(.secondary)
+                Text("Apple Health isn't available on this device.").font(Typo.caption).foregroundStyle(Palette.secondaryInk)
             }
             Button {
                 Task {
@@ -201,7 +201,7 @@ struct ProfileSetupStep: View {
         VStack(alignment: .leading, spacing: Space.l) {
             VStack(alignment: .leading, spacing: Space.s) {
                 Text("A few optional details").font(.system(.largeTitle, design: .rounded, weight: .bold))
-                Text("All of this is optional and stays on your iPhone.").foregroundStyle(.secondary)
+                Text("All of this is optional and stays on your iPhone.").foregroundStyle(Palette.secondaryInk)
             }
             .padding(.top, Space.xl)
             Form {
@@ -290,7 +290,7 @@ struct ImportProgressView: View {
             }
             if let current {
                 ProgressView(value: current.fraction).tint(Palette.accent)
-                Text(current.detail).font(Typo.caption).foregroundStyle(.secondary)
+                Text(current.detail).font(Typo.caption).foregroundStyle(Palette.secondaryInk)
             }
             if let error = app.errorMessage {
                 Text(error).font(Typo.caption).foregroundStyle(.red)
