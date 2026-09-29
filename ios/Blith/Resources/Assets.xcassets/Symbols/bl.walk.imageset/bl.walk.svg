@@ -1,8 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-  <circle cx="13.7" cy="3.9" r="2.25" fill="#000000" stroke="none"/>
-  <path d="M13.05,7.85 L11.45,13.25" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M12.75,8.9 L15.95,11.65" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M12.55,9 L9.25,11.5" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M11.45,13.25 L13.85,16.45 L14.55,20.75" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M11.45,13.25 L9.85,16.95 L7.05,19.85" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="13.4" cy="4.1" r="1.95" fill="none" stroke="#000000" stroke-width="1.75"/>
+  <path d="M12.85,8.1 L11.45,13.35" fill="none" stroke="#000000" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M9.1,11.6 L12.55,9.05 L15.6,11.85" fill="none" stroke="#000000" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M7.2,20.1 L9.9,17.05 L11.45,13.35 L13.8,16.65 L14.6,20.9" fill="none" stroke="#000000" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
