@@ -71,7 +71,7 @@ public struct SleepNight: Codable, Hashable, Sendable, Identifiable {
         Self.unionDuration(segments.filter { $0.stage == stage })
     }
 
-    static func unionDuration(_ segments: [SleepSegment]) -> TimeInterval {
+    public static func unionDuration(_ segments: [SleepSegment]) -> TimeInterval {
         let sorted = segments.sorted { $0.start < $1.start }
         var total: TimeInterval = 0
         var currentStart: Date?

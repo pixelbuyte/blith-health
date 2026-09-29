@@ -20,7 +20,7 @@ struct WeightDetailView: View {
                 }
                 .padding(Space.page)
             }
-            .background(Palette.background)
+            .background(Palette.canvas)
             .navigationTitle("Weight")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
@@ -33,9 +33,9 @@ struct WeightDetailView: View {
         let points = range == 0 ? w.points : w.points.filter { $0.date >= cutoff }
         VStack(alignment: .leading, spacing: Space.m) {
             Text("SMOOTHED TREND").font(Typo.eyebrow).foregroundStyle(Palette.weight)
-            Text(Fmt.weight(w.trendNow, units: units)).font(Typo.number(44)).monospacedDigit()
+            Text(Fmt.weight(w.trendNow, units: units)).font(Typo.score(48))
             if let c = w.change30Days {
-                Text("\(Fmt.weightChange(c, units: units)) over 30 days").font(.headline).foregroundStyle(.secondary)
+                Text("\(Fmt.weightChange(c, units: units)) over 30 days").font(Typo.geist(17, .semibold, relativeTo: .headline)).foregroundStyle(Palette.secondaryInk)
             }
             Picker("Range", selection: $range) {
                 Text("30D").tag(30)
@@ -47,10 +47,10 @@ struct WeightDetailView: View {
             if points.count >= 2 {
                 WeightTrendChart(points: points, goalKg: w.goalKg, units: units, height: 240)
             } else {
-                Text("Not enough readings in this range.").font(.subheadline).foregroundStyle(.secondary)
+                Text("Not enough readings in this range.").font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
             }
             HStack(spacing: Space.l) {
-                legendDot(Palette.baseline.opacity(0.6), "Readings")
+                legendDot(Palette.tertiaryInk.opacity(0.7), "Readings")
                 legendLine(Palette.weight, "Trend")
             }
         }
@@ -74,34 +74,34 @@ struct WeightDetailView: View {
         .card(padding: Space.l)
 
         Text("Daily readings swing with water, food and timing. The trend line smooths those swings (exponential smoothing with a 7-day time constant), so it moves only when the change is sustained.")
-            .font(.footnote).foregroundStyle(.secondary)
+            .font(Typo.caption).foregroundStyle(Palette.secondaryInk)
         if w.isStale {
             Label("No readings in over \(HealthMetric.weight.staleAfterDays) days.", systemImage: "clock.badge.exclamationmark")
-                .font(.footnote).foregroundStyle(Palette.warm)
+                .font(Typo.caption).foregroundStyle(Palette.warm)
         }
     }
 
     func row(_ label: String, _ value: String?) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(label).foregroundStyle(.secondary)
+            Text(label).foregroundStyle(Palette.secondaryInk)
             Spacer(minLength: Space.m)
             Text(value ?? "—").fontWeight(.semibold).monospacedDigit().multilineTextAlignment(.trailing)
         }
-        .font(.subheadline)
+        .font(Typo.geist(15, relativeTo: .subheadline))
         .padding(.vertical, Space.m)
     }
 
     func legendDot(_ color: Color, _ text: String) -> some View {
         HStack(spacing: Space.xs) {
             Circle().fill(color).frame(width: 7, height: 7)
-            Text(text).font(.caption).foregroundStyle(.secondary)
+            Text(text).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
         }
     }
 
     func legendLine(_ color: Color, _ text: String) -> some View {
         HStack(spacing: Space.xs) {
             Capsule().fill(color).frame(width: 14, height: 3)
-            Text(text).font(.caption).foregroundStyle(.secondary)
+            Text(text).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
         }
     }
 }

@@ -79,6 +79,14 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UILaunchScreen:
           UIColorName: LaunchBackground
+        UIAppFonts:
+          - Geist-Light.ttf
+          - Geist-Regular.ttf
+          - Geist-Medium.ttf
+          - Geist-SemiBold.ttf
+          - Geist-Bold.ttf
+          - GeistMono-Regular.ttf
+          - GeistMono-Medium.ttf
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSHealthUpdateUsageDescription: Blith doesn't save anything to Apple Health. It only reads the data you choose to share, and Apple requires this description because the app uses HealthKit.

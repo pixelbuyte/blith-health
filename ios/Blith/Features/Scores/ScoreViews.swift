@@ -40,11 +40,11 @@ struct ReadinessDetailView: View {
                           unit: r.score == nil ? "/\(ScoreEngine.calibrationDays)" : "%", label: r.score == nil ? "Calibrating" : "Readiness",
                           color: r.score == nil ? Palette.secondaryInk : color, size: 190)
                     .id(day)
-                if let b = r.band { MonoPill(text: "\(b.label) readiness · \(b == .high ? "67–100" : b == .moderate ? "34–66" : "0–33")", color: color) }
+                if let b = r.band { BandChip(band: b, label: "\(b.label) readiness · \(b == .high ? "67–100" : b == .moderate ? "34–66" : "0–33")") }
                 Text(r.summary).font(Typo.story).foregroundStyle(Palette.ink).multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
-            .card(padding: Space.xl, tone: .tinted(r.band == nil ? Palette.cobalt : color))
+            .card(padding: Space.xl, tone: .hero)
 
             if !r.factors.isEmpty {
                 VStack(alignment: .leading, spacing: Space.l) {
@@ -60,10 +60,10 @@ struct ReadinessDetailView: View {
                 SectionHeader(title: "Last 13 weeks")
                 ScoreHeatmap(days: s.scoreHistory, mode: .readiness, selected: day) { d in withAnimation(Motion.standard) { selected = d } }
                 HStack(spacing: Space.l) {
-                    legend(Palette.mint, "High")
-                    legend(Palette.amber, "Moderate")
-                    legend(Palette.coral, "Low")
-                    legend(Palette.raised, "No score")
+                    legend(Palette.band(.high), "High")
+                    legend(Palette.band(.moderate), "Moderate")
+                    legend(Palette.band(.low), "Low")
+                    legend(nil, "No score")
                 }
             }
             .card(padding: Space.l)
@@ -76,13 +76,16 @@ struct ReadinessDetailView: View {
                 ("Calibration", "\(ScoreEngine.calibrationDays) nights of heart data"),
             ])
             Text("Readiness describes overnight signals relative to your own history. It isn't a medical assessment and can't tell you why a signal changed.")
-                .font(.caption).foregroundStyle(Palette.tertiaryInk)
+                .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.tertiaryInk)
         }
     }
 
-    func legend(_ c: Color, _ t: String) -> some View {
+    func legend(_ c: Color?, _ t: String) -> some View {
         HStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: 3).fill(c).frame(width: 10, height: 10)
+            Group {
+                if let c { RoundedRectangle(cornerRadius: 3).fill(c) } else { RoundedRectangle(cornerRadius: 3).strokeBorder(Palette.hairline, lineWidth: 1) }
+            }
+            .frame(width: 10, height: 10)
             Text(t.uppercased()).font(Typo.eyebrow).foregroundStyle(Palette.secondaryInk)
         }
     }
@@ -97,7 +100,7 @@ struct ReadinessDetailView: View {
                 Chart {
                     ForEach(Array(days)) { d in
                         BarMark(x: .value("Day", d.date.chartDate, unit: .day), y: .value("Readiness", d.readiness ?? 0))
-                            .foregroundStyle(Palette.band(d.band).gradient)
+                            .foregroundStyle(Palette.band(d.band))
                             .cornerRadius(2)
                     }
                     RuleMark(y: .value("Average", avg))
@@ -105,8 +108,8 @@ struct ReadinessDetailView: View {
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                 }
                 .chartYScale(domain: 0...100)
-                .chartYAxis { AxisMarks(values: [0, 33, 66, 100]) { _ in AxisGridLine().foregroundStyle(Palette.hairline); AxisValueLabel().foregroundStyle(Palette.tertiaryInk) } }
-                .chartXAxis { AxisMarks(values: .stride(by: .day, count: 7)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated).day()).foregroundStyle(Palette.tertiaryInk) } }
+                .chartYAxis { AxisMarks(values: [0, 33, 66, 100]) { _ in AxisGridLine().foregroundStyle(Palette.hairline); AxisValueLabel().font(Typo.mono(10)).foregroundStyle(Palette.tertiaryInk) } }
+                .chartXAxis { AxisMarks(values: .stride(by: .day, count: 7)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated).day()).font(Typo.mono(10)).foregroundStyle(Palette.tertiaryInk) } }
                 .frame(height: 160)
             }
             .card(padding: Space.l)
@@ -144,7 +147,7 @@ struct VitalDetailView: View {
                     .font(Typo.score(64)).foregroundStyle(Palette.ink).monospacedDigit()
                 if let r = reading.range {
                     Text("Your range \(metric.format(r.lowerBound)) – \(metric.format(r.upperBound)) · average \(reading.mean.map { metric.format($0) } ?? "–")")
-                        .font(.subheadline).foregroundStyle(Palette.secondaryInk)
+                        .font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
                 }
             }
             if values.count >= 3 {
@@ -164,16 +167,16 @@ struct VitalDetailView: View {
                     }
                 }
                 .chartYScale(domain: .automatic(includesZero: false))
-                .chartYAxis { AxisMarks { _ in AxisGridLine().foregroundStyle(Palette.hairline); AxisValueLabel().foregroundStyle(Palette.tertiaryInk) } }
-                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated).day()).foregroundStyle(Palette.tertiaryInk) } }
+                .chartYAxis { AxisMarks { _ in AxisGridLine().foregroundStyle(Palette.hairline); AxisValueLabel().font(Typo.mono(10)).foregroundStyle(Palette.tertiaryInk) } }
+                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated).day()).font(Typo.mono(10)).foregroundStyle(Palette.tertiaryInk) } }
                 .frame(height: 200)
                 .card(padding: Space.l)
             } else {
                 EmptyStateView(symbol: metric.icon, title: "Not enough readings", message: "This appears once a few nights of \(metric.shortName.lowercased()) are recorded.")
             }
-            Text(about).font(.subheadline).foregroundStyle(Palette.secondaryInk).card(padding: Space.l)
+            Text(about).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk).card(padding: Space.l)
             Text("Your range is your own recent history (±1.5 standard deviations over 30 days). A reading outside it isn't a diagnosis; if something feels wrong, talk to a clinician.")
-                .font(.caption).foregroundStyle(Palette.tertiaryInk)
+                .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.tertiaryInk)
         }
     }
 
