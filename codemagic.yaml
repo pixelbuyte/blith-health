@@ -185,6 +185,7 @@ workflows:
       xcode: latest
       groups:
         - blith_ai
+      # Fetches the App Store profile and certificate created by ios-setup (run that workflow first).
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.blith.health
@@ -231,24 +232,6 @@ workflows:
 
       - name: Generate Xcode project
         script: cd "$CM_BUILD_DIR/ios" && xcodegen generate
-
-      # Create a fresh App Store profile against the team's existing distribution certificates
-      # (created after HealthKit was enabled on the App ID) and make it the only profile on the machine.
-      - name: Create App Store provisioning profile
-        script: |
-          set -euo pipefail
-          CERT_IDS=$(app-store-connect certificates list --type DISTRIBUTION --json \
-            | python3 -c 'import json, sys; print(" ".join(c["id"] for c in json.load(sys.stdin)))')
-          test -n "$CERT_IDS"
-          NEW_PROFILES="$HOME/blith_profiles"
-          mkdir -p "$NEW_PROFILES"
-          app-store-connect profiles create "$BUNDLE_RID" --type IOS_APP_STORE \
-            --certificate-ids $CERT_IDS --name "Blith App Store $(date +%s)" \
-            --profiles-dir "$NEW_PROFILES" --save
-          PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
-          mkdir -p "$PROFILES_DIR"
-          rm -f "$PROFILES_DIR"/*.mobileprovision
-          cp "$NEW_PROFILES"/*.mobileprovision "$PROFILES_DIR"/
 
       - name: Set up code signing settings on Xcode project
         script: xcode-project use-profiles
