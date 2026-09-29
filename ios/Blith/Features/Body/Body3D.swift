@@ -353,7 +353,7 @@ final class BodySceneController: NSObject {
         let a = info.anchor.vector
         let c = cos(yaw), s = sin(yaw)
         target = SCNVector3(a.x * c + a.z * s, a.y, -a.x * s + a.z * c)
-        distance = max(0.8, min(2.4, info.radius * 7))
+        distance = max(1.35, min(2.6, info.radius * 9))
         highlight(region)
         applyCamera(animated: animated, duration: 0.9)
     }
@@ -408,8 +408,8 @@ final class BodySceneController: NSObject {
             }
 
             if note.id == focused {
-                let label = Self.label("\(note.title.isEmpty ? note.kindLabel : note.title) · \(Fmt.shortDate(note.date))")
-                let h: CGFloat = 0.05
+                let label = Self.label(Fmt.shortDate(note.date))
+                let h: CGFloat = 0.036
                 let plane = SCNPlane(width: h * label.size.width / label.size.height, height: h)
                 let lm = SCNMaterial()
                 lm.lightingModel = .constant
@@ -417,7 +417,7 @@ final class BodySceneController: NSObject {
                 lm.isDoubleSided = true
                 plane.materials = [lm]
                 let labelNode = SCNNode(geometry: plane)
-                labelNode.position = SCNVector3(0, 0.07, 0)
+                labelNode.position = SCNVector3(0, 0.06, 0)
                 labelNode.constraints = [SCNBillboardConstraint()]
                 labelNode.renderingOrder = 10
                 node.addChildNode(labelNode)

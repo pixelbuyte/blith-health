@@ -56,6 +56,8 @@ for DEV in "$SMALL" "$LARGE"; do
   shoot "$UDID" "$NAME-04-activity" "${DEMO[@]}" -BlithTab walk -BlithPeriod month
   shoot "$UDID" "$NAME-05-sleep" "${DEMO[@]}" -BlithTab sleep
   shoot "$UDID" "$NAME-06-sleep-stages" "${DEMO[@]}" -BlithTab sleep -BlithScrollTo stages
+  # Warm up SceneKit's shader cache so the first 3D shot isn't captured mid-compile.
+  xcrun simctl launch "$UDID" "$BUNDLE" "${DEMO[@]}" -BlithTab body >/dev/null; sleep 15
   shoot "$UDID" "$NAME-07-body" "${DEMO[@]}" -BlithTab body -BlithBodyYaw 28
   shoot "$UDID" "$NAME-08-body-focus" "${DEMO[@]}" -BlithTab body -BlithBodyFocus sample-ankle
   shoot "$UDID" "$NAME-09-body-muscle" "${DEMO[@]}" -BlithTab body -BlithBodyLayer muscle -BlithBodyYaw -20
