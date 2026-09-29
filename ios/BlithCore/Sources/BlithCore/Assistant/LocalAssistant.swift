@@ -1,0 +1,127 @@
+import Foundation
+
+/// On-device assistant used when AI sharing is off, no network, or no key is configured. It
+/// answers the common questions by calling the same tools as the AI and filling templates,
+/// so answers are factual and widgets are identical — just less conversational.
+public struct LocalAssistant: AssistantEngine {
+    public let tools: HealthAssistantTools
+
+    public init(tools: HealthAssistantTools) { self.tools = tools }
+
+    enum Intent { case today, walking(WalkPeriod), bestWeek, weight, sleep, workouts, sources, insights, compareMonth, unknown }
+
+    static func intent(for q: String) -> Intent {
+        let t = q.lowercased()
+        func has(_ words: String...) -> Bool { words.contains { t.contains($0) } }
+        if has("sleep", "slept", "bed", "night") { return .sleep }
+        if has("weight", "weigh", "scale", "lose", "lost", "kg", "lb", "pound") { return .weight }
+        if has("workout", "exercise", "run", "training") && !has("walk") { return .workouts }
+        if has("best week", "most active week", "walked the most", "biggest week") { return .bestWeek }
+        if has("source", "device", "watch", "iphone", "where does") { return .sources }
+        if has("insight", "changed", "worth knowing", "notice", "pattern") { return .insights }
+        if has("this month", "last month", "month") && has("compare", "vs", "versus", "than") { return .compareMonth }
+        if has("today", "right now", "so far", "low today") { return .today }
+        if has("year") { return .walking(.year) }
+        if has("month", "30 days", "lately", "recently") { return .walking(.month) }
+        if has("walk", "step", "moving", "active", "move", "week") { return .walking(.week) }
+        return .unknown
+    }
+
+    public func respond(to question: String, history: [ChatMessage], progress: @escaping @Sendable (String) -> Void) async throws -> ChatMessage {
+        if let safety = SafetyScreen.check(question) { return safety }
+        let s = tools.snapshot
+        let ctx = s.ctx
+        let u = ctx.units
+        var text: String
+        var output: ToolOutput
+
+        switch Self.intent(for: question) {
+        case .today:
+            output = tools.execute(name: "get_today_summary", arguments: [:])
+            if let pace = s.pace, let usual = pace.usualByNow, let change = pace.change {
+                let basis = pace.basis == .sameWeekday ? "a typical \(Fmt.weekday(ctx.today))" : "a typical day"
+                text = "You're at \(Fmt.int(pace.stepsSoFar)) steps so far. By this time on \(basis) you're usually around \(Fmt.int(usual)), so today is \(Fmt.percent(change)) \(change >= 0 ? "ahead" : "behind")."
+            } else {
+                text = "You're at \(Fmt.int(s.todaySteps ?? 0)) steps so far today. There isn't enough history yet to say what's usual for this time of day."
+            }
+        case .walking(let period):
+            output = tools.execute(name: "get_walking_summary", arguments: ["period": .string(period.rawValue == "sixMonths" ? "6m" : period.rawValue)])
+            let p = s.periods[period]
+            if let avg = p?.dailyAverage, let prev = p?.previousDailyAverage, let change = p?.change {
+                text = "Over the \(period.title.lowercased()) you averaged \(Fmt.int(avg)) steps a day, \(Fmt.percent(change)) \(change >= 0 ? "more" : "less") than the period before (\(Fmt.int(prev)))."
+                if let b = p?.highest { text += " Your biggest day was \(Fmt.dayLabel(b.date)) with \(Fmt.int(b.value))." }
+            } else if let avg = p?.dailyAverage {
+                text = "Over the \(period.title.lowercased()) you averaged \(Fmt.int(avg)) steps a day. There isn't enough earlier data to compare yet."
+            } else {
+                text = "There's no step data for that period yet."
+            }
+        case .bestWeek:
+            output = tools.execute(name: "find_personal_best", arguments: ["metric": "steps", "unit": "week"])
+            let first = ctx.history.firstDate(.steps, calendar: ctx.calendar) ?? ctx.today
+            if let best = HealthAnalytics(ctx).bestWeek(.steps, in: DateSpan(first, ctx.today)) {
+                text = "Your most active week was the week of \(Fmt.shortDate(best.start)), \(best.start.year): \(Fmt.int(best.total)) steps, about \(Fmt.int(best.average)) a day."
+            } else {
+                text = "There aren't enough complete weeks yet to find your best one."
+            }
+        case .weight:
+            output = tools.execute(name: "get_weight_trend", arguments: [:])
+            if let w = s.weight {
+                text = "Your smoothed weight trend is \(Fmt.weight(w.trendNow, units: u))"
+                if let c = w.change30Days { text += ", \(Fmt.weightChange(c, units: u)) over the last 30 days" }
+                text += "."
+                if let r = w.rangeLast7Days, w.readingsLast7Days >= 2 {
+                    text += " This week's readings ranged \(Fmt.weight(r.lowerBound, units: u))–\(Fmt.weight(r.upperBound, units: u)); the trend smooths out those daily swings."
+                }
+                if let d = w.distanceToGoal { text += " You're about \(Fmt.weight(abs(d), units: u)) \(d > 0 ? "above" : "below") your goal." }
+            } else {
+                text = "There are no weight readings yet. Connect a scale or log weight in Apple Health to see your trend here."
+            }
+        case .sleep:
+            output = tools.execute(name: "get_sleep_summary", arguments: [:])
+            if let n = s.sleep.lastNight {
+                text = "You slept \(Fmt.duration(n.asleepDuration)) on the night ending \(Fmt.dayLabel(n.date))."
+                if let d = s.sleep.differenceFromAverage {
+                    text += " That's \(Fmt.duration(abs(d))) \(d >= 0 ? "more" : "less") than your recent average."
+                }
+            } else {
+                text = "There's no sleep recorded for last night. Sleep comes from Apple Watch or a sleep app that writes to Apple Health."
+            }
+        case .workouts:
+            output = tools.execute(name: "get_workout_history", arguments: [:])
+            let count = output.result["count"]?.doubleValue ?? 0
+            text = count > 0 ? "You recorded \(Int(count)) workouts in the last 30 days, \(output.result["total_duration"]?.stringValue ?? "") in total." : "No workouts were recorded in the last 30 days."
+        case .sources:
+            output = tools.execute(name: "get_data_sources", arguments: ["metric": "steps"])
+            let names = (ctx.history.sources[.steps] ?? []).map(\.source.name)
+            text = names.isEmpty ? "Your steps come from \(ctx.history.origin.providerKind.displayName)." : "Your steps over the last 30 days came from \(names.joined(separator: " and ")). Apple Health merges overlapping samples, so nothing is counted twice."
+        case .insights:
+            output = tools.execute(name: "get_insights", arguments: [:])
+            if let first = s.feed.first {
+                text = first.explanation
+                if s.feed.count > 1 { text += " There's also: " + s.feed.dropFirst().prefix(2).map { $0.headline.lowercased() }.joined(separator: "; ") + "." }
+                output.suggestedBlock = .insight(first)
+            } else {
+                text = "Nothing unusual stands out right now. Insights appear once there's a meaningful change against your own baseline."
+            }
+        case .compareMonth:
+            let thisMonth = DateSpan(ctx.today.startOfMonth, ctx.yesterday)
+            let lastMonthEnd = ctx.today.startOfMonth.adding(days: -1)
+            let lastMonth = DateSpan(lastMonthEnd.startOfMonth, lastMonthEnd)
+            output = tools.execute(name: "compare_periods", arguments: [
+                "metric": "steps", "a_start": .string(thisMonth.start.description), "a_end": .string(thisMonth.end.description),
+                "b_start": .string(lastMonth.start.description), "b_end": .string(lastMonth.end.description)])
+            if let a = output.result["period_a_daily_average"]?.stringValue, let b = output.result["period_b_daily_average"]?.stringValue,
+               let c = output.result["change_b_to_a_pct"]?.doubleValue {
+                text = "This month you're averaging \(a) steps a day vs \(b) last month (\(Fmt.signedPercent(c / 100)))."
+            } else {
+                text = "There isn't enough data in both months to compare yet."
+            }
+        case .unknown:
+            output = ToolOutput(result: [:])
+            text = "I can answer questions about your walking, weight, sleep, workouts and how they've changed. Try “How have I been walking?” or “How is my weight trending?”"
+        }
+
+        return ChatMessage(role: .assistant, text: text, blocks: output.suggestedBlock.map { [$0] } ?? [],
+                           evidence: output.evidence, toolsUsed: [], isLocal: true)
+    }
+}
