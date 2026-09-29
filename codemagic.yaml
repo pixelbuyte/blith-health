@@ -1,0 +1,308 @@
+# Codemagic CI/CD for Blith (native SwiftUI, HealthKit).
+#
+#   ios/project.yml         XcodeGen spec (the .xcodeproj is generated here, not committed)
+#   ios/BlithCore           Swift package with all health logic; `swift test` runs on macOS and Linux
+#   ios/Config              xcconfigs; Secrets.xcconfig is written from environment variables
+#
+# Environment variable groups (App settings › Environment variables):
+#   blith_ai       OPENROUTER_API_KEY (secure), optional: enables AI answers in Ask; without it
+#                  Ask answers on-device.
+#   blith_signing  CERTIFICATE_PRIVATE_KEY (secure): private key of Blith's Apple Distribution
+#                  certificate, used by ios-release.
+#
+# Workflows
+#   ios-ci             Core tests + simulator build + screenshots. No signing needed.
+#   ios-release-check  Unsigned Release archive for a device. No Apple account needed.
+#   ios-setup          Registers com.blith.health with HealthKit (idempotent).
+#   ios-release        Signs, builds Blith.ipa and uploads it to TestFlight. Needs the team's App
+#                      Store Connect integration (codemagic1) and an app record for
+#                      com.blith.health (see docs/RELEASE.md).
+
+workflows:
+  ios-ci:
+    name: iOS CI - Test, Build & Screenshots
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+      groups:
+        - blith_ai
+    triggering:
+      events:
+        - push
+        - pull_request
+      cancel_previous_builds: true
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/org.swift.swiftpm
+        - $CM_BUILD_DIR/ios/BlithCore/.build
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          set -euo pipefail
+          command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
+          xcodegen --version
+
+      - name: Write build configuration (Secrets.xcconfig)
+        script: |
+          set -euo pipefail
+          SECRETS="$CM_BUILD_DIR/ios/Config/Secrets.xcconfig"
+          : > "$SECRETS"
+          if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+            echo "OPENROUTER_API_KEY = ${OPENROUTER_API_KEY}" >> "$SECRETS"
+            echo "AI key configured"
+          else
+            echo "No OPENROUTER_API_KEY: Ask will answer on-device"
+          fi
+
+      - name: Generate Xcode project
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR/ios"
+          xcodegen generate
+
+      - name: BlithCore unit tests
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR/ios/BlithCore"
+          swift test 2>&1 | tee "$CM_BUILD_DIR/core-tests.log" | grep -E "(✔|✘|passed|failed|error:)" | tail -80
+
+      - name: Build app (iOS Simulator)
+        script: |
+          set -euo pipefail
+          mkdir -p "$CM_BUILD_DIR/build"
+          cd "$CM_BUILD_DIR/ios"
+          if ! xcodebuild build \
+              -project Blith.xcodeproj \
+              -scheme Blith \
+              -configuration Debug \
+              -sdk iphonesimulator \
+              -destination "generic/platform=iOS Simulator" \
+              -derivedDataPath "$CM_BUILD_DIR/build/dd" \
+              CODE_SIGNING_ALLOWED=NO > "$CM_BUILD_DIR/build/xcodebuild.log" 2>&1; then
+            echo "=== BUILD FAILED ==="
+            grep -E "error:|error\b" "$CM_BUILD_DIR/build/xcodebuild.log" | sort -u | head -120
+            exit 1
+          fi
+          grep -E "warning:" "$CM_BUILD_DIR/build/xcodebuild.log" | grep "/Blith/" | sort -u | head -40 || true
+          echo "BUILD SUCCEEDED"
+
+      - name: Screenshots (small + large iPhone, light + dark)
+        script: |
+          set -euo pipefail
+          bash "$CM_BUILD_DIR/scripts/screenshots.sh"
+    artifacts:
+      - build/screenshots/*.png
+      - build/xcodebuild.log
+      - core-tests.log
+
+  # Release configuration for a real device, unsigned: catches Release-only compile, asset and
+  # entitlement problems without touching any Apple account.
+  ios-release-check:
+    name: iOS Release Check - unsigned device archive
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+      groups:
+        - blith_ai
+    scripts:
+      - name: Install XcodeGen
+        script: command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Write build configuration
+        script: |
+          set -euo pipefail
+          SECRETS="$CM_BUILD_DIR/ios/Config/Secrets.xcconfig"
+          : > "$SECRETS"
+          [ -n "${OPENROUTER_API_KEY:-}" ] && echo "OPENROUTER_API_KEY = ${OPENROUTER_API_KEY}" >> "$SECRETS" || true
+      - name: Generate Xcode project
+        script: cd "$CM_BUILD_DIR/ios" && xcodegen generate
+      - name: Archive (Release, iPhoneOS, unsigned)
+        script: |
+          set -euo pipefail
+          mkdir -p "$CM_BUILD_DIR/build"
+          cd "$CM_BUILD_DIR/ios"
+          if ! xcodebuild archive -project Blith.xcodeproj -scheme Blith -configuration Release \
+              -sdk iphoneos -destination "generic/platform=iOS" \
+              -archivePath "$CM_BUILD_DIR/build/Blith.xcarchive" \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CURRENT_PROJECT_VERSION=1 \
+              > "$CM_BUILD_DIR/build/archive.log" 2>&1; then
+            grep -E "error:" "$CM_BUILD_DIR/build/archive.log" | sort -u | head -60
+            exit 1
+          fi
+          APP="$CM_BUILD_DIR/build/Blith.xcarchive/Products/Applications/Blith.app"
+          ls "$APP" | head -30
+          plutil -p "$APP/Info.plist" | grep -E "CFBundle(Identifier|ShortVersionString|Version|IconName)|MinimumOSVersion|ITSAppUses|UIDeviceFamily|DTPlatform" || true
+          codesign -d --entitlements - "$APP" 2>&1 | head -12 || true
+          du -sh "$APP"
+    artifacts:
+      - build/archive.log
+
+  # One-time / idempotent: registers com.blith.health with the HealthKit capability using the team's
+  # App Store Connect integration and reports what exists in the account. Safe to re-run.
+  ios-setup:
+    name: iOS Setup - App ID and HealthKit
+    max_build_duration: 15
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: codemagic1
+    environment:
+      vars:
+        BUNDLE_ID: "com.blith.health"
+        APP_NAME: "Blith"
+    scripts:
+      - name: CLI reference
+        script: |
+          for c in "create" "enable-capabilities"; do
+            echo "== bundle-ids $c"
+            app-store-connect bundle-ids $c --help 2>&1 | sed 's/\x1b\[[0-9;]*m//g' \
+              | sed -n '/arguments for command/,$p' | grep -vE "issuer|key-id|private-key|certificates-dir|profiles-dir|api-|jwt|log-|json|-h, --help|^$" | cut -c1-200 | head -30
+          done
+      - name: Account status
+        script: |
+          python3 - <<'PY'
+          import json, subprocess
+          def cli(*a):
+              r = subprocess.run(["app-store-connect", *a, "--json"], capture_output=True, text=True)
+              try: return json.loads(r.stdout)
+              except Exception: print("cli", a, "->", (r.stderr or r.stdout)[-300:]); return []
+          apps = cli("apps", "list")
+          print("apps:", [(a["attributes"].get("bundleId"), a["attributes"].get("name")) for a in apps])
+          ids = cli("bundle-ids", "list", "--bundle-id-identifier", "com.blith.health")
+          print("blith bundle ids:", [(b["id"], b["attributes"].get("identifier"), b["attributes"].get("seedId")) for b in ids])
+          certs = cli("certificates", "list", "--type", "DISTRIBUTION")
+          print("distribution certs:", [(c["id"], c["attributes"].get("name"), c["attributes"].get("expirationDate")) for c in certs])
+          PY
+      - name: Register bundle ID
+        script: |
+          set -uo pipefail
+          EXISTING=$(app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --json 2>/dev/null \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["id"] if d else "")' || true)
+          if [ -z "$EXISTING" ]; then
+            echo "Creating bundle ID $BUNDLE_ID"
+            app-store-connect bundle-ids create "$BUNDLE_ID" --name "$APP_NAME" --platform IOS
+          else
+            echo "Bundle ID exists: $EXISTING"
+          fi
+      - name: Enable HealthKit
+        script: |
+          set -euo pipefail
+          RID=$(app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["id"])')
+          has_healthkit() {
+            app-store-connect bundle-ids capabilities "$RID" --json | python3 -c '
+          import json,sys
+          sys.exit(0 if "HEALTHKIT" in [c["attributes"]["capabilityType"] for c in json.load(sys.stdin)] else 1)'
+          }
+          if has_healthkit; then echo "HealthKit already enabled"; else
+            app-store-connect bundle-ids enable-capabilities "$RID" --capability HealthKit
+            has_healthkit && echo "HealthKit enabled"
+          fi
+
+  ios-release:
+    name: iOS Release - TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    # The team's App Store Connect API key (Codemagic > Team settings > Integrations).
+    integrations:
+      app_store_connect: codemagic1
+    environment:
+      xcode: latest
+      groups:
+        - blith_ai
+        # CERTIFICATE_PRIVATE_KEY (secure): the private key of Blith's Apple Distribution certificate.
+        - blith_signing
+      vars:
+        BUNDLE_ID: "com.blith.health"
+        APP_NAME: "Blith"
+    scripts:
+      - name: Install XcodeGen
+        script: command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
+
+      - name: Register App ID with HealthKit (idempotent)
+        script: |
+          set -euo pipefail
+          RID=$(app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["id"] if d else "")')
+          if [ -z "$RID" ]; then
+            app-store-connect bundle-ids create "$BUNDLE_ID" --name "$APP_NAME" --platform IOS
+            RID=$(app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["id"])')
+          fi
+          has_healthkit() {
+            app-store-connect bundle-ids capabilities "$RID" --json | python3 -c '
+          import json,sys
+          sys.exit(0 if "HEALTHKIT" in [c["attributes"]["capabilityType"] for c in json.load(sys.stdin)] else 1)'
+          }
+          has_healthkit || { app-store-connect bundle-ids enable-capabilities "$RID" --capability HealthKit; has_healthkit; }
+          TEAM=$(app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["attributes"]["seedId"])')
+          echo "BUNDLE_RID=$RID" >> "$CM_ENV"
+          echo "DEVELOPMENT_TEAM=$TEAM" >> "$CM_ENV"
+
+      - name: Write build configuration (Secrets.xcconfig)
+        script: |
+          set -euo pipefail
+          SECRETS="$CM_BUILD_DIR/ios/Config/Secrets.xcconfig"
+          : > "$SECRETS"
+          echo "DEVELOPMENT_TEAM = ${DEVELOPMENT_TEAM}" >> "$SECRETS"
+          if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+            echo "OPENROUTER_API_KEY = ${OPENROUTER_API_KEY}" >> "$SECRETS"
+            echo "AI key configured"
+          else
+            echo "No OPENROUTER_API_KEY: Ask will answer on-device"
+          fi
+
+      - name: Generate Xcode project
+        script: cd "$CM_BUILD_DIR/ios" && xcodegen generate
+
+      # Finds (or, the first time, creates) the distribution certificate that belongs to
+      # CERTIFICATE_PRIVATE_KEY and an App Store profile for it, then signs with them.
+      - name: Set up code signing
+        script: |
+          set -euo pipefail
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --platform IOS --strict-match-identifier --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Next build number from App Store Connect
+        script: |
+          set -euo pipefail
+          APP_APPLE_ID=$(app-store-connect apps list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json \
+            | python3 -c 'import json,sys; a=json.load(sys.stdin); print(a[0]["id"] if a else "")')
+          if [ -z "$APP_APPLE_ID" ]; then
+            echo "No App Store Connect app record for $BUNDLE_ID yet: building with build number 1 (upload will be skipped)."
+            echo "BUILD_NUMBER=1" >> "$CM_ENV"
+            echo "HAS_APP_RECORD=no" >> "$CM_ENV"
+          else
+            LATEST=$(app-store-connect get-latest-build-number "$APP_APPLE_ID" || echo 0)
+            LATEST=${LATEST:-0}
+            [[ "$LATEST" =~ ^[0-9]+$ ]] || LATEST=0
+            echo "Latest build number: $LATEST"
+            echo "BUILD_NUMBER=$((LATEST + 1))" >> "$CM_ENV"
+            echo "HAS_APP_RECORD=yes" >> "$CM_ENV"
+          fi
+
+      - name: Build ipa
+        script: |
+          set -euo pipefail
+          xcode-project build-ipa \
+            --project "$CM_BUILD_DIR/ios/Blith.xcodeproj" \
+            --scheme Blith \
+            --archive-xcargs="CURRENT_PROJECT_VERSION=$BUILD_NUMBER"
+
+      # Upload only; testers get the build in TestFlight once Apple finishes processing it.
+      - name: Upload to TestFlight
+        script: |
+          set -euo pipefail
+          IPA=$(ls "$CM_BUILD_DIR"/build/ios/ipa/*.ipa | head -1)
+          if [ "${HAS_APP_RECORD:-no}" = "yes" ]; then
+            app-store-connect publish --path "$IPA"
+            echo "Uploaded build $BUILD_NUMBER to App Store Connect"
+          else
+            echo "SKIPPED UPLOAD: create the app record for $BUNDLE_ID in App Store Connect (My Apps > + > New App), then re-run this workflow."
+          fi
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log

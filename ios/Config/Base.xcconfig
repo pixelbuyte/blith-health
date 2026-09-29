@@ -1,0 +1,8 @@
+// Shared settings. Secrets.xcconfig is gitignored and optional (the `?`), so a fresh
+// checkout still builds; Ask then answers on-device until a key is configured.
+// Copy Secrets.example.xcconfig → Secrets.xcconfig to use the AI assistant locally.
+OPENROUTER_MODEL = openai/gpt-6-luna
+PRIVACY_POLICY_URL = https:/$()/github.com/pixelbuyte/blith-health/blob/main/docs/PRIVACY.md
+OPENROUTER_API_KEY =
+DEVELOPMENT_TEAM =
+#include? "Secrets.xcconfig"
