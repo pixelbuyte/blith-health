@@ -45,6 +45,8 @@ final class AppModel {
     var importProgress: SyncProgress?
     var isSyncing = false
     var errorMessage: String?
+    private(set) var engagement: Engagement = Persistence.loadEngagement()
+    private(set) var achievements: [Achievement] = []
 
     let router = AppRouter()
     let ask = AskModel()
@@ -63,6 +65,7 @@ final class AppModel {
 
     func start() async {
         LaunchOptions.applyIfPresent(to: self)
+        checkIn()
         guard Persistence.onboardingComplete, let mode = Persistence.dataMode else {
             phase = .onboarding
             return
@@ -131,6 +134,9 @@ final class AppModel {
                 Task { @MainActor in self.importProgress = progress }
             }
             h = result
+            if mode.isDemo, h.events.isEmpty, case .demo(.balanced) = mode {
+                h.events = DemoNotes.make(today: LocalDate(AppClock.now(), calendar: .current), now: AppClock.now())
+            }
             try? await store.save(h)
             history = h
             importProgress = SyncProgress(stage: .analyzing, fraction: 0.97, detail: "Calculating your baselines")
@@ -167,11 +173,54 @@ final class AppModel {
     }
 
     func rebuildSnapshot() async {
-        guard let h = history else { snapshot = nil; return }
+        guard let h = history else { snapshot = nil; achievements = []; return }
         let profile = profile
-        snapshot = await Task.detached(priority: .userInitiated) {
-            HealthSnapshot.build(history: h, profile: profile, now: AppClock.now(), calendar: .current)
+        let engagement = engagement
+        let result = await Task.detached(priority: .userInitiated) { () -> (HealthSnapshot, [Achievement]) in
+            let s = HealthSnapshot.build(history: h, profile: profile, now: AppClock.now(), calendar: .current)
+            let a = AchievementEngine.evaluate(history: h, engagement: engagement, today: s.ctx.today,
+                                               threshold: HealthAnalytics(s.ctx).activeThreshold())
+            return (s, a)
         }.value
+        snapshot = result.0
+        achievements = result.1
+    }
+
+    // MARK: Engagement
+
+    var streak: CheckInStreak { CheckInStreak.compute(engagement.checkIns, today: LocalDate(AppClock.now(), calendar: .current)) }
+
+    /// One check-in per day the app is opened. Gentle: missing a day never removes anything.
+    func checkIn() {
+        let today = LocalDate(AppClock.now(), calendar: .current)
+        guard !engagement.checkIns.contains(today) else { return }
+        engagement.checkIns.insert(today)
+        Persistence.saveEngagement(engagement)
+    }
+
+    func recordQuestion() {
+        engagement.questionsAsked += 1
+        Persistence.saveEngagement(engagement)
+    }
+
+    // MARK: Body notes
+
+    func saveNote(_ note: HealthEvent) async {
+        guard var h = history else { return }
+        var n = note
+        n.updatedAt = h.events.contains { $0.id == note.id } ? AppClock.now() : nil
+        h.upsert(n)
+        history = h
+        try? await store.save(h)
+        await rebuildSnapshot()
+    }
+
+    func deleteNote(id: String) async {
+        guard var h = history else { return }
+        h.deleteNote(id: id)
+        history = h
+        try? await store.save(h)
+        await rebuildSnapshot()
     }
 
     func profileChanged() {
@@ -201,6 +250,8 @@ final class AppModel {
         snapshot = nil
         mode = nil
         importProgress = nil
+        engagement = Engagement()
+        achievements = []
         ask.clear()
         router.reset()
         phase = .onboarding
@@ -241,7 +292,15 @@ enum Persistence {
         d.set(try? JSONEncoder().encode(p), forKey: "profile")
     }
 
+    static func loadEngagement() -> Engagement {
+        d.data(forKey: "engagement").flatMap { try? JSONDecoder().decode(Engagement.self, from: $0) } ?? Engagement()
+    }
+
+    static func saveEngagement(_ e: Engagement) {
+        d.set(try? JSONEncoder().encode(e), forKey: "engagement")
+    }
+
     static func reset() {
-        for key in ["onboardingComplete", "dataMode", "connectedCategories", "aiConsent", "profile"] { d.removeObject(forKey: key) }
+        for key in ["onboardingComplete", "dataMode", "connectedCategories", "aiConsent", "profile", "engagement"] { d.removeObject(forKey: key) }
     }
 }

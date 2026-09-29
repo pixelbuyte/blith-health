@@ -14,7 +14,7 @@ struct BlithApp: App {
                 .tint(Palette.accent)
                 .task { await app.start() }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active, app.phase == .ready { Task { await app.refresh() } }
+                    if phase == .active, app.phase == .ready { app.checkIn(); Task { await app.refresh() } }
                 }
         }
     }
@@ -52,13 +52,16 @@ struct MainTabView: View {
     var body: some View {
         @Bindable var router = router
         TabView(selection: $router.tab) {
-            Tab("Today", systemImage: "sun.horizon", value: AppTab.today) {
+            Tab("Today", image: "bl.today", value: AppTab.today) {
                 TodayView()
             }
-            Tab("Walk", systemImage: "figure.walk", value: AppTab.walk) {
+            Tab("Walk", image: "bl.walk", value: AppTab.walk) {
                 WalkView()
             }
-            Tab("Ask", systemImage: "sparkles", value: AppTab.ask) {
+            Tab("Body", image: "bl.body", value: AppTab.body) {
+                BodyView()
+            }
+            Tab("Ask", image: "bl.ask", value: AppTab.ask) {
                 AskView()
             }
         }

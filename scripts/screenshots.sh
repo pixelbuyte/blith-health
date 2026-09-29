@@ -52,15 +52,17 @@ for DEV in "$SMALL" "$LARGE"; do
   for MODE in light dark; do
     xcrun simctl ui "$UDID" appearance "$MODE"
     shoot "$UDID" "$NAME-$MODE-1-today" "${DEMO[@]}" -BlithTab today
-    shoot "$UDID" "$NAME-$MODE-2-walk" "${DEMO[@]}" -BlithTab walk -BlithPeriod month
+    shoot "$UDID" "$NAME-$MODE-2-walk" "${DEMO[@]}" -BlithTab walk -BlithPeriod month -BlithWalkDaysAgo 40
     shoot "$UDID" "$NAME-$MODE-3-ask" "${DEMO[@]}" -BlithTab ask -BlithAskScript YES
+    shoot "$UDID" "$NAME-$MODE-4-body" "${DEMO[@]}" -BlithTab body -BlithBodyFocus sample-ankle
     if [ "$MODE" = light ]; then
-      shoot "$UDID" "$NAME-$MODE-4-insight" "${DEMO[@]}" -BlithSheet insight
-      shoot "$UDID" "$NAME-$MODE-5-sleep" "${DEMO[@]}" -BlithSheet sleep
-      shoot "$UDID" "$NAME-$MODE-6-weight" "${DEMO[@]}" -BlithSheet weight
-      shoot "$UDID" "$NAME-$MODE-7-walk-day" "${DEMO[@]}" -BlithTab walk -BlithPeriod day
-      shoot "$UDID" "$NAME-$MODE-8-newuser" -BlithDemo newUser -BlithClockHour 15.5 -BlithTab today
-      shoot "$UDID" "$NAME-$MODE-9-onboarding" -BlithResetOnboarding YES
+      shoot "$UDID" "$NAME-$MODE-5-body-front" "${DEMO[@]}" -BlithTab body
+      shoot "$UDID" "$NAME-$MODE-6-insight" "${DEMO[@]}" -BlithSheet insight
+      shoot "$UDID" "$NAME-$MODE-7-sleep" "${DEMO[@]}" -BlithSheet sleep
+      shoot "$UDID" "$NAME-$MODE-8-achievements" "${DEMO[@]}" -BlithSheet achievements
+      shoot "$UDID" "$NAME-$MODE-9-walk-day" "${DEMO[@]}" -BlithTab walk -BlithPeriod day
+      shoot "$UDID" "$NAME-$MODE-10-newuser" -BlithDemo newUser -BlithClockHour 15.5 -BlithTab today
+      shoot "$UDID" "$NAME-$MODE-11-onboarding" -BlithResetOnboarding YES
     fi
   done
   xcrun simctl shutdown "$UDID" || true

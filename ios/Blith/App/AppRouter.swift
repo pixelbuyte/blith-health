@@ -2,7 +2,7 @@ import BlithCore
 import Observation
 import SwiftUI
 
-enum AppTab: Hashable { case today, walk, ask }
+enum AppTab: Hashable { case today, walk, body, ask }
 
 /// Navigation state shared by tabs, insight cards and chat widgets, so the assistant can
 /// "navigate the app with the user".
@@ -29,7 +29,12 @@ final class AppRouter {
 
     var tab: AppTab = .today
     var walkPeriod: WalkPeriod = .week
+    /// Day shown in Walk's detail panel (set by chart taps and deep links).
+    var walkSelectedDate: LocalDate?
+    /// Note Body should rotate and zoom to.
+    var bodyFocusNoteID: String?
     var sheet: Sheet?
+    var showAchievements = false
 
     func open(_ link: DeepLink, snapshot: HealthSnapshot?) {
         switch link {
@@ -48,12 +53,24 @@ final class AppRouter {
             if let insight = snapshot?.insight(id: id) { sheet = .insight(insight) }
         case .sources:
             sheet = .sources
+        case .walkDay(let date):
+            sheet = nil
+            let today = LocalDate(AppClock.now(), calendar: .current)
+            walkPeriod = date.days(until: today) < 30 ? .month : .sixMonths
+            walkSelectedDate = date
+            tab = .walk
+        case .body(let id):
+            sheet = nil
+            bodyFocusNoteID = id
+            tab = .body
         }
     }
 
     func reset() {
         tab = .today
         walkPeriod = .week
+        walkSelectedDate = nil
+        bodyFocusNoteID = nil
         sheet = nil
     }
 }

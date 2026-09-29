@@ -36,11 +36,17 @@ enum LaunchOptions {
         switch args.string(forKey: "BlithTab") {
         case "walk": app.router.tab = .walk
         case "ask": app.router.tab = .ask
+        case "body": app.router.tab = .body
         default: break
         }
+        if args.object(forKey: "BlithWalkDaysAgo") != nil {
+            app.router.walkSelectedDate = LocalDate(AppClock.now(), calendar: .current).adding(days: -args.integer(forKey: "BlithWalkDaysAgo"))
+        }
+        if let id = args.string(forKey: "BlithBodyFocus") { app.router.open(.body(id), snapshot: app.snapshot) }
         if let period = args.string(forKey: "BlithPeriod").flatMap(WalkPeriod.init(rawValue:)) { app.router.walkPeriod = period }
         if args.bool(forKey: "BlithAskScript"), let snapshot = app.snapshot {
-            await app.ask.runScript(["How have I been walking?", "Show my sleep last night.", "How has my weight changed?"],
+            await app.ask.runScript(["Why was my walking lower on \(Fmt.shortDate(LocalDate(AppClock.now(), calendar: .current).adding(days: -MockHealthProvider.ankleNoteDaysAgo)))?",
+                                     "How have I been walking?", "Show my sleep last night."],
                                     snapshot: snapshot)
         }
         switch args.string(forKey: "BlithSheet") {
@@ -49,6 +55,7 @@ enum LaunchOptions {
         case "profile": app.router.sheet = .profile
         case "sources": app.router.sheet = .sources
         case "insight": if let i = app.snapshot?.feed.first { app.router.sheet = .insight(i) }
+        case "achievements": app.router.showAchievements = true
         default: break
         }
     }

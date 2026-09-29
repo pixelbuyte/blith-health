@@ -32,9 +32,12 @@ struct OnboardingView: View {
     var welcome: some View {
         VStack(alignment: .leading, spacing: Space.xl) {
             Spacer()
-            BrandMark().frame(width: 84, height: 84)
+            HStack(alignment: .bottom, spacing: Space.m) {
+                BrandMark().frame(width: 64, height: 64)
+                BlithMascot(pose: .waving, size: 92)
+            }
             Text("Understand your health, not just your numbers.")
-                .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                .font(Typo.display)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Blith learns your normal from your own history, notices what changes, and explains why it matters. Ask it anything about your walking, sleep and weight.")
                 .font(.body)
@@ -248,8 +251,8 @@ struct ImportProgressView: View {
         let current = app.importProgress
         VStack(alignment: .leading, spacing: Space.xl) {
             Spacer()
-            BrandMark().frame(width: 72, height: 72)
-            Text("Building your health history…").font(.system(.title, design: .rounded, weight: .bold))
+            BlithMascot(pose: .walking, size: 90)
+            Text("Building your health history…").font(Typo.display)
             VStack(alignment: .leading, spacing: Space.l) {
                 ForEach(Array(stages.enumerated()), id: \.offset) { index, item in
                     let state = stageState(item.0, current: current?.stage)

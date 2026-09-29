@@ -6,8 +6,11 @@ struct AskView: View {
     @Environment(AppRouter.self) private var router
     @FocusState private var focused: Bool
 
-    static let suggestions = ["How have I been walking?", "Show my week.", "How is my weight trending?",
-                              "What changed recently?", "Show my sleep last night.", "What was my best week?"]
+    static let suggestions: [(String, String)] = [
+        ("How have I been walking?", "bl.walk"), ("Why was my walking lower last Tuesday?", "bl.calendar"),
+        ("Show my sleep last night.", "bl.sleep"), ("How has my weight changed?", "bl.weight"),
+        ("What changed recently?", "bl.sparkle"), ("Show my body notes.", "bl.bodynote"),
+    ]
 
     var body: some View {
         let ask = app.ask
@@ -15,7 +18,7 @@ struct AskView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: Space.xl) {
-                        if app.isDemo { SampleDataBanner() }
+                        askHeader(responding: ask.isResponding)
                         if ask.messages.isEmpty {
                             emptyState
                         }
@@ -25,8 +28,8 @@ struct AskView: View {
                         }
                         if ask.isResponding {
                             HStack(spacing: Space.s) {
-                                ProgressView().controlSize(.small)
-                                Text(ask.progress ?? "Thinking").font(.subheadline).foregroundStyle(.secondary)
+                                BlithMascot(pose: .thinking, size: 34)
+                                Text(ask.progress ?? "Thinking").font(.subheadline).foregroundStyle(Palette.secondaryInk)
                                     .contentTransition(.opacity)
                             }
                             .id("progress")
@@ -45,9 +48,9 @@ struct AskView: View {
                     withAnimation(.smooth) { proxy.scrollTo("bottom", anchor: .bottom) }
                 }
             }
-            .background(Palette.background)
+            .blithBackground(wash: Palette.cyan.opacity(0.14))
             .safeAreaInset(edge: .bottom) { composer }
-            .navigationTitle("Ask")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     if !ask.messages.isEmpty {
@@ -63,20 +66,34 @@ struct AskView: View {
         }
     }
 
+    func askHeader(responding: Bool) -> some View {
+        HStack(alignment: .center, spacing: Space.m) {
+            VStack(alignment: .leading, spacing: Space.xs) {
+                HStack(spacing: Space.s) {
+                    Eyebrow(text: "Your health, explained", icon: "bl.sparkle", color: Palette.cyan)
+                    if app.isDemo { SampleDataBanner() }
+                }
+                Text("Ask Blith").font(Typo.display).foregroundStyle(Palette.ink)
+            }
+            Spacer()
+            BlithMascot(pose: responding ? .thinking : .listening, size: 58)
+        }
+    }
+
     var emptyState: some View {
         VStack(alignment: .leading, spacing: Space.l) {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text("Your health, explained.").font(.system(.title, design: .rounded, weight: .bold))
-                Text("Ask about your walking, weight, sleep or anything that changed. Answers use your own history and show the data behind them.")
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.top, Space.xl)
+            Text("Ask about your walking, sleep, weight or body notes. Every answer is computed from your records and comes with the evidence behind it.")
+                .foregroundStyle(Palette.secondaryInk)
             VStack(alignment: .leading, spacing: Space.s) {
-                ForEach(Self.suggestions, id: \.self) { s in
+                ForEach(Self.suggestions, id: \.0) { s in
                     Button {
-                        Task { await app.ask.send(s, app: app) }
+                        Task { await app.ask.send(s.0, app: app) }
                     } label: {
-                        Text(s).font(.subheadline.weight(.medium)).padding(.horizontal, Space.xs)
+                        HStack(spacing: Space.s) {
+                            BLIcon(name: s.1, size: 16).foregroundStyle(Palette.cobalt)
+                            Text(s.0).font(.subheadline.weight(.medium)).foregroundStyle(Palette.ink)
+                        }
+                        .padding(.horizontal, Space.xs)
                     }
                     .glassButton()
                 }
@@ -132,40 +149,77 @@ struct MessageView: View {
                     .padding(.horizontal, Space.l)
                     .padding(.vertical, Space.m)
                     .foregroundStyle(.white)
-                    .background(Palette.accent, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .background(Palette.askGradient, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             }
             .accessibilityLabel("You: \(message.text)")
         } else {
             VStack(alignment: .leading, spacing: Space.m) {
-                Text(attributed(message.text))
-                    .font(.body)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
+                HStack(alignment: .top, spacing: Space.s) {
+                    ZStack {
+                        Circle().fill(Palette.accentSoft)
+                        BLIcon(name: "bl.sparkle", size: 15).foregroundStyle(Palette.cobalt)
+                    }
+                    .frame(width: 30, height: 30)
+                    Text(attributed(message.text))
+                        .font(.body)
+                        .foregroundStyle(Palette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                }
                 ForEach(message.blocks) { block in
                     ChatBlockView(block: block, open: open)
                 }
                 if !message.evidence.isEmpty {
-                    DisclosureGroup(isExpanded: $showEvidence) {
-                        VStack(alignment: .leading, spacing: Space.xs) {
-                            ForEach(message.evidence) { e in
-                                Text("\(e.label): \(e.detail)").font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, Space.xs)
-                    } label: {
-                        Label(message.isLocal ? "Based on (answered on this iPhone)" : "Based on", systemImage: "list.bullet.rectangle")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .tint(.secondary)
+                    WhyButton { showEvidence = true }
                 }
             }
+            .sheet(isPresented: $showEvidence) { AnswerEvidenceSheet(message: message) }
         }
     }
 
     func attributed(_ text: String) -> AttributedString {
         (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text)
+    }
+}
+
+/// What an answer was computed from.
+struct AnswerEvidenceSheet: View {
+    let message: ChatMessage
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(message.evidence) { e in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(e.label).font(.subheadline.weight(.semibold))
+                            Text(e.detail).font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Records used")
+                } footer: {
+                    Text(message.isLocal
+                         ? "Answered on this iPhone from your records. Numbers are computed by Blith, not estimated."
+                         : "Numbers were computed on this iPhone and only minimized summaries were sent to the AI model to phrase the answer.")
+                }
+                if !message.toolsUsed.isEmpty {
+                    Section("Calculations run") {
+                        ForEach(Array(Set(message.toolsUsed)).sorted(), id: \.self) { t in
+                            Text(t.replacingOccurrences(of: "_", with: " ").capitalized).font(.subheadline)
+                        }
+                    }
+                }
+                Section {
+                    Text("Relationships between records are patterns, not causes. Blith doesn't diagnose.").font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Why you're seeing this")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 

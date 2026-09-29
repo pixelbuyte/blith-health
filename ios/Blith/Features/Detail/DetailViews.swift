@@ -69,6 +69,18 @@ struct SleepDetailView: View {
             }
             .card(padding: Space.xl)
         }
+        let timing = SleepAnalytics.timing(s.ctx, nights: 28)
+        if timing.count >= 5 {
+            VStack(alignment: .leading, spacing: Space.s) {
+                Eyebrow(text: "When you slept · last \(timing.count) nights", icon: "bl.sleep", color: Palette.sleep)
+                SleepTimingChart(points: timing)
+                if let bed = Stats.median(timing.map(\.bedMinutes)), let wake = Stats.median(timing.map(\.wakeMinutes)) {
+                    Text("Usually asleep around \(SleepAnalytics.clock(bed)) and up around \(SleepAnalytics.clock(wake)).")
+                        .font(.footnote).foregroundStyle(Palette.secondaryInk)
+                }
+            }
+            .card(padding: Space.l)
+        }
         VStack(spacing: 0) {
             row("7-night average", s.sleep.average7.map { Fmt.duration($0) })
             Divider()

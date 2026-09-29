@@ -22,11 +22,10 @@ struct ChatBlockView: View {
                         Text(openLabel).font(.caption.weight(.semibold))
                         Image(systemName: "chevron.right").font(.caption2.weight(.bold))
                     }
-                    .foregroundStyle(Palette.accent)
+                    .foregroundStyle(tint)
                 }
             }
-            .card(padding: Space.l)
-            .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Palette.separator.opacity(0.25)))
+            .card(padding: Space.l, tone: .tinted(tint))
         }
         .buttonStyle(.plain)
         .accessibilityHint(openLabel)
@@ -35,11 +34,23 @@ struct ChatBlockView: View {
     var openLabel: String {
         switch block.link {
         case .walk?: "Open in Walk"
+        case .walkDay?: "Open this day"
         case .sleep?: "Open sleep"
         case .weight?: "Open weight"
         case .insight?: "See why"
         case .sources?: "Open sources"
+        case .body?: "Open on the body map"
         case .today?, nil: "Open"
+        }
+    }
+
+    var tint: Color {
+        switch block {
+        case .sleepTimeline: Palette.sleep
+        case .weightChart: Palette.weight
+        case .bodyNote: Palette.note
+        case .insight(let i): i.tint
+        default: Palette.cobalt
         }
     }
 
@@ -48,7 +59,7 @@ struct ChatBlockView: View {
         switch block {
         case .stepChart(let b):
             VStack(alignment: .leading, spacing: Space.s) {
-                header("Steps · \(b.title)", symbol: "figure.walk")
+                header("Steps · \(b.title)", symbol: "bl.walk")
                 HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                     Text(Fmt.int(b.average ?? 0)).font(Typo.number(28)).monospacedDigit()
                     Text(b.period == .day ? "so far" : "avg / day").foregroundStyle(.secondary)
@@ -70,7 +81,7 @@ struct ChatBlockView: View {
             }
         case .walkingSummary(let b):
             VStack(alignment: .leading, spacing: Space.m) {
-                header("Walking", symbol: "figure.walk")
+                header("Walking", symbol: "bl.walk")
                 HStack {
                     StatTile(title: "Today", value: b.todaySteps.map(Fmt.int) ?? "—", caption: b.usualByNow.map { "usual by now \(Fmt.int($0))" })
                     StatTile(title: "7-day avg", value: b.average7.map(Fmt.int) ?? "—", caption: b.changeVsBaseline.map { "\(Fmt.signedPercent($0)) vs 4-wk" })
@@ -93,7 +104,7 @@ struct ChatBlockView: View {
             }
         case .weightChart(let b):
             VStack(alignment: .leading, spacing: Space.s) {
-                header("Weight", symbol: "scalemass", color: Palette.weight)
+                header("Weight", symbol: "bl.weight", color: Palette.weight)
                 HStack {
                     StatTile(title: "Latest", value: Fmt.weight(b.latest, units: units))
                     StatTile(title: "Trend", value: Fmt.weight(b.trend, units: units))
@@ -103,7 +114,7 @@ struct ChatBlockView: View {
             }
         case .sleepTimeline(let b):
             VStack(alignment: .leading, spacing: Space.s) {
-                header("Sleep · \(Fmt.dayLabel(b.night.date))", symbol: "bed.double", color: Palette.sleepDeep)
+                header("Sleep · \(Fmt.dayLabel(b.night.date))", symbol: "bl.sleep", color: Palette.sleep)
                 HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                     Text(Fmt.duration(b.asleep)).font(Typo.number(28)).monospacedDigit()
                     if let d = b.differenceFromAverage {
@@ -134,7 +145,7 @@ struct ChatBlockView: View {
             }
         case .insight(let i):
             VStack(alignment: .leading, spacing: Space.s) {
-                header("Insight", symbol: "sparkle")
+                header("Insight", symbol: "bl.sparkle", color: i.tint)
                 Text(i.headline).font(Typo.cardTitle)
                 if let e = i.emphasis {
                     HStack(alignment: .firstTextBaseline, spacing: Space.s) {
@@ -143,6 +154,38 @@ struct ChatBlockView: View {
                     }
                 }
                 Text(i.explanation).font(.subheadline).foregroundStyle(.secondary)
+            }
+        case .daySteps(let b):
+            VStack(alignment: .leading, spacing: Space.s) {
+                header(Fmt.dayLabel(b.date), symbol: "bl.calendar")
+                if let steps = b.steps {
+                    HStack(alignment: .firstTextBaseline, spacing: Space.s) {
+                        Text(Fmt.int(steps)).font(Typo.number(30)).monospacedDigit()
+                        Text("steps").foregroundStyle(.secondary)
+                    }
+                    if let usual = b.usual {
+                        comparisonBars(day: steps, usual: usual, weekday: Fmt.weekday(b.date), n: b.usualObservations)
+                    }
+                } else {
+                    Text("No steps recorded that day").font(.subheadline.weight(.semibold))
+                }
+                if let hourly = b.hourly, hourly.reduce(0, +) > 0 {
+                    Chart(Array(hourly.enumerated()), id: \.offset) { item in
+                        BarMark(x: .value("Hour", item.offset), y: .value("Steps", item.element))
+                            .foregroundStyle(Palette.cobalt.opacity(0.7))
+                    }
+                    .chartXAxis(.hidden)
+                    .chartYAxis(.hidden)
+                    .frame(height: 44)
+                }
+            }
+        case .bodyNote(let n):
+            VStack(alignment: .leading, spacing: Space.xs) {
+                header("Body note · \(n.bodyRegion?.displayName ?? "General")", symbol: "bl.bodynote", color: Palette.note)
+                Text(n.title).font(.headline)
+                if let text = n.note, !text.isEmpty { Text(text).font(.subheadline).foregroundStyle(.secondary) }
+                Text("Happened \(Fmt.dayLabel(n.date)) · written \(n.createdAt.formatted(date: .abbreviated, time: .omitted))\(n.resolvedDate.map { " · resolved \(Fmt.shortDate($0))" } ?? "")")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         case .sources(let b):
             VStack(alignment: .leading, spacing: Space.s) {
@@ -160,9 +203,26 @@ struct ChatBlockView: View {
     }
 
     func header(_ title: String, symbol: String, color: Color = Palette.accent) -> some View {
-        Label(title, systemImage: symbol)
-            .font(Typo.eyebrow)
-            .foregroundStyle(color)
+        Eyebrow(text: title, icon: symbol.hasPrefix("bl.") ? symbol : nil, color: color)
+    }
+
+    func comparisonBars(day: Double, usual: Double, weekday: String, n: Int) -> some View {
+        let maxV = max(day, usual, 1)
+        return VStack(alignment: .leading, spacing: 6) {
+            bar("That day", day, maxV, Palette.cobalt)
+            bar("Usual \(weekday) (\(n))", usual, maxV, Palette.baseline)
+        }
+    }
+
+    func bar(_ label: String, _ v: Double, _ maxV: Double, _ color: Color) -> some View {
+        HStack(spacing: Space.s) {
+            Text(label).font(.caption).foregroundStyle(.secondary).frame(width: 104, alignment: .leading)
+            GeometryReader { geo in
+                Capsule().fill(color.gradient).frame(width: max(6, geo.size.width * v / maxV))
+            }
+            .frame(height: 10)
+            Text(Fmt.int(v)).font(.caption.weight(.semibold)).monospacedDigit().frame(width: 52, alignment: .trailing)
+        }
     }
 
     func comparisonColumn(_ label: String, _ value: Double, _ metric: HealthMetric, _ maxValue: Double, highlight: Bool) -> some View {

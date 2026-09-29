@@ -28,6 +28,7 @@ final class AskModel {
             return
         }
         draft = ""
+        app.recordQuestion()
         let history = messages
         messages.append(ChatMessage(role: .user, text: question))
         isResponding = true

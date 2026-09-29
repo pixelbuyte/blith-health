@@ -8,6 +8,12 @@ import SwiftUI
 struct AccumulationChart: View {
     let pace: TodayPace
     var compact = false
+    /// White-on-cobalt styling for the story card.
+    var onHero = false
+
+    var lineColor: Color { onHero ? .white : Palette.accent }
+    var usualColor: Color { onHero ? Color.white.opacity(0.55) : Palette.baseline }
+    var axisColor: Color { onHero ? Color.white.opacity(0.7) : Palette.secondaryInk }
 
     struct Point: Identifiable {
         let hour: Double
@@ -37,30 +43,40 @@ struct AccumulationChart: View {
         Chart {
             ForEach(usualPoints) { p in
                 LineMark(x: .value("Hour", p.hour), y: .value("Steps", p.steps), series: .value("Series", "Usual"))
-                    .foregroundStyle(Palette.baseline)
+                    .foregroundStyle(usualColor)
                     .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, dash: [3, 5]))
                     .interpolationMethod(.monotone)
             }
             ForEach(todayPoints) { p in
                 AreaMark(x: .value("Hour", p.hour), y: .value("Steps", p.steps))
-                    .foregroundStyle(LinearGradient(colors: [Palette.accent.opacity(0.28), Palette.accent.opacity(0.02)],
+                    .foregroundStyle(LinearGradient(colors: [(onHero ? Palette.cyan : Palette.accent).opacity(onHero ? 0.45 : 0.28), lineColor.opacity(0.02)],
                                                     startPoint: .top, endPoint: .bottom))
                     .interpolationMethod(.monotone)
                 LineMark(x: .value("Hour", p.hour), y: .value("Steps", p.steps), series: .value("Series", "Today"))
-                    .foregroundStyle(Palette.accent)
+                    .foregroundStyle(lineColor)
                     .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
                     .interpolationMethod(.monotone)
             }
+            RuleMark(x: .value("Now", pace.hourNow))
+                .foregroundStyle(lineColor.opacity(0.25))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
             PointMark(x: .value("Hour", pace.hourNow), y: .value("Steps", pace.stepsSoFar))
-                .foregroundStyle(Palette.accent)
-                .symbolSize(90)
+                .foregroundStyle(onHero ? Palette.cyan : Palette.accent)
+                .symbolSize(110)
+            if let usual = pace.usualByNow {
+                PointMark(x: .value("Hour", pace.hourNow), y: .value("Usual", usual))
+                    .foregroundStyle(usualColor)
+                    .symbolSize(40)
+            }
         }
         .chartXScale(domain: 0...24)
         .chartXAxis {
             AxisMarks(values: [0.0, 6.0, 12.0, 18.0, 24.0]) { value in
-                AxisGridLine().foregroundStyle(Palette.separator.opacity(0.4))
+                AxisGridLine().foregroundStyle(onHero ? Color.white.opacity(0.12) : Palette.separator.opacity(0.4))
                 AxisValueLabel {
-                    if let h = value.as(Double.self) { Text(Fmt.hour(Int(h) % 24).replacingOccurrences(of: " ", with: "")) }
+                    if let h = value.as(Double.self) {
+                        Text(Fmt.hour(Int(h) % 24).replacingOccurrences(of: " ", with: "")).foregroundStyle(axisColor)
+                    }
                 }
             }
         }
@@ -88,6 +104,12 @@ struct StepHistoryChart: View {
     var usualHourly: [Double]?
     var height: CGFloat = 220
     var interactive = true
+    /// Daily average of the comparison period, drawn as a dashed reference.
+    var previousAverage: Double?
+    /// The day/bucket shown in the detail panel below the chart.
+    var pinned: LocalDate?
+    /// Called with the bucket under the finger (tap or drag).
+    var onSelect: ((ChartBucket) -> Void)?
 
     @State private var selectedDate: Date?
 
@@ -173,16 +195,34 @@ struct StepHistoryChart: View {
     var dateChart: some View {
         Chart {
             ForEach(buckets) { b in
-                BarMark(x: .value("Date", b.start.chartDate, unit: calendarUnit), y: .value("Steps", b.value ?? 0))
-                    .foregroundStyle(barStyle(b))
-                    .cornerRadius(unit == .day ? 5 : 3)
+                if let v = b.value, v > 0 {
+                    BarMark(x: .value("Date", b.start.chartDate, unit: calendarUnit), y: .value("Steps", v))
+                        .foregroundStyle(barStyle(b))
+                        .cornerRadius(unit == .day ? 5 : 3)
+                } else if b.value == 0 {
+                    // A measured zero: a flat cobalt tick on the baseline.
+                    PointMark(x: .value("Date", b.start.chartDate, unit: calendarUnit), y: .value("Steps", 0))
+                        .symbol { Capsule().fill(Palette.cobalt).frame(width: 10, height: 3) }
+                } else if !b.isPartial {
+                    // No record at all: a hollow marker, visibly different from zero.
+                    PointMark(x: .value("Date", b.start.chartDate, unit: calendarUnit), y: .value("Steps", 0))
+                        .symbol { Circle().strokeBorder(Palette.baseline, lineWidth: 1.5).frame(width: 7, height: 7) }
+                }
+            }
+            if let previousAverage, selectedBucket == nil {
+                RuleMark(y: .value("Previous", previousAverage))
+                    .foregroundStyle(Palette.baseline)
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                    .annotation(position: .bottom, alignment: .leading) {
+                        Text("before \(Fmt.int(previousAverage))").font(.caption2.weight(.semibold)).foregroundStyle(Palette.secondaryInk)
+                    }
             }
             if let average, selectedBucket == nil {
                 RuleMark(y: .value("Average", average))
-                    .foregroundStyle(Palette.baseline)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                    .foregroundStyle(Palette.cobalt.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5))
                     .annotation(position: .top, alignment: .leading) {
-                        Text("avg \(Fmt.int(average))").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                        Text("avg \(Fmt.int(average))").font(.caption2.weight(.bold)).foregroundStyle(Palette.cobalt)
                     }
             }
             if let b = selectedBucket {
@@ -206,6 +246,9 @@ struct StepHistoryChart: View {
         }
         .chartXSelection(value: interactive ? $selectedDate : .constant(nil))
         .sensoryFeedback(.selection, trigger: selectedBucket?.id)
+        .onChange(of: selectedBucket?.id) { _, _ in
+            if let b = selectedBucket { onSelect?(b) }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Step history")
         .accessibilityValue(buckets.suffix(7).compactMap { b in b.value.map { "\(label(b)): \(Fmt.int($0))" } }.joined(separator: ", "))
@@ -213,6 +256,7 @@ struct StepHistoryChart: View {
 
     func barStyle(_ b: ChartBucket) -> AnyShapeStyle {
         if let sel = selectedBucket, sel.id != b.id { return AnyShapeStyle(Palette.accent.opacity(0.3)) }
+        if selectedBucket == nil, let pinned, unit == .day, pinned != b.start, buckets.contains(where: { $0.start == pinned }) { return AnyShapeStyle(Palette.accent.opacity(0.45)) }
         if b.isPartial { return AnyShapeStyle(Palette.accent.opacity(0.55)) }
         return AnyShapeStyle(Palette.accent.gradient)
     }
@@ -379,6 +423,8 @@ struct WeightTrendChart: View {
 struct SleepTimelineView: View {
     let night: SleepNight
     var height: CGFloat = 132
+    /// No lane labels or times, for small tiles.
+    var compact = false
 
     static let lanes: [(String, SleepStageStyle)] = [("Awake", .awake), ("REM", .rem), ("Core", .core), ("Deep", .deep)]
 
@@ -398,17 +444,19 @@ struct SleepTimelineView: View {
         let total = max(1, end.timeIntervalSince(start))
         VStack(spacing: Space.s) {
             HStack(alignment: .top, spacing: Space.s) {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Self.lanes, id: \.0) { lane in
-                        Text(lane.0).font(.caption2).foregroundStyle(.secondary).frame(maxHeight: .infinity)
+                if !compact {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Self.lanes, id: \.0) { lane in
+                            Text(lane.0).font(.caption2).foregroundStyle(Palette.secondaryInk).frame(maxHeight: .infinity)
+                        }
                     }
+                    .frame(width: 40)
                 }
-                .frame(width: 40)
                 GeometryReader { geo in
                     let laneHeight = geo.size.height / 4
                     ZStack(alignment: .topLeading) {
                         ForEach(0..<4, id: \.self) { i in
-                            Rectangle().fill(Palette.separator.opacity(0.15)).frame(height: 1)
+                            Rectangle().fill(Palette.separator.opacity(0.35)).frame(height: 1)
                                 .offset(y: laneHeight * CGFloat(i) + laneHeight / 2)
                         }
                         ForEach(Array(night.segments.enumerated()), id: \.offset) { _, seg in
@@ -417,22 +465,24 @@ struct SleepTimelineView: View {
                                 let w = max(2, CGFloat(seg.duration / total) * geo.size.width)
                                 RoundedRectangle(cornerRadius: 3, style: .continuous)
                                     .fill(Palette.sleep(Self.lanes[l].1))
-                                    .frame(width: w, height: laneHeight * 0.62)
-                                    .offset(x: x, y: laneHeight * CGFloat(l) + laneHeight * 0.19)
+                                    .frame(width: w, height: laneHeight * 0.66)
+                                    .offset(x: x, y: laneHeight * CGFloat(l) + laneHeight * 0.17)
                             }
                         }
                     }
                 }
             }
             .frame(height: height)
-            HStack {
-                Text(start.formatted(date: .omitted, time: .shortened))
-                Spacer()
-                Text(end.formatted(date: .omitted, time: .shortened))
+            if !compact {
+                HStack {
+                    Text(start.formatted(date: .omitted, time: .shortened))
+                    Spacer()
+                    Text(end.formatted(date: .omitted, time: .shortened))
+                }
+                .font(.caption2)
+                .foregroundStyle(Palette.secondaryInk)
+                .padding(.leading, 48)
             }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .padding(.leading, 48)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Sleep stages")
@@ -457,5 +507,98 @@ struct Sparkline: View {
         .chartYAxis(.hidden)
         .chartYScale(domain: (values.min() ?? 0)...(max((values.max() ?? 1), (values.min() ?? 0) + 0.1)))
         .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Sleep timing
+
+/// One floating bar per night from falling asleep to waking, so shifts in timing are visible.
+struct SleepTimingChart: View {
+    let points: [SleepTimingPoint]
+    var height: CGFloat = 170
+
+    var body: some View {
+        Chart(points) { p in
+            BarMark(x: .value("Night", p.date.chartDate, unit: .day),
+                    yStart: .value("Asleep", p.bedMinutes / 60), yEnd: .value("Awake", p.wakeMinutes / 60), width: .ratio(0.6))
+                .foregroundStyle(Palette.sleep.gradient)
+                .cornerRadius(4)
+        }
+        .chartYScale(domain: .automatic(includesZero: false, reversed: true))
+        .chartYAxis {
+            AxisMarks(position: .trailing, values: .stride(by: 2)) { value in
+                AxisGridLine().foregroundStyle(Palette.separator.opacity(0.4))
+                AxisValueLabel {
+                    if let h = value.as(Double.self) { Text(Fmt.hour(Int(h.rounded()))).font(.caption2) }
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 5)) { _ in AxisValueLabel(format: .dateTime.day().month(.abbreviated)) }
+        }
+        .frame(height: height)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Sleep timing, last \(points.count) nights")
+        .accessibilityValue(points.suffix(7).map { "\(Fmt.dayLabel($0.date)): \(SleepAnalytics.clock($0.bedMinutes)) to \(SleepAnalytics.clock($0.wakeMinutes))" }.joined(separator: ", "))
+    }
+}
+
+// MARK: - Walking signature
+
+/// A generative portrait of how this person walks: seven rings (weekdays, Monday innermost)
+/// by 24 spokes (hours). Each dot's size is the average steps in that hour on that weekday
+/// over the last 8 weeks, so no two people's signatures look alike.
+struct WalkSignatureView: View {
+    let history: HealthHistory
+    let today: LocalDate
+    var size: CGFloat = 260
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appear = false
+
+    /// [weekdayIndex 0 = Monday][hour] → mean steps.
+    var matrix: [[Double]] {
+        var sums = Array(repeating: Array(repeating: 0.0, count: 24), count: 7)
+        var counts = Array(repeating: 0, count: 7)
+        for d in LocalDate.range(today.adding(days: -56), today.adding(days: -1)) {
+            guard let h = history.hourlySteps[d], h.total > 0 else { continue }
+            let w = (d.weekday + 5) % 7
+            counts[w] += 1
+            for i in 0..<24 { sums[w][i] += h.values[i] }
+        }
+        return (0..<7).map { w in sums[w].map { counts[w] > 0 ? $0 / Double(counts[w]) : 0 } }
+    }
+
+    var body: some View {
+        let m = matrix
+        let peak = max(1, m.flatMap { $0 }.max() ?? 1)
+        Canvas { ctx, sz in
+            let c = CGPoint(x: sz.width / 2, y: sz.height / 2)
+            let maxR = min(sz.width, sz.height) / 2 - 8
+            for ring in 0..<7 {
+                let r = maxR * (0.3 + 0.7 * CGFloat(ring) / 6)
+                ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
+                           with: .color(Palette.cobalt.opacity(0.07)), lineWidth: 1)
+                for hour in 0..<24 {
+                    let v = m[ring][hour] / peak
+                    guard v > 0.02 else { continue }
+                    let angle = (Double(hour) / 24) * 2 * .pi - .pi / 2
+                    let p = CGPoint(x: c.x + r * CGFloat(cos(angle)), y: c.y + r * CGFloat(sin(angle)))
+                    let dot = CGFloat(1.5 + 7.5 * sqrt(v)) * (appear ? 1 : 0.2)
+                    let color = v > 0.6 ? Palette.cyan : Palette.cobalt
+                    ctx.fill(Path(ellipseIn: CGRect(x: p.x - dot / 2, y: p.y - dot / 2, width: dot, height: dot)),
+                             with: .color(color.opacity(0.35 + 0.65 * v)))
+                }
+            }
+            for (label, hour) in [("12a", 0), ("6a", 6), ("12p", 12), ("6p", 18)] {
+                let angle = (Double(hour) / 24) * 2 * .pi - .pi / 2
+                let r = maxR + 2
+                ctx.draw(Text(label).font(.system(size: 9, weight: .semibold, design: .monospaced)).foregroundStyle(Palette.secondaryInk),
+                         at: CGPoint(x: c.x + r * CGFloat(cos(angle)) * 0.86, y: c.y + r * CGFloat(sin(angle)) * 0.86))
+            }
+        }
+        .frame(width: size, height: size)
+        .onAppear { withAnimation(reduceMotion ? nil : .spring(response: 0.9, dampingFraction: 0.8)) { appear = true } }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Walking signature: when you usually walk, by weekday and hour, over the last 8 weeks")
     }
 }

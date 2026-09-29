@@ -1,40 +1,42 @@
 import BlithCore
 import SwiftUI
 
-/// "What should I know about myself today?" — one movement hero, a few ranked insights,
-/// weight and sleep context when they exist, and a gentle week view. Not a tile wall.
+/// Today answers four questions in order: what's happening today, how it compares with my
+/// usual at this same time, what changed recently that's worth knowing, and what to inspect next.
 struct TodayView: View {
     @Environment(AppModel.self) private var app
     @Environment(AppRouter.self) private var router
-    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 60
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 64
 
     var body: some View {
+        @Bindable var router = router
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: Space.xxl) {
+                VStack(alignment: .leading, spacing: Space.xl) {
                     header
-                    if app.isDemo { SampleDataBanner() }
                     if let s = app.snapshot {
-                        content(s)
+                        storyCard(s)
+                        insights(s)
+                        rhythm(s)
+                        milestones
+                        context(s)
+                        moreInsights(s)
+                        if let history = app.history {
+                            SyncStatusLine(history: history, isSyncing: app.isSyncing).padding(.top, Space.s)
+                        }
                     } else {
-                        EmptyStateView(symbol: "heart.text.square", title: "Connect Apple Health",
+                        EmptyStateView(symbol: "bl.today", title: "Connect Apple Health",
                                        message: "Connect Apple Health to start building your personal baseline.",
-                                       actionTitle: "Open settings") { router.sheet = .profile }
+                                       actionTitle: "Open settings", action: { router.sheet = .profile }, mascot: .waving)
                     }
                 }
                 .padding(.horizontal, Space.page)
                 .padding(.bottom, Space.section)
             }
-            .background(alignment: .top) {
-                ZStack(alignment: .top) {
-                    Palette.background
-                    LinearGradient(colors: [Palette.heroGradientTop, Palette.background.opacity(0)], startPoint: .top, endPoint: .bottom)
-                        .frame(height: 420)
-                }
-                .ignoresSafeArea()
-            }
+            .blithBackground()
             .refreshable { await app.refresh(force: true) }
             .toolbar(.hidden, for: .navigationBar)
+            .sheet(isPresented: $router.showAchievements) { AchievementsView() }
         }
     }
 
@@ -46,103 +48,111 @@ struct TodayView: View {
     }
 
     var header: some View {
-        VStack(alignment: .leading, spacing: Space.s) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(AppClock.now().formatted(.dateTime.weekday(.wide).month(.wide).day()).uppercased())
-                        .font(Typo.eyebrow)
-                        .foregroundStyle(.secondary)
-                    Text(greeting)
-                        .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: Space.xs) {
+                HStack(spacing: Space.s) {
+                    Eyebrow(text: AppClock.now().formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+                    if app.isDemo { SampleDataBanner() }
                 }
-                Spacer()
-                AvatarButton(name: app.profile.name) { router.sheet = .profile }
+                Text(greeting)
+                    .font(Typo.display)
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
             }
-            if let headline = app.snapshot?.headline {
-                Text(headline)
-                    .font(.title3.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .contentTransition(.opacity)
-            }
+            Spacer()
+            AvatarButton(name: app.profile.name) { router.sheet = .profile }
         }
         .padding(.top, Space.l)
     }
 
-    @ViewBuilder
-    func content(_ s: HealthSnapshot) -> some View {
-        movementHero(s)
-        if !s.feed.isEmpty {
+    // MARK: Story
+
+    func storyCard(_ s: HealthSnapshot) -> some View {
+        let time = AppClock.now().formatted(date: .omitted, time: .shortened)
+        let weekday = Fmt.weekday(s.ctx.today)
+        return Button { router.open(.walk(.day), snapshot: s) } label: {
             VStack(alignment: .leading, spacing: Space.m) {
-                SectionHeader(title: "Worth knowing")
-                ForEach(s.feed) { insight in
-                    InsightCard(insight: insight) { router.sheet = .insight(insight) }
-                }
-            }
-        } else if s.ctx.history.values(.steps, in: s.ctx.trailing(28)).count < 7 {
-            EmptyStateView(symbol: "hourglass", title: "Learning your normal",
-                           message: "We need a few more days before we can understand your normal walking pattern. Insights appear once there's a meaningful change against your own baseline.")
-        }
-        if let consistency = s.consistency {
-            weekCard(consistency)
-        }
-        weightSection(s)
-        sleepSection(s)
-        if let history = app.history {
-            SyncStatusLine(history: history, isSyncing: app.isSyncing)
-        }
-    }
-
-    // MARK: Movement hero
-
-    func movementHero(_ s: HealthSnapshot) -> some View {
-        Button { router.open(.walk(.day), snapshot: s) } label: {
-            VStack(alignment: .leading, spacing: Space.l) {
-                HStack(alignment: .firstTextBaseline) {
-                    Label("Movement", systemImage: "figure.walk").font(Typo.eyebrow).foregroundStyle(Palette.accent)
+                HStack {
+                    Eyebrow(text: "Today · \(time)", icon: "bl.walk", color: .white.opacity(0.85))
                     Spacer()
-                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+                    Image(systemName: "chevron.right").font(.footnote.weight(.bold)).foregroundStyle(.white.opacity(0.6))
                 }
-                VStack(alignment: .leading, spacing: 0) {
+                Text(s.headline)
+                    .font(Typo.story)
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                     Text(Fmt.int(s.todaySteps ?? 0))
                         .font(Typo.number(heroSize))
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                    Text("steps today").font(.headline).foregroundStyle(.secondary)
+                    Text("steps so far").font(.headline).foregroundStyle(.white.opacity(0.8))
                 }
-                if let pace = s.pace, let change = pace.change {
-                    DeltaBadge(change: change, caption: pace.basis == .sameWeekday ? "vs your usual \(Fmt.weekday(s.ctx.today)) by now" : "vs your usual day by now")
-                } else if let usual = s.pace?.usualByNow {
-                    Text("Usually around \(Fmt.int(usual)) by this time on a \(Fmt.weekday(s.ctx.today)).")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                } else {
-                    Text("Your usual pace appears after a few days of history.").font(.subheadline).foregroundStyle(.secondary)
-                }
+                .foregroundStyle(.white)
+                comparisonLine(s, time: time, weekday: weekday)
                 if let pace = s.pace, !pace.usualCurve.isEmpty {
-                    AccumulationChart(pace: pace, compact: true)
-                        .frame(height: 130)
+                    AccumulationChart(pace: pace, compact: true, onHero: true).frame(height: 128)
                     HStack(spacing: Space.l) {
-                        legend(color: Palette.accent, dashed: false, text: "Today")
-                        legend(color: Palette.baseline, dashed: true, text: pace.basis == .sameWeekday ? "Usual \(Fmt.weekday(s.ctx.today))" : "Usual day")
+                        legend(dashed: false, text: "Today")
+                        legend(dashed: true, text: pace.basis == .sameWeekday ? "Your usual \(weekday) (\(pace.observations) weeks)" : "Your usual day (\(pace.observations) days)")
                     }
                 }
-                Divider()
+                Rectangle().fill(.white.opacity(0.14)).frame(height: 1)
                 HStack {
-                    StatTile(title: "7-day average", value: s.average7.map { Fmt.int($0.value) } ?? "—", caption: coverage(s.average7, of: 7))
-                    StatTile(title: "30-day average", value: s.average30.map { Fmt.int($0.value) } ?? "—", caption: coverage(s.average30, of: 30))
-                    if let d = s.todayDistance {
-                        StatTile(title: "Distance", value: Fmt.distance(d, units: s.ctx.units))
-                    }
+                    heroStat("7-day avg", s.average7.map { Fmt.int($0.value) }, coverage(s.average7, of: 7))
+                    heroStat("30-day avg", s.average30.map { Fmt.int($0.value) }, coverage(s.average30, of: 30))
+                    heroStat("Distance", s.todayDistance.map { Fmt.distance($0, units: s.ctx.units) }, nil)
                 }
             }
-            .card(padding: Space.xl)
+            .card(padding: Space.xl, tone: .hero)
         }
         .buttonStyle(.plain)
-        .accessibilityHint("Opens walking details")
+        .accessibilityHint("Opens today's walking")
+    }
+
+    @ViewBuilder
+    func comparisonLine(_ s: HealthSnapshot, time: String, weekday: String) -> some View {
+        if let pace = s.pace, let usual = pace.usualByNow {
+            HStack(spacing: Space.s) {
+                if let change = pace.change {
+                    let flat = Int((change * 100).rounded()) == 0
+                    Text(flat ? "On pace" : Fmt.signedPercent(change))
+                        .font(.subheadline.weight(.bold)).monospacedDigit()
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(.white.opacity(0.18), in: Capsule())
+                }
+                Text("Usually \(Fmt.int(usual)) by \(time) on a \(pace.basis == .sameWeekday ? weekday : "typical day")")
+                    .font(.subheadline)
+            }
+            .foregroundStyle(.white.opacity(0.92))
+        } else {
+            Text("Your usual pace for this time of day appears after a few days of history.")
+                .font(.subheadline).foregroundStyle(.white.opacity(0.85))
+        }
+    }
+
+    func heroStat(_ title: String, _ value: String?, _ caption: String?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.caption).foregroundStyle(.white.opacity(0.7))
+            Text(value ?? "—").font(Typo.metric).monospacedDigit().foregroundStyle(.white)
+            if let caption { Text(caption).font(.caption2).foregroundStyle(.white.opacity(0.7)) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    func legend(dashed: Bool, text: String) -> some View {
+        HStack(spacing: Space.xs) {
+            if dashed {
+                HStack(spacing: 2) { ForEach(0..<3, id: \.self) { _ in Capsule().fill(.white.opacity(0.6)).frame(width: 3, height: 3) } }
+            } else {
+                Capsule().fill(.white).frame(width: 14, height: 3)
+            }
+            Text(text).font(.caption).foregroundStyle(.white.opacity(0.8))
+        }
     }
 
     /// "3 days of data" when an average covers fewer days than its window.
@@ -151,92 +161,203 @@ struct TodayView: View {
         return "\(a.days) \(a.days == 1 ? "day" : "days") of data"
     }
 
-    func legend(color: Color, dashed: Bool, text: String) -> some View {
-        HStack(spacing: Space.xs) {
-            Capsule().fill(dashed ? AnyShapeStyle(color.opacity(0.6)) : AnyShapeStyle(color)).frame(width: 14, height: 3)
-            Text(text).font(.caption).foregroundStyle(.secondary)
+    // MARK: Insights
+
+    @ViewBuilder
+    func insights(_ s: HealthSnapshot) -> some View {
+        if let top = s.feed.first {
+            InsightCard(insight: top, featured: true, onWhy: { router.sheet = .insight(top) },
+                        onOpen: { router.open(top.link, snapshot: s) })
+        } else {
+            let days = s.ctx.history.values(.steps, in: s.ctx.trailing(28)).count
+            EmptyStateView(symbol: "bl.calendar", title: days < 7 ? "Learning your normal" : "Nothing unusual right now",
+                           message: days < 7
+                               ? "Blith compares you with your own history. It has \(days) of the 7 days it needs before it can say what's normal for you."
+                               : "Your recent weeks are close to your usual. When something meaningful changes, it will show up here with the evidence.",
+                           mascot: days < 7 ? .thinking : .idle)
         }
     }
 
-    // MARK: Week
-
-    func weekCard(_ c: WeekConsistency) -> some View {
-        VStack(alignment: .leading, spacing: Space.l) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("This week").font(Typo.cardTitle)
-                Spacer()
-                Text("\(c.metCount) \(c.metCount == 1 ? "day" : "days") near your usual")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+    @ViewBuilder
+    func moreInsights(_ s: HealthSnapshot) -> some View {
+        let rest = Array(s.feed.dropFirst())
+        if !rest.isEmpty {
+            VStack(alignment: .leading, spacing: Space.m) {
+                SectionHeader(title: "Also worth knowing")
+                ForEach(rest) { insight in
+                    InsightCard(insight: insight, onWhy: { router.sheet = .insight(insight) },
+                                onOpen: { router.open(insight.link, snapshot: s) })
+                }
             }
-            ConsistencyDots(week: c)
-            Text(c.thresholdIsGoal ? "Filled days reached your goal of \(Fmt.int(c.threshold)) steps." :
-                    "Filled days reached \(Fmt.int(c.threshold)) steps, about 85% of your typical day. Missing a day doesn't reset anything.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: Rhythm
+
+    func rhythm(_ s: HealthSnapshot) -> some View {
+        let streak = app.streak
+        let next = [3, 7, 14, 30, 60, 100].first { $0 > streak.current } ?? streak.current + 1
+        return VStack(alignment: .leading, spacing: Space.l) {
+            HStack(spacing: Space.l) {
+                StreakRing(progress: Double(streak.current) / Double(next)) {
+                    BlithMascot(pose: streak.checkedInToday ? .waving : .idle, size: 52)
+                }
+                .frame(width: 96, height: 96)
+                VStack(alignment: .leading, spacing: Space.xs) {
+                    Eyebrow(text: "Check-in streak", icon: "bl.streak")
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("\(streak.current)").font(.system(size: 44, weight: .semibold, design: .serif)).foregroundStyle(Palette.ink)
+                        Text(streak.current == 1 ? "day" : "days").font(.title3).foregroundStyle(Palette.ink)
+                    }
+                    Text("Best \(streak.best) · \(next - streak.current) more to \(next) · \(streak.total) in all")
+                        .font(.footnote).foregroundStyle(Palette.secondaryInk)
+                }
+            }
+            if let c = s.consistency {
+                ConsistencyDots(week: c)
+                Label(c.thresholdIsGoal ? "\(c.metCount) days at your \(Fmt.int(c.threshold))-step goal this week" :
+                        "\(c.metCount) days near your usual walking this week (≥ \(Fmt.int(c.threshold)))",
+                      systemImage: "checkmark.circle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(Palette.secondaryInk)
+            }
         }
         .card(padding: Space.xl)
+        .accessibilityElement(children: .contain)
     }
 
-    // MARK: Weight & sleep
+    // MARK: Milestones
 
     @ViewBuilder
-    func weightSection(_ s: HealthSnapshot) -> some View {
-        let units = s.ctx.units
-        if let w = s.weight {
-            Button { router.sheet = .weight } label: {
-                HStack(alignment: .center, spacing: Space.l) {
-                    VStack(alignment: .leading, spacing: Space.xs) {
-                        Label("Weight trend", systemImage: "scalemass").font(Typo.eyebrow).foregroundStyle(Palette.weight)
-                        Text(Fmt.weight(w.trendNow, units: units)).font(Typo.number(30)).monospacedDigit()
-                        if let c = w.change30Days {
-                            Text("\(Fmt.weightChange(c, units: units)) over 30 days").font(.subheadline).foregroundStyle(.secondary)
-                        } else {
-                            Text("\(w.sampleCount) readings so far").font(.subheadline).foregroundStyle(.secondary)
-                        }
-                        if w.isStale {
-                            Text("No recent readings").font(.caption).foregroundStyle(Palette.warm)
-                        }
+    var milestones: some View {
+        let list = app.achievements.sorted { a, b in
+            if a.isUnlocked != b.isUnlocked { return a.isUnlocked }
+            return a.progress > b.progress
+        }
+        if !list.isEmpty {
+            VStack(alignment: .leading, spacing: Space.m) {
+                SectionHeader(title: "Milestones", subtitle: "\(list.filter(\.isUnlocked).count) of \(list.count) earned from your own records",
+                              trailing: "See all") { router.showAchievements = true }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: Space.m) {
+                        ForEach(list.prefix(8)) { AchievementBadge(achievement: $0) }
                     }
-                    Spacer()
-                    Sparkline(values: w.points.suffix(45).map(\.trend), color: Palette.weight)
-                        .frame(width: 120, height: 56)
+                    .padding(.vertical, Space.xs)
                 }
-                .card(padding: Space.xl)
             }
-            .buttonStyle(.plain)
-            .accessibilityHint("Opens weight details")
-        } else if s.ctx.profile.goals.contains(.weightManagement) {
-            EmptyStateView(symbol: "scalemass", title: "No weight data yet",
-                           message: "Connect a source that records weight, like a smart scale or manual entries in Apple Health, to see your trend here.")
         }
     }
 
+    // MARK: Context
+
     @ViewBuilder
-    func sleepSection(_ s: HealthSnapshot) -> some View {
-        if let night = s.sleep.lastNight {
-            Button { router.sheet = .sleep(night.date) } label: {
-                VStack(alignment: .leading, spacing: Space.m) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Label("Last night", systemImage: "bed.double").font(Typo.eyebrow).foregroundStyle(Palette.sleepDeep)
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
-                    }
-                    HStack(alignment: .firstTextBaseline, spacing: Space.s) {
-                        Text(Fmt.duration(night.asleepDuration)).font(Typo.number(30)).monospacedDigit()
-                        if let d = s.sleep.differenceFromAverage, abs(d) >= 10 * 60 {
-                            Text("\(Fmt.duration(abs(d))) \(d >= 0 ? "more" : "less") than usual").font(.subheadline).foregroundStyle(.secondary)
-                        }
-                    }
-                    if night.hasStages {
-                        SleepTimelineView(night: night, height: 64)
-                    }
-                }
-                .card(padding: Space.xl)
+    func context(_ s: HealthSnapshot) -> some View {
+        let units = s.ctx.units
+        VStack(alignment: .leading, spacing: Space.m) {
+            SectionHeader(title: "Around your day")
+            HStack(alignment: .top, spacing: Space.m) {
+                sleepTile(s)
+                weightTile(s, units: units)
             }
-            .buttonStyle(.plain)
-            .accessibilityHint("Opens sleep details")
+            if let note = s.ctx.history.bodyNotes.first(where: { $0.isActive(on: s.ctx.today) }) ?? s.ctx.history.bodyNotes.first {
+                noteTile(note, today: s.ctx.today)
+            }
+        }
+    }
+
+    func sleepTile(_ s: HealthSnapshot) -> some View {
+        Button { router.sheet = .sleep(s.sleep.lastNight?.date) } label: {
+            VStack(alignment: .leading, spacing: Space.s) {
+                Eyebrow(text: "Last night", icon: "bl.sleep", color: Palette.sleep)
+                if let n = s.sleep.lastNight {
+                    Text(Fmt.duration(n.asleepDuration)).font(Typo.number(28)).monospacedDigit().foregroundStyle(Palette.ink)
+                    if let d = s.sleep.differenceFromAverage, abs(d) >= 10 * 60 {
+                        Text("\(Fmt.duration(abs(d))) \(d >= 0 ? "more" : "less") than usual").font(.caption).foregroundStyle(Palette.secondaryInk)
+                    } else {
+                        Text("Close to your usual").font(.caption).foregroundStyle(Palette.secondaryInk)
+                    }
+                    if n.hasStages { SleepTimelineView(night: n, height: 44, compact: true) }
+                } else {
+                    Text("No sleep recorded").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
+                    Text("From Apple Watch or a sleep app").font(.caption).foregroundStyle(Palette.secondaryInk)
+                }
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+            .card(padding: Space.l, tone: .tinted(Palette.sleep))
+        }
+        .buttonStyle(.plain)
+    }
+
+    func weightTile(_ s: HealthSnapshot, units: UnitSystem) -> some View {
+        Button { router.sheet = .weight } label: {
+            VStack(alignment: .leading, spacing: Space.s) {
+                Eyebrow(text: "Weight trend", icon: "bl.weight", color: Palette.weight)
+                if let w = s.weight {
+                    Text(Fmt.weight(w.trendNow, units: units)).font(Typo.number(24)).monospacedDigit().foregroundStyle(Palette.ink)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                    Text(w.change30Days.map { "\(Fmt.weightChange($0, units: units)) in 30 days" } ?? "\(w.sampleCount) readings")
+                        .font(.caption).foregroundStyle(Palette.secondaryInk)
+                    Sparkline(values: w.points.suffix(45).map(\.trend), color: Palette.weight).frame(height: 40)
+                } else {
+                    Text("No weight data").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
+                    Text("From a smart scale or manual entries").font(.caption).foregroundStyle(Palette.secondaryInk)
+                }
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+            .card(padding: Space.l, tone: .tinted(Palette.weight))
+        }
+        .buttonStyle(.plain)
+    }
+
+    func noteTile(_ note: HealthEvent, today: LocalDate) -> some View {
+        Button { router.open(.body(note.id), snapshot: app.snapshot) } label: {
+            HStack(spacing: Space.m) {
+                BLIcon(name: "bl.bodynote", size: 22)
+                    .foregroundStyle(Palette.note)
+                    .frame(width: 44, height: 44)
+                    .background(Palette.noteSoft, in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Eyebrow(text: "Body note · \(note.bodyRegion?.displayName ?? "General")", color: Palette.note)
+                    Text(note.title).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink).lineLimit(2)
+                    Text("\(Fmt.dayLabel(note.date)) · \(note.isActive(on: today) ? "unresolved" : "resolved")")
+                        .font(.caption).foregroundStyle(Palette.secondaryInk)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.footnote.weight(.bold)).foregroundStyle(.tertiary)
+            }
+            .card(padding: Space.l, tone: .tinted(Palette.note))
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens the note on the body map")
+    }
+}
+
+/// All milestones, earned and in progress.
+struct AchievementsView: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Space.xl) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: Space.s) {
+                            Text("Milestones").font(Typo.display).foregroundStyle(Palette.ink)
+                            Text("Each one is a fact from your own records, with the day it became true. Nothing expires and nothing resets.")
+                                .foregroundStyle(Palette.secondaryInk)
+                        }
+                        BlithMascot(pose: .celebrating, size: 72)
+                    }
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: Space.l)], spacing: Space.xl) {
+                        ForEach(app.achievements) { AchievementBadge(achievement: $0, size: 72) }
+                    }
+                    .card(padding: Space.xl)
+                }
+                .padding(Space.page)
+            }
+            .blithBackground()
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
     }
 }
