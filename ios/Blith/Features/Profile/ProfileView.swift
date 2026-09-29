@@ -8,6 +8,7 @@ struct ProfileView: View {
     @State private var confirmDelete = false
     @State private var goalWeightText = ""
     @State private var customKey = ""
+    @AppStorage(AppearancePreference.key) private var appearance = AppearancePreference.system.rawValue
 
     var body: some View {
         @Bindable var app = app
@@ -36,6 +37,9 @@ struct ProfileView: View {
                 }
 
                 Section("Preferences") {
+                    Picker("Appearance", selection: $appearance) {
+                        ForEach(AppearancePreference.allCases) { Text($0.title).tag($0.rawValue) }
+                    }
                     Picker("Units", selection: $app.profile.units) {
                         Text("Metric").tag(UnitSystem.metric)
                         Text("Imperial").tag(UnitSystem.imperial)
@@ -162,7 +166,7 @@ struct ProfileView: View {
                 }
             }
             if let error = app.history?.sync.lastError {
-                Text(error).font(.footnote).foregroundStyle(.red)
+                Text(error).font(Typo.caption).foregroundStyle(.red)
             }
         } header: {
             Text("Connected data")
@@ -212,7 +216,7 @@ struct SourcesView: View {
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text(s.source.name)
-                                        if let d = s.source.device { Text(d).font(.caption).foregroundStyle(.secondary) }
+                                        if let d = s.source.device { Text(d).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(.secondary) }
                                     }
                                     Spacer()
                                     Text(metric == .weight ? "\(Int(s.value))" : (total > 0 ? Fmt.percent(s.value / total) : "—"))
@@ -229,7 +233,7 @@ struct SourcesView: View {
                             Text(metric.displayName)
                             Spacer()
                             Label(label(state), systemImage: symbol(state))
-                                .font(.subheadline)
+                                .font(Typo.geist(15, relativeTo: .subheadline))
                                 .foregroundStyle(state == .available ? Palette.accent : .secondary)
                                 .labelStyle(.titleAndIcon)
                         }

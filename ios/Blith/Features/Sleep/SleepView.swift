@@ -31,7 +31,7 @@ struct SleepView: View {
             .scrollPosition(id: $scrollTarget, anchor: .top)
             .task { if !standalone { await LaunchOptions.scroll { scrollTarget = $0 } } }
             .scrollIndicators(.hidden)
-            .blithBackground(wash: Palette.sleep.opacity(0.22))
+            .blithBackground(wash: Palette.sleep.opacity(0.16))
             .toolbar {
                 if standalone { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             }
@@ -46,7 +46,7 @@ struct SleepView: View {
                     Eyebrow(text: "Sleep performance", icon: "bl.sleep", color: Palette.sleep)
                     if app.isDemo { SampleDataBanner() }
                 }
-                Text("Sleep").font(Typo.display).foregroundStyle(Palette.ink)
+                Text("Sleep").font(Typo.pageTitle).foregroundStyle(Palette.ink)
             }
             Spacer()
             if !standalone { AvatarButton(name: app.profile.name) { router.sheet = .profile } }
@@ -80,7 +80,7 @@ private struct SleepContent: View {
         timing
         history
         Text("Stage estimates come from your devices and aren't a clinical sleep study. Scores compare you with your own history and aren't medical advice.")
-            .font(.caption).foregroundStyle(Palette.tertiaryInk)
+            .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.tertiaryInk)
     }
 
     // MARK: Night picker
@@ -131,8 +131,8 @@ private struct SleepContent: View {
 
     func heroStat(_ title: String, _ value: String, _ color: Color) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(title.uppercased()).font(Typo.eyebrow).tracking(1).foregroundStyle(Palette.secondaryInk)
-            Text(value).font(Typo.number(24)).foregroundStyle(color).monospacedDigit()
+            Text(title.uppercased()).font(Typo.eyebrow).tracking(0.8).foregroundStyle(Palette.tertiaryInk)
+            Text(value).font(Typo.score(28, weight: .regular)).foregroundStyle(color)
         }
     }
 
@@ -155,7 +155,7 @@ private struct SleepContent: View {
                     let share = p.inBed > 0 ? d / p.inBed : 0
                     HStack(spacing: Space.m) {
                         Circle().fill(Palette.sleep(style)).frame(width: 8, height: 8)
-                        Text(stage == .core ? "Light (core)" : stage.displayName).font(.subheadline).foregroundStyle(Palette.ink)
+                        Text(stage == .core ? "Light (core)" : stage.displayName).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.ink)
                             .frame(width: 104, alignment: .leading)
                         GeometryReader { g in
                             Capsule().fill(Palette.raised)
@@ -217,11 +217,11 @@ private struct SleepContent: View {
                 HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                     Text(SleepAnalytics.clock(bed)).font(Typo.score(46)).foregroundStyle(Palette.ink)
                     Text("in bed for \(Fmt.duration(target)) asleep by your usual \(SleepAnalytics.clock(wake)) wake-up")
-                        .font(.footnote).foregroundStyle(Palette.secondaryInk)
+                        .font(Typo.caption).foregroundStyle(Palette.secondaryInk)
                 }
                 Text(catchUp > 60 ? "Includes \(Fmt.duration(catchUp)) toward this week's debt. A suggestion from your own data, not medical advice."
                                   : "Based on your personal need and usual wake time. A suggestion, not medical advice.")
-                    .font(.caption).foregroundStyle(Palette.tertiaryInk)
+                    .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.tertiaryInk)
             }
             .card(padding: Space.l)
         }
@@ -238,7 +238,7 @@ private struct SleepContent: View {
                 SleepTimingChart(points: points)
                 if let bed = Stats.median(points.map(\.bedMinutes)), let wake = Stats.median(points.map(\.wakeMinutes)) {
                     Text("Usually asleep around \(SleepAnalytics.clock(bed)) and up around \(SleepAnalytics.clock(wake)).")
-                        .font(.footnote).foregroundStyle(Palette.secondaryInk)
+                        .font(Typo.caption).foregroundStyle(Palette.secondaryInk)
                 }
             }
             .card(padding: Space.l)

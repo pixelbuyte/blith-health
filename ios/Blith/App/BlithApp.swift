@@ -5,6 +5,7 @@ import SwiftUI
 struct BlithApp: App {
     @State private var app = AppModel()
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage(AppearancePreference.key) private var appearance = AppearancePreference.system.rawValue
 
     var body: some Scene {
         WindowGroup {
@@ -12,7 +13,7 @@ struct BlithApp: App {
                 .environment(app)
                 .environment(app.router)
                 .tint(Palette.accent)
-                .preferredColorScheme(AppearancePreference.current.scheme)
+                .preferredColorScheme(AppearancePreference(rawValue: appearance)?.scheme)
                 .task { await app.start() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active, app.phase == .ready { app.checkIn(); Task { await app.refresh() } }
