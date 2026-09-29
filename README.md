@@ -14,7 +14,7 @@ factors behind it.
 **Today** · readiness, sleep and load dials, the 7-day strip, the health monitor, and movement compared with the same time on a usual day
 **Activity** · load against your usual range, steps with a story for every range, gait and your walking signature
 **Sleep** · stages, efficiency, time to fall asleep, wake-ups, consistency, 7-night sleep debt, a suggestion for tonight and a 13-week heatmap
-**Body** · a free-rotating 3D male figure (CC0 MakeHuman base mesh) with region notes, a timeline and a muscle layer
+**Body** · a free-rotating 3D male figure from BodyParts3D / Z-Anatomy (CC BY-SA) with region notes, a timeline and a muscle layer of 242 named muscles
 **Ask** · an assistant that computes from your records and answers with native cards
 
 <p>
@@ -28,7 +28,7 @@ factors behind it.
 <img src="design/screenshots/iPhone17e-12-ask.png" width="200">
 </p>
 
-_Simulator screenshots from CI using labelled sample data._
+_Simulator screenshots from CI using labelled sample data. Design language: `docs/DESIGN.md` (v4 "Signal", light and dark)._
 
 ## Repository
 
