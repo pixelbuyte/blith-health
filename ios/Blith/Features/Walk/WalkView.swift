@@ -79,21 +79,18 @@ struct WalkView: View {
     func history(_ s: HealthSnapshot, period: WalkPeriod) -> some View {
         let p = s.periods[period] ?? HealthAnalytics(s.ctx).periodSummary(.steps, period: period)
         return VStack(alignment: .leading, spacing: Space.l) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(period == .day ? "TODAY SO FAR" : "DAILY AVERAGE · \(period.title.uppercased())").font(Typo.eyebrow).foregroundStyle(.secondary)
-                    Text(Fmt.int(period == .day ? (s.todaySteps ?? 0) : (p.dailyAverage ?? 0)))
-                        .font(Typo.number(34)).monospacedDigit().contentTransition(.numericText())
-                }
-                Spacer()
+            VStack(alignment: .leading, spacing: 2) {
+                Text(period == .day ? "TODAY SO FAR" : "DAILY AVERAGE · \(period.title.uppercased())").font(Typo.eyebrow).foregroundStyle(.secondary)
+                Text(Fmt.int(period == .day ? (s.todaySteps ?? 0) : (p.dailyAverage ?? 0)))
+                    .font(Typo.number(34)).monospacedDigit().contentTransition(.numericText())
                 if let c = p.change {
-                    DeltaBadge(change: c, caption: period == .day ? "vs usual by now" : "vs previous")
+                    DeltaBadge(change: c, caption: period == .day ? "vs your usual by now" : "vs the previous \(p.previousSpan.dayCount) days")
                 }
             }
             StepHistoryChart(buckets: p.buckets, unit: p.bucketUnit, average: period == .day ? nil : p.dailyAverage, usualHourly: p.usualHourly)
                 .id(period)
             if period == .day {
-                Text("Bars are this hour-by-hour; the dashed line is your usual \(Fmt.weekday(s.ctx.today)).")
+                Text("Bars show today hour by hour; the dashed line is your usual \(Fmt.weekday(s.ctx.today)).")
                     .font(.footnote).foregroundStyle(.secondary)
             } else {
                 periodStats(p)

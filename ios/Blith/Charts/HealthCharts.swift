@@ -90,7 +90,6 @@ struct StepHistoryChart: View {
     var interactive = true
 
     @State private var selectedDate: Date?
-    @State private var selectedHour: Int?
 
     var body: some View {
         Group {
@@ -99,43 +98,61 @@ struct StepHistoryChart: View {
         .frame(height: height)
     }
 
-    // Hourly (today)
+    // Hourly (today). Hours are plotted as dates with an hour unit so bars get proper bands.
+
+    var dayStart: Date { (buckets.first?.start ?? LocalDate(Date(), calendar: .current)).startDate(in: .current) }
+    func hourDate(_ h: Int) -> Date { dayStart.addingTimeInterval(Double(h) * 3600) }
 
     var typicalHourly: [(Int, Double)] {
         guard let cum = usualHourly, cum.count == 24 else { return [] }
         return (0..<24).map { h in (h, h == 0 ? cum[0] : max(0, cum[h] - cum[h - 1])) }
     }
 
+    var selectedHour: Int? {
+        guard let selectedDate else { return nil }
+        return max(0, min(23, Int(selectedDate.timeIntervalSince(dayStart) / 3600)))
+    }
+
     var hourChart: some View {
         Chart {
             ForEach(buckets) { b in
                 if let hour = b.hour {
-                    BarMark(x: .value("Hour", hour), y: .value("Steps", b.value ?? 0), width: .ratio(0.7))
+                    BarMark(x: .value("Hour", hourDate(hour), unit: .hour), y: .value("Steps", b.value ?? 0))
                         .foregroundStyle(selectedHour == nil || selectedHour == hour ? Palette.accent.gradient : Palette.accent.opacity(0.35).gradient)
                         .cornerRadius(3)
                 }
             }
             ForEach(typicalHourly, id: \.0) { item in
-                LineMark(x: .value("Hour", item.0), y: .value("Usual", item.1))
+                LineMark(x: .value("Hour", hourDate(item.0), unit: .hour), y: .value("Usual", item.1))
                     .foregroundStyle(Palette.baseline)
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [3, 4]))
                     .interpolationMethod(.monotone)
             }
             if let h = selectedHour, let b = buckets.first(where: { $0.hour == h }) {
-                RuleMark(x: .value("Hour", h))
+                RuleMark(x: .value("Hour", hourDate(h), unit: .hour))
                     .foregroundStyle(Palette.separator)
                     .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
                         tooltip(title: "\(Fmt.hour(h)) – \(Fmt.hour(h + 1))", value: b.value.map { "\(Fmt.int($0)) steps" } ?? "Later today")
                     }
             }
         }
+        .chartXScale(domain: dayStart...hourDate(24))
         .chartXAxis {
-            AxisMarks(values: [0, 6, 12, 18]) { value in
-                AxisValueLabel { if let h = value.as(Int.self) { Text(Fmt.hour(h).replacingOccurrences(of: " ", with: "")) } }
+            AxisMarks(values: .stride(by: .hour, count: 6)) { _ in
+                AxisGridLine().foregroundStyle(Palette.separator.opacity(0.4))
+                AxisValueLabel(format: .dateTime.hour())
             }
         }
-        .chartXSelection(value: interactive ? $selectedHour : .constant(nil))
+        .chartYAxis {
+            AxisMarks(position: .trailing) { _ in
+                AxisGridLine().foregroundStyle(Palette.separator.opacity(0.4))
+                AxisValueLabel()
+            }
+        }
+        .chartXSelection(value: interactive ? $selectedDate : .constant(nil))
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Steps by hour today")
+        .accessibilityValue(buckets.compactMap { b in b.value.flatMap { $0 > 0 ? "\(Fmt.hour(b.hour ?? 0)): \(Fmt.int($0))" : nil } }.joined(separator: ", "))
     }
 
     // Days / weeks / months
@@ -149,7 +166,7 @@ struct StepHistoryChart: View {
     }
 
     var selectedBucket: ChartBucket? {
-        guard let selectedDate else { return nil }
+        guard unit != .hour, let selectedDate else { return nil }
         return buckets.min { abs($0.start.chartDate.timeIntervalSince(selectedDate)) < abs($1.start.chartDate.timeIntervalSince(selectedDate)) }
     }
 
@@ -255,18 +272,23 @@ struct WeekdayBars: View {
 struct TimeOfDayBars: View {
     let profile: TimeOfDayProfile
 
+    /// A reference day so hours can use a date axis with hour bands.
+    var dayStart: Date { Calendar.current.startOfDay(for: Date()) }
+    func hourDate(_ h: Int) -> Date { dayStart.addingTimeInterval(Double(h) * 3600) }
+
     var body: some View {
         Chart {
             ForEach(0..<24, id: \.self) { h in
-                BarMark(x: .value("Hour", h), y: .value("Share", profile.shares[h]), width: .ratio(0.75))
+                BarMark(x: .value("Hour", hourDate(h), unit: .hour), y: .value("Share", profile.shares[h]))
                     .foregroundStyle(h >= profile.peakWindowStart && h < profile.peakWindowStart + 4
                                      ? AnyShapeStyle(Palette.accent.gradient) : AnyShapeStyle(Palette.accent.opacity(0.3)))
                     .cornerRadius(2)
             }
         }
+        .chartXScale(domain: dayStart...hourDate(24))
         .chartXAxis {
-            AxisMarks(values: [0, 6, 12, 18]) { value in
-                AxisValueLabel { if let h = value.as(Int.self) { Text(Fmt.hour(h).replacingOccurrences(of: " ", with: "")) } }
+            AxisMarks(values: .stride(by: .hour, count: 6)) { _ in
+                AxisValueLabel(format: .dateTime.hour())
             }
         }
         .chartYAxis(.hidden)
