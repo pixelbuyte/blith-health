@@ -14,18 +14,19 @@ extension AppleHealthProvider {
     }
 
     /// Foreground only. Notifications trigger a fresh latest-sample query, including deletions.
-    func heartRateChanges() -> AsyncThrowingStream<Void, Error> {
-        AsyncThrowingStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
-            let query = HKObserverQuery(sampleType: HKQuantityType(.heartRate), predicate: nil) { _, completion, error in
-                defer { completion() }
-                if let error { continuation.finish(throwing: error) }
-                else { continuation.yield(()) }
-            }
-            continuation.onTermination = { [store] _ in store.stop(query) }
-            store.execute(query)
-            continuation.yield(())
+    func heartRateChanges() -> (updates: AsyncThrowingStream<Void, Error>, finish: () -> Void) {
+        let (updates, continuation) = AsyncThrowingStream<Void, Error>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        let query = HKObserverQuery(sampleType: HKQuantityType(.heartRate), predicate: nil) { _, completion, error in
+            defer { completion() }
+            if let error { continuation.finish(throwing: error) }
+            else { continuation.yield(()) }
         }
+        continuation.onTermination = { [store] _ in store.stop(query) }
+        store.execute(query)
+        continuation.yield(())
+        return (updates, { continuation.finish() })
     }
+
 }
 
 @MainActor @Observable
@@ -52,8 +53,11 @@ final class HeartRateMonitor {
         guard !Task.isCancelled, token == generation else { return }
         needsPermission = !connected || authorizationNeeded
         guard !needsPermission else { return }
+        let observation = provider.heartRateChanges()
+        // Also finish on a query error/early return, not only cancellation during next().
+        defer { observation.finish() }
         do {
-            for try await _ in provider.heartRateChanges() {
+            for try await _ in observation.updates {
                 let latest = try await provider.latestHeartRate()
                 guard !Task.isCancelled, token == generation else { return }
                 reading = latest
