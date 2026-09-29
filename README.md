@@ -5,14 +5,16 @@ understanding: it learns **your** normal, notices what changed, explains why it 
 the evidence behind it, and lets you ask questions that are answered from your real data with
 native charts right in the conversation.
 
-**Today** · what matters about you right now
-**Walk** · everything about your walking and movement
-**Ask** · an assistant that understands your health data
+**Today** · what matters about you right now, compared with your usual at the same time
+**Walk** · every range with its own story, the exact days behind it, and your walking signature
+**Body** · a blue body map for dated notes, anchored to regions, with a history timeline
+**Ask** · an assistant that computes from your records and answers with native cards
 
 <p>
 <img src="design/screenshots/iPhone17e-light-1-today.png" width="200">
 <img src="design/screenshots/iPhone17e-light-2-walk.png" width="200">
 <img src="design/screenshots/iPhone17e-light-3-ask.png" width="200">
+<img src="design/screenshots/iPhone17e-light-4-body.png" width="200">
 <img src="design/screenshots/iPhone17ProMax-dark-1-today.png" width="200">
 </p>
 
@@ -59,4 +61,4 @@ The model calls deterministic tools in `HealthAssistantTools`; all numbers come 
 `BlithCore`, and widgets are native components chosen by type. Without a key, without network,
 or if the user declines AI sharing, Ask answers on-device with the same tools.
 
-See `docs/ARCHITECTURE.md` for design decisions and `docs/RELEASE.md` for App Store readiness.
+See `docs/DESIGN.md` for the design language, `docs/ARCHITECTURE.md` for engineering decisions and `docs/RELEASE.md` for App Store readiness.
