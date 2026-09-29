@@ -4,14 +4,19 @@
 #   ios/BlithCore           Swift package with all health logic; `swift test` runs on macOS and Linux
 #   ios/Config              xcconfigs; Secrets.xcconfig is written from environment variables
 #
-# Environment variable group `blith_ai` (App settings › Environment variables), optional:
-#   OPENROUTER_API_KEY  (secure)  enables AI answers in Ask; without it Ask answers on-device.
+# Environment variable groups (App settings › Environment variables):
+#   blith_ai       OPENROUTER_API_KEY (secure), optional: enables AI answers in Ask; without it
+#                  Ask answers on-device.
+#   blith_signing  CERTIFICATE_PRIVATE_KEY (secure): private key of Blith's Apple Distribution
+#                  certificate, used by ios-release.
 #
 # Workflows
-#   ios-ci       Core tests + simulator build + screenshots (two iPhone sizes, light/dark).
-#                No signing needed.
-#   ios-release  Archive, sign and upload to App Store Connect / TestFlight. Needs the App Store
-#                Connect integration and an app record for com.blith.health (see docs/RELEASE.md).
+#   ios-ci             Core tests + simulator build + screenshots. No signing needed.
+#   ios-release-check  Unsigned Release archive for a device. No Apple account needed.
+#   ios-setup          Registers com.blith.health with HealthKit (idempotent).
+#   ios-release        Signs, builds Blith.ipa and uploads it to TestFlight. Needs the team's App
+#                      Store Connect integration (codemagic1) and an app record for
+#                      com.blith.health (see docs/RELEASE.md).
 
 workflows:
   ios-ci:

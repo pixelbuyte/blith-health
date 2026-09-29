@@ -21,14 +21,33 @@ Status: ✅ done in code · 🔧 needs an external step · ⚠️ known gap
 | Export compliance | ✅ | `ITSAppUsesNonExemptEncryption = NO` |
 | Secrets not in repo | ✅ | OpenRouter key comes from gitignored `Secrets.xcconfig` or the Codemagic `blith_ai` group |
 | Embedded API key | ⚠️ | The OpenRouter key ships inside the app binary. Before a wide release, move AI calls behind a small server proxy with per-install rate limits |
-| App Store Connect app record | 🔧 | Create app `com.blith.health` in App Store Connect (API cannot create apps) |
-| Bundle ID HealthKit capability | 🔧 | Enable HealthKit for `com.blith.health` in the developer portal |
-| Codemagic signing | 🔧 | `ios-release` uses the team's App Store Connect integration named `codemagic1` |
+| App Store Connect app record | 🔧 | Create the app once in App Store Connect (My Apps › + › New App, bundle ID `com.blith.health`). Apple's API cannot create apps |
+| App ID + HealthKit capability | ✅ | Registered by the `ios-setup` workflow (idempotent): `com.blith.health` with HealthKit |
+| Codemagic signing | ✅ | `ios-release` signs with a Blith Apple Distribution certificate whose private key is the secure variable `CERTIFICATE_PRIVATE_KEY` (group `blith_signing`); the certificate and profile are created on first use through the team's App Store Connect integration `codemagic1` |
 | App Privacy answers | 🔧 | Health & Fitness + User Content: collected only when AI answers are on, not linked, not tracking, App Functionality |
 | Screenshots | 🔧 | `ios-ci` produces simulator screenshots with sample data as a starting point |
 
 ## Shipping a TestFlight build
 
-1. Create the App Store Connect app record for `com.blith.health` and enable HealthKit on the identifier.
-2. In Codemagic, confirm the App Store Connect integration is named `codemagic1` (or edit `codemagic.yaml`).
-3. Start the `ios-release` workflow for `main`.
+One-time:
+
+1. In App Store Connect, create the app: My Apps › + › New App › iOS, name Blith, bundle ID `com.blith.health`, any SKU. This is the only step Apple doesn't allow through the API.
+2. Codemagic workflow `ios-setup` (already run) registers the App ID with HealthKit. Re-run it any time; it changes nothing that already exists.
+
+Every release:
+
+3. Start the `ios-release` workflow in Codemagic on `main`. It:
+   - sets the team ID from the App ID,
+   - finds or creates the distribution certificate and App Store profile,
+   - archives with the next build number from App Store Connect,
+   - signs, builds `Blith.ipa`, and uploads it.
+
+   The IPA is kept as a build artifact even if no app record exists; in that case the upload step is skipped and says why.
+4. When Apple finishes processing (a few minutes), the build appears in TestFlight. Add yourself under Internal Testing. External testers need Beta App Review and the privacy policy URL below.
+
+`ios-release-check` builds an unsigned Release archive for a device; use it to catch Release-only problems without touching Apple accounts.
+
+Notes:
+
+- Revoking Blith's certificate in the developer portal is safe: delete the `CERTIFICATE_PRIVATE_KEY` variable, add a new key, and the next release creates a new certificate.
+- The OpenRouter key is embedded in TestFlight builds through the `blith_ai` group. Move AI calls behind a server proxy before a public release.
