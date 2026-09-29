@@ -194,28 +194,6 @@ workflows:
             has_healthkit && echo "HealthKit enabled"
           fi
 
-      # ios_signing in ios-release only fetches an existing profile, so create it here once, after
-      # HealthKit is enabled, against the team's distribution certificates.
-      - name: App Store provisioning profile
-        script: |
-          set -uo pipefail
-          RID=$(app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json \
-            | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["id"])')
-          CERT_IDS=$(app-store-connect certificates list --type DISTRIBUTION --json \
-            | python3 -c 'import json, sys; print(" ".join(c["id"] for c in json.load(sys.stdin)))')
-          test -n "$CERT_IDS"
-          if app-store-connect profiles create "$RID" --type IOS_APP_STORE --certificate-ids $CERT_IDS \
-               --name "Blith App Store" --profiles-dir "$HOME/blith_profiles" --save; then
-            echo "Created profile"
-          else
-            echo "Create failed; checking whether the profile already exists"
-            app-store-connect profiles list --profile-type IOS_APP_STORE --json | python3 -c '
-          import json,sys
-          found = [(p["attributes"]["name"], p["attributes"]["profileState"]) for p in json.load(sys.stdin) if p["attributes"]["name"].startswith("Blith App Store")]
-          print("existing:", found)
-          sys.exit(0 if any(state == "ACTIVE" for _, state in found) else 1)'
-          fi
-
   ios-release:
     name: iOS Release - TestFlight
     max_build_duration: 60
@@ -227,10 +205,8 @@ workflows:
       xcode: latest
       groups:
         - blith_ai
-      # Fetches the App Store profile and certificate created by ios-setup (run that workflow first).
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.blith.health
+        # CERTIFICATE_PRIVATE_KEY (secure): the private key of Blith's Apple Distribution certificate.
+        - blith_signing
       vars:
         BUNDLE_ID: "com.blith.health"
         APP_NAME: "Blith"
@@ -275,8 +251,15 @@ workflows:
       - name: Generate Xcode project
         script: cd "$CM_BUILD_DIR/ios" && xcodegen generate
 
-      - name: Set up code signing settings on Xcode project
-        script: xcode-project use-profiles
+      # Finds (or, the first time, creates) the distribution certificate that belongs to
+      # CERTIFICATE_PRIVATE_KEY and an App Store profile for it, then signs with them.
+      - name: Set up code signing
+        script: |
+          set -euo pipefail
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --platform IOS --strict-match-identifier --create
+          keychain add-certificates
+          xcode-project use-profiles
 
       - name: Next build number from App Store Connect
         script: |
