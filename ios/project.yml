@@ -81,6 +81,7 @@ targets:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        NSHealthUpdateUsageDescription: Blith doesn't save anything to Apple Health. It only reads the data you choose to share, and Apple requires this description because the app uses HealthKit.
         NSHealthShareUsageDescription: Blith reads the health data you choose, such as steps, walking, workouts, sleep and weight, to learn your personal baselines and explain how you're changing. It's stored on this iPhone and never used for advertising.
         # AI configuration, supplied by Config/Secrets.xcconfig (gitignored) or CI.
         OPENROUTER_API_KEY: $(OPENROUTER_API_KEY)
