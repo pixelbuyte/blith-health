@@ -148,7 +148,8 @@ struct BodyView: View {
                 RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
                     .fill(RadialGradient(colors: [Color(hex: 0x16307F), Color(hex: 0x070D2B)], center: .center, startRadius: 10, endRadius: 360))
                 figure(width: figureWidth, height: figureHeight, scale: scale)
-                    .scaleEffect(zoom, anchor: zoomAnchor)
+                    .scaleEffect(zoom)
+                    .offset(focusOffset(scale: scale, width: figureWidth, height: figureHeight))
                     .opacity(revealed ? 1 : 0)
                     .scaleEffect(revealed ? 1 : 0.94)
                     .offset(y: revealed ? 0 : 18)
@@ -163,9 +164,13 @@ struct BodyView: View {
         .accessibilityLabel("Body map, \(isBack ? "back" : "front") view")
     }
 
-    var zoomAnchor: UnitPoint {
-        guard let region = selectedRegion, let a = map.anchor(region, back: isBack) else { return .center }
-        return UnitPoint(x: a.x / map.width, y: a.y / map.height)
+    /// Moves the selected region toward the middle of the stage as the view zooms in.
+    func focusOffset(scale: CGFloat, width: CGFloat, height: CGFloat) -> CGSize {
+        guard zoom > 1, let region = selectedRegion, let a = map.anchor(region, back: isBack) else { return .zero }
+        let factor = min(1, (zoom - 1) / 0.6)
+        let dx = (CGFloat(a.x) * scale - width / 2) * zoom * factor
+        let dy = (CGFloat(a.y) * scale - height / 2) * zoom * factor
+        return CGSize(width: -dx, height: -dy)
     }
 
     func figure(width: CGFloat, height: CGFloat, scale: CGFloat) -> some View {
@@ -184,6 +189,7 @@ struct BodyView: View {
                 ForEach(visibleNotes) { note in
                     if let region = note.bodyRegion, let a = map.anchor(region, back: isBack) {
                         NoteMarker(note: note, focused: note.id == focusedNoteID, today: today)
+                            .scaleEffect(1 / zoom)
                             .position(x: CGFloat(a.x) * scale, y: CGFloat(a.y) * scale)
                             .onTapGesture { focus(note) }
                     }

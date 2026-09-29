@@ -213,7 +213,7 @@ struct StepHistoryChart: View {
                 RuleMark(y: .value("Previous", previousAverage))
                     .foregroundStyle(Palette.baseline)
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
-                    .annotation(position: .bottom, alignment: .leading) {
+                    .annotation(position: .bottom, alignment: .trailing) {
                         Text("before \(Fmt.int(previousAverage))").font(.caption2.weight(.semibold)).foregroundStyle(Palette.secondaryInk)
                     }
             }
