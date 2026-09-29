@@ -6,6 +6,7 @@ import SwiftUI
 struct TodayView: View {
     @Environment(AppModel.self) private var app
     @Environment(AppRouter.self) private var router
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var scrollTarget: String?
 
     var body: some View {
@@ -17,11 +18,11 @@ struct TodayView: View {
                     if let s = app.snapshot {
                         scores(s).id("scores")
                         DayRibbon(ctx: s.ctx).id("ribbon")
+                        rhythm(s).id("rhythm")
                         movement(s).id("movement")
                         insights(s).id("insight")
                         week(s).id("week")
                         monitor(s).id("monitor")
-                        rhythm(s).id("rhythm")
                         milestones
                         context(s)
                         moreInsights(s)
@@ -266,38 +267,41 @@ struct TodayView: View {
         }
     }
 
-    // MARK: Rhythm (bento: streak + week)
+    // MARK: Heart rate + walking week
 
     func rhythm(_ s: HealthSnapshot) -> some View {
-        let streak = app.streak
-        let next = [3, 7, 14, 30, 60, 100].first { $0 > streak.current } ?? streak.current + 1
-        return HStack(alignment: .top, spacing: Space.m) {
-            VStack(alignment: .leading, spacing: Space.s) {
-                Eyebrow(text: "Check-in streak", icon: "bl.streak", color: Palette.signal)
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("\(streak.current)").font(Typo.score(50)).foregroundStyle(Palette.ink)
-                    Text(streak.current == 1 ? "day" : "days").font(Typo.geist(15, .medium, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
-                }
-                SegmentedProgress(total: min(next, 14), done: min(next, 14) * streak.current / max(next, 1), color: Palette.signal)
-                Text("\(next - streak.current) to \(next) · best \(streak.best)").font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
-            }
-            .frame(maxHeight: .infinity, alignment: .top)
-            .card(padding: Space.l)
-            if let c = s.consistency {
-                VStack(alignment: .leading, spacing: Space.s) {
-                    Eyebrow(text: "Walking week", icon: "bl.steptrail")
-                    HStack(alignment: .firstTextBaseline, spacing: 2) {
-                        Text("\(c.metCount)").font(Typo.score(50)).foregroundStyle(Palette.ink)
-                        Text("/7").font(Typo.geist(15, .medium, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
+        ViewThatFits(in: .horizontal) {
+            if !dynamicTypeSize.isAccessibilitySize {
+                HStack(alignment: .top, spacing: Space.m) {
+                    HeartRateCard().frame(minWidth: 155, maxWidth: .infinity)
+                    if s.consistency != nil {
+                        walkingWeek(s).frame(minWidth: 135, maxWidth: .infinity)
                     }
-                    ConsistencyDots(week: c)
-                    Text(c.thresholdIsGoal ? "days at your goal" : "days near your usual").font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
                 }
-                .frame(maxHeight: .infinity, alignment: .top)
-                .card(padding: Space.l)
+            }
+            VStack(spacing: Space.m) {
+                HeartRateCard()
+                walkingWeek(s)
             }
         }
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    func walkingWeek(_ s: HealthSnapshot) -> some View {
+        if let c = s.consistency {
+            VStack(alignment: .leading, spacing: Space.s) {
+                Eyebrow(text: "Walking week", icon: "bl.steptrail")
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text("\(c.metCount)").font(Typo.score(50)).foregroundStyle(Palette.ink)
+                    Text("/7").font(Typo.geist(15, .medium, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
+                }
+                ConsistencyDots(week: c)
+                Text(c.thresholdIsGoal ? "days at your goal" : "days near your usual").font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+            .card(padding: Space.l)
+        }
     }
 
     // MARK: Milestones
