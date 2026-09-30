@@ -35,15 +35,21 @@ final class HeartRateMonitor {
     private(set) var needsPermission = false
     private(set) var failed = false
     private var generation = UUID()
+    private var currentMode: DataMode?
 
     func run(provider: AppleHealthProvider, mode: DataMode?, enabled: Bool, connected: Bool) async {
+        guard !Task.isCancelled else { return }
         let token = UUID()
         generation = token
-        reading = nil
+        if mode != currentMode {
+            reading = nil
+            currentMode = mode
+        }
         failed = false
         needsPermission = false
-        guard enabled, let mode else { return }
+        guard !Task.isCancelled, enabled, let mode else { return }
         if mode.isDemo {
+            if case .demo(.newUser) = mode { return }
             reading = HeartRateReading(bpm: 72, measuredAt: AppClock.now(),
                                       source: SourceRef(provider: .demo, name: "Sample data", identifier: "demo.heart"))
             return
@@ -52,7 +58,7 @@ final class HeartRateMonitor {
         let authorizationNeeded = await provider.needsAuthorizationRequest(for: [.heart])
         guard !Task.isCancelled, token == generation else { return }
         needsPermission = !connected || authorizationNeeded
-        guard !needsPermission else { return }
+        guard !needsPermission else { reading = nil; return }
         let observation = provider.heartRateChanges()
         // Also finish on a query error/early return, not only cancellation during next().
         defer { observation.finish() }

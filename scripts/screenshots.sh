@@ -50,7 +50,24 @@ for DEV in "$SMALL" "$LARGE"; do
   echo "$NAME ($UDID)"
   DEMO=(-BlithDemo balanced -BlithAIConsent NO -BlithClockHour 15.5)
   xcrun simctl ui "$UDID" appearance dark
+  # Focused native previews for the heart redesign PR; no signing or health access needed.
+  if [ "${BLITH_SCREENSHOT_FOCUS:-}" = "heart" ]; then
+    for PANEL in overview heart vitals insights; do
+      shoot "$UDID" "$NAME-heart-$PANEL" "${DEMO[@]}" -BlithTab today -BlithTodaySection "$PANEL"
+    done
+    xcrun simctl ui "$UDID" appearance light
+    shoot "$UDID" "$NAME-heart-light" "${DEMO[@]}" -BlithTab today -BlithTodaySection heart
+    xcrun simctl ui "$UDID" appearance dark
+    xcrun simctl ui "$UDID" content_size accessibility-extra-large
+    shoot "$UDID" "$NAME-heart-large-text" "${DEMO[@]}" -BlithTab today -BlithTodaySection heart
+    xcrun simctl ui "$UDID" content_size large
+    shoot "$UDID" "$NAME-heart-no-data" -BlithDemo newUser -BlithTab today -BlithTodaySection heart
+    xcrun simctl shutdown "$UDID" || true
+    continue
+  fi
   shoot "$UDID" "$NAME-01-today" "${DEMO[@]}" -BlithTab today
+  shoot "$UDID" "$NAME-18-heart" "${DEMO[@]}" -BlithTab today -BlithTodaySection heart
+  shoot "$UDID" "$NAME-19-insights" "${DEMO[@]}" -BlithTab today -BlithTodaySection insights
   shoot "$UDID" "$NAME-02-today-monitor" "${DEMO[@]}" -BlithTab today -BlithScrollTo monitor
   shoot "$UDID" "$NAME-03-today-movement" "${DEMO[@]}" -BlithTab today -BlithScrollTo movement
   shoot "$UDID" "$NAME-04-activity" "${DEMO[@]}" -BlithTab walk -BlithPeriod month
