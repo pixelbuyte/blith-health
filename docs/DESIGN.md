@@ -100,3 +100,14 @@ All scores are relative to the person's own history and always shown with their 
 - The muscle layer is illustrative, not reviewed anatomy.
 - The Health Monitor and the scores are comparisons with you, not medical assessments.
 - Sleep stages come from consumer devices.
+
+## Live heart rate (Today)
+
+`LiveHeartCard` sits under the score dials. It streams heart rate from Apple Health (`HKAnchoredObjectQuery`), so it is exactly as live as the source: an Apple Watch records every few minutes at rest and every few seconds during a Workout.
+
+- The heart pounds at the measured BPM: a "lub-dub" every 60/BPM seconds, eased between readings so it never jumps.
+- The beat swells harder and glows brighter as intensity rises above the person's own resting rate. Zones (Resting, Warm, Elevated, Hard, Peak) are intensity labels, not health judgements.
+- The ECG trace's spacing follows the same rate; its R spike lands with the "lub".
+- LIVE means the reading is under 90 s old. Older readings show how long ago they were, dimmer; after 30 minutes the heart holds still.
+- Reduce Motion stops the pounding but keeps the number and zone.
+- The check-in streak is now a small chip beside the avatar; it replaced the streak and walking-week tiles.

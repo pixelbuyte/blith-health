@@ -13,7 +13,7 @@ With your permission, Blith reads from Apple Health only the categories you choo
   climbed, walking speed, step length, walking asymmetry, double support time, workouts.
 - **Sleep:** sleep analysis (time asleep and stages).
 - **Body:** weight, body fat percentage.
-- **Heart:** resting heart rate, walking heart rate average, heart rate variability.
+- **Heart:** resting heart rate, walking heart rate average, heart rate variability, and heart rate readings (shown live on Today; only the last 24 hours are held in memory and nothing new is stored for them).
 
 Blith never writes to Apple Health. You can review or revoke access at any time in
 **Settings › Health › Data Access & Devices › Blith**.
