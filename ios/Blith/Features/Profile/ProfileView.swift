@@ -226,6 +226,7 @@ struct SourcesView: View {
                         }
                     }
                 }
+                CompanionSyncSection(app: .huawei, status: app.huaweiSync)
                 Section {
                     ForEach(HealthMetric.allCases, id: \.self) { metric in
                         let state = h.availability(metric, today: today, calendar: cal)

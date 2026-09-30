@@ -8,6 +8,11 @@ import Foundation
 enum LaunchOptions {
     static var args: UserDefaults { .standard }
 
+    /// `-BlithHuaweiLagHours 20`: demo data shows Huawei Health as 20 hours behind.
+    static var huaweiLag: TimeInterval? {
+        args.object(forKey: "BlithHuaweiLagHours") == nil ? nil : args.double(forKey: "BlithHuaweiLagHours") * 3600
+    }
+
     @MainActor
     static func applyIfPresent(to app: AppModel) {
         if args.bool(forKey: "BlithResetOnboarding") {

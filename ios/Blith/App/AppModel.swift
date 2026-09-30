@@ -87,7 +87,7 @@ final class AppModel {
         case .appleHealth:
             return healthKit
         case .demo(let s):
-            return MockHealthProvider(scenario: s, now: { AppClock.now() })
+            return MockHealthProvider(scenario: s, now: { AppClock.now() }, huaweiLag: LaunchOptions.huaweiLag)
         }
     }
 
