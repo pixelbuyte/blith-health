@@ -15,7 +15,8 @@ struct HeartRateCard: View {
     @State private var visible = false
 
     var body: some View {
-        Group {
+        // Stable container: swapping the clock subtree must not trigger our own disappearance.
+        VStack(spacing: 0) {
             if active && visible {
                 TimelineView(.periodic(from: .now, by: 1)) { timeline in
                     card(at: timeline.date)
