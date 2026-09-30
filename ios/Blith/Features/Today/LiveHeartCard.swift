@@ -158,38 +158,32 @@ struct LiveHeartCard: View {
 
     func drawHeart(_ ctx: inout GraphicsContext, size: CGSize, phase: Double, intensity: Double, freshness: LiveHeartSummary.Freshness) {
         let thump = HeartWaveform.thump(phase: phase)
-        let dim = freshness == .live ? 1.0 : (freshness == .recent ? 0.78 : 0.5)
+        let dim = freshness == .live ? 1.0 : (freshness == .recent ? 0.9 : 0.6)
         let center = CGPoint(x: heartArea / 2, y: heartArea / 2)
         let radius: CGFloat = 40
-        // Harder beats at higher intensity: the heart swells more and glows brighter.
+        // Harder beats at higher intensity: the heart swells more.
         let swell = 0.09 + 0.15 * intensity
         let scale = 1 + swell * thump
-        let rose = Palette.heart
+        // One bright red heart in every zone and appearance.
+        let red = Self.heartRed
 
-        ctx.fill(Path(ellipseIn: CGRect(x: center.x - radius * 2.1, y: center.y - radius * 2.1, width: radius * 4.2, height: radius * 4.2)),
-                 with: .radialGradient(Gradient(colors: [rose.opacity((0.20 + 0.42 * thump * (0.5 + intensity)) * dim), .clear]),
-                                       center: center, startRadius: 0, endRadius: radius * (1.7 + 0.5 * thump)))
-
-        // A ripple leaves the heart with every "lub" (live and recent readings only).
-        if freshness != .stale {
-            var q = (phase - HeartWaveform.lubPhase).truncatingRemainder(dividingBy: 1)
-            if q < 0 { q += 1 }
-            if q < 0.55 {
-                let p = q / 0.55
-                let r = radius * (1.0 + 0.95 * p)
-                ctx.stroke(Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)),
-                           with: .color(rose.opacity((1 - p) * (0.30 + 0.35 * intensity) * dim)), lineWidth: 1.6)
-            }
+        // The glow underlay only shows when nothing is being monitored; while a reading is live or
+        // recent the heart stands on its own.
+        if freshness == .stale {
+            ctx.fill(Path(ellipseIn: CGRect(x: center.x - radius * 2.1, y: center.y - radius * 2.1, width: radius * 4.2, height: radius * 4.2)),
+                     with: .radialGradient(Gradient(colors: [red.opacity(0.18), .clear]),
+                                           center: center, startRadius: 0, endRadius: radius * 1.7))
         }
 
         var heart = Self.heartPath(center: center, halfWidth: radius * scale)
-        ctx.fill(heart, with: .linearGradient(Gradient(colors: [Color(hex: 0xFF7A93).opacity(dim), rose.opacity(dim), Color(hex: 0xC2264A).opacity(dim)]),
-                                              startPoint: CGPoint(x: center.x, y: center.y - radius), endPoint: CGPoint(x: center.x, y: center.y + radius * 1.1)))
-        ctx.stroke(heart, with: .color(.white.opacity(0.22 * dim)), lineWidth: 1)
+        ctx.fill(heart, with: .color(red.opacity(dim)))
         // A soft highlight on the upper left lobe.
         heart = Self.heartPath(center: CGPoint(x: center.x - radius * 0.34, y: center.y - radius * 0.34), halfWidth: radius * 0.22 * scale)
-        ctx.fill(heart, with: .color(.white.opacity(0.28 * dim)))
+        ctx.fill(heart, with: .color(.white.opacity(0.22 * dim)))
     }
+
+    /// The bright red of the heart, the same in light and dark mode.
+    static let heartRed = Color(red: 1, green: 0.16, blue: 0.2)
 
     /// The classic parametric heart, centred and scaled to `halfWidth`.
     static func heartPath(center: CGPoint, halfWidth: CGFloat) -> Path {
