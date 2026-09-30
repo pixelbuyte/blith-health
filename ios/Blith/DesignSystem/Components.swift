@@ -30,7 +30,7 @@ struct Eyebrow: View {
     var body: some View {
         HStack(spacing: Space.xs + 2) {
             if let icon { BLIcon(name: icon, size: 12) }
-            Text(text.uppercased()).font(Typo.eyebrow).tracking(1.3)
+            Text(text.uppercased()).font(Typo.eyebrow).tracking(0.9)
         }
         .foregroundStyle(color)
         .accessibilityElement(children: .combine)
@@ -47,19 +47,21 @@ struct SectionHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(title.uppercased()).font(Typo.sectionTitle).tracking(1.2).foregroundStyle(Palette.ink)
+                Text(title).font(Typo.sectionTitle).foregroundStyle(Palette.ink)
                 if let subtitle {
-                    Text(subtitle).font(.footnote).foregroundStyle(Palette.secondaryInk)
+                    Text(subtitle).font(Typo.caption).foregroundStyle(Palette.secondaryInk)
                 }
             }
             Spacer(minLength: Space.s)
             if let trailing, let action {
                 Button(action: action) {
                     HStack(spacing: 3) {
-                        Text(trailing.uppercased()).font(Typo.eyebrow).tracking(1.1)
-                        Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
+                        Text(trailing).font(Typo.geist(13, .medium, relativeTo: .footnote))
+                        Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
                     }
-                    .foregroundStyle(Palette.cobalt)
+                    .foregroundStyle(Palette.signal)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -82,10 +84,10 @@ struct DeltaBadge: View {
             Image(systemName: flat ? "equal" : (change >= 0 ? "arrow.up.right" : "arrow.down.right"))
                 .font(.caption.weight(.heavy))
             Text(flat ? "About the same" : Fmt.signedPercent(change))
-                .font(.subheadline.weight(.semibold))
+                .font(Typo.geist(15, .semibold, relativeTo: .subheadline))
                 .monospacedDigit()
             if let caption {
-                Text(caption).font(.subheadline).foregroundStyle(Palette.secondaryInk).lineLimit(2)
+                Text(caption).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk).lineLimit(2)
             }
         }
         .foregroundStyle(tint)
@@ -102,10 +104,10 @@ struct StatTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title.uppercased()).font(Typo.eyebrow).tracking(1).foregroundStyle(Palette.secondaryInk).lineLimit(1)
-            Text(value).font(Typo.metric).foregroundStyle(color).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
+            Text(title.uppercased()).font(Typo.eyebrow).tracking(0.8).foregroundStyle(Palette.tertiaryInk).lineLimit(1)
+            Text(value).font(Typo.metric).foregroundStyle(color).lineLimit(1).minimumScaleFactor(0.6)
             if let caption {
-                Text(caption).font(.caption2).foregroundStyle(Palette.secondaryInk).lineLimit(2)
+                Text(caption).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk).lineLimit(2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -118,7 +120,7 @@ struct SourceBadge: View {
 
     var body: some View {
         Label(text, systemImage: "heart.text.square")
-            .font(.caption)
+            .font(Typo.geist(12, relativeTo: .caption))
             .foregroundStyle(Palette.secondaryInk)
     }
 }
@@ -132,19 +134,15 @@ struct EmptyStateView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: Space.l) {
-            BLIcon(name: symbol, size: 20)
-                .foregroundStyle(Palette.cobalt)
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(Palette.accentSoft))
-                .overlay(Circle().strokeBorder(Palette.cobalt.opacity(0.3), lineWidth: 1))
+            SignalGlyph(symbol: symbol, tint: Palette.signal, size: 44)
             VStack(alignment: .leading, spacing: Space.xs + 2) {
-                Text(title).font(.headline).foregroundStyle(Palette.ink)
-                Text(message).font(.subheadline).foregroundStyle(Palette.secondaryInk).fixedSize(horizontal: false, vertical: true)
+                Text(title).font(Typo.cardTitle).foregroundStyle(Palette.ink)
+                Text(message).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk).fixedSize(horizontal: false, vertical: true)
                 if let actionTitle, let action {
                     Button(actionTitle, action: action)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Palette.cobalt)
-                        .padding(.top, Space.xs)
+                        .font(Typo.geist(15, .semibold, relativeTo: .subheadline))
+                        .foregroundStyle(Palette.signal)
+                        .frame(minHeight: 44)
                 }
             }
         }
@@ -156,15 +154,15 @@ struct EmptyStateView: View {
 /// Sample data is always labelled, compactly.
 struct SampleDataBanner: View {
     var body: some View {
-        HStack(spacing: 5) {
-            Circle().fill(Palette.amber).frame(width: 5, height: 5)
-            Text("SAMPLE DATA").font(Typo.eyebrow).tracking(1.2)
+        HStack(spacing: 6) {
+            Circle().fill(Palette.note).frame(width: 5, height: 5)
+            Text("SAMPLE DATA").font(Typo.eyebrow).tracking(0.9)
         }
-        .foregroundStyle(Palette.amber)
+        .foregroundStyle(Palette.secondaryInk)
         .padding(.horizontal, 9)
         .padding(.vertical, 5)
-        .background(Capsule().fill(Palette.amber.opacity(0.12)))
-        .overlay(Capsule().strokeBorder(Palette.amber.opacity(0.3), lineWidth: 1))
+        .background(Capsule().fill(Palette.raised))
+        .overlay(Capsule().strokeBorder(Palette.hairline, lineWidth: 1))
         .accessibilityLabel("Showing sample data, not your health records")
     }
 }
@@ -176,14 +174,14 @@ struct SyncStatusLine: View {
     var body: some View {
         HStack(spacing: Space.xs) {
             if isSyncing {
-                ProgressView().controlSize(.mini)
+                SignalPulse(size: 12)
                 Text("Updating…")
             } else if let last = history.sync.lastSync {
                 Image(systemName: history.sync.status == .failed ? "exclamationmark.circle" : "checkmark.circle")
                 Text("\(history.origin.providerKind.displayName) · updated \(last.formatted(date: .omitted, time: .shortened))")
             }
         }
-        .font(.caption)
+        .font(Typo.geist(12, relativeTo: .caption))
         .foregroundStyle(Palette.tertiaryInk)
         .frame(maxWidth: .infinity)
     }
@@ -198,15 +196,14 @@ struct AvatarButton: View {
         Button(action: action) {
             Group {
                 if let first = name.trimmingCharacters(in: .whitespaces).first {
-                    Text(String(first).uppercased()).font(.system(size: 17, weight: .bold).width(.condensed))
+                    Text(String(first).uppercased()).font(Typo.geist(16, .semibold, relativeTo: .headline))
                 } else {
                     Image(systemName: "person.fill").font(.subheadline)
                 }
             }
             .foregroundStyle(Palette.ink)
-            .frame(width: 40, height: 40)
-            .background(Circle().fill(Palette.raised))
-            .overlay(Circle().strokeBorder(LinearGradient(colors: [Palette.cobalt, Palette.cyan], startPoint: .top, endPoint: .bottom), lineWidth: 1.5))
+            .frame(width: 44, height: 44)
+            .glassSurface(Circle(), interactive: true)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Profile and settings")
@@ -226,13 +223,16 @@ struct PeriodPicker: View {
                     withAnimation(Motion.respecting(reduceMotion, Motion.snappy)) { selection = p }
                 } label: {
                     Text(p.shortTitle.uppercased())
-                        .font(.system(size: 12, weight: selection == p ? .bold : .medium, design: .monospaced))
-                        .foregroundStyle(selection == p ? Palette.ink : Palette.secondaryInk)
-                        .frame(maxWidth: .infinity, minHeight: 32)
+                        .font(Typo.mono(12, selection == p ? .medium : .regular))
+                        .foregroundStyle(selection == p ? Palette.ink : Palette.tertiaryInk)
+                        .frame(maxWidth: .infinity, minHeight: 36)
                         .background {
                             if selection == p {
                                 Capsule().fill(Palette.raised)
-                                    .overlay(Capsule().strokeBorder(Palette.cobalt.opacity(0.6), lineWidth: 1))
+                                    .overlay(Capsule().strokeBorder(Palette.hairline, lineWidth: 1))
+                                    .overlay(alignment: .bottom) {
+                                        Capsule().fill(Palette.signal).frame(width: 14, height: 2).padding(.bottom, 4)
+                                    }
                                     .matchedGeometryEffect(id: "sel", in: ns)
                             }
                         }
@@ -244,8 +244,7 @@ struct PeriodPicker: View {
             }
         }
         .padding(3)
-        .background(Capsule().fill(Palette.surface))
-        .overlay(Capsule().strokeBorder(Palette.hairline, lineWidth: 1))
+        .glassSurface(Capsule())
     }
 }
 
@@ -274,10 +273,10 @@ struct ConsistencyDots: View {
     func cell(_ state: WeekConsistency.DayState) -> some View {
         let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
         switch state {
-        case .met: shape.fill(tint.gradient).frame(height: 26)
-        case .inProgress: shape.strokeBorder(tint, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])).frame(height: 26)
-        case .notMet: shape.fill(tint.opacity(0.18)).frame(height: 26)
-        case .noData, .future: shape.strokeBorder(Palette.hairline, lineWidth: 1).frame(height: 26)
+        case .met: shape.fill(LinearGradient(colors: [tint, tint.opacity(0.75)], startPoint: .top, endPoint: .bottom)).frame(height: 30)
+        case .inProgress: shape.strokeBorder(tint, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])).frame(height: 30)
+        case .notMet: shape.fill(Palette.sunken).frame(height: 30)
+        case .noData, .future: shape.strokeBorder(Palette.hairline, lineWidth: 1).frame(height: 30)
         }
     }
 
@@ -346,16 +345,16 @@ struct EvidenceChart: View {
     var body: some View {
         Chart(points) { p in
             BarMark(x: .value("Label", p.label), y: .value("Value", p.value), width: .ratio(0.58))
-                .foregroundStyle(p.highlighted ? AnyShapeStyle(tint.gradient) : AnyShapeStyle(Palette.baseline.opacity(0.45)))
-                .cornerRadius(4)
-                .annotation(position: .top, spacing: 3) {
-                    Text(short(p.value)).font(.system(size: 11, weight: .semibold).width(.condensed)).monospacedDigit()
-                        .foregroundStyle(p.highlighted ? tint : Palette.secondaryInk)
+                .foregroundStyle(p.highlighted ? AnyShapeStyle(tint) : AnyShapeStyle(Palette.quiet))
+                .cornerRadius(5)
+                .annotation(position: .top, spacing: 4) {
+                    Text(short(p.value)).font(Typo.mono(11, p.highlighted ? .medium : .regular))
+                        .foregroundStyle(p.highlighted ? Palette.ink : Palette.tertiaryInk)
                 }
         }
         .chartYAxis(.hidden)
         .chartXAxis {
-            AxisMarks { _ in AxisValueLabel().font(.system(size: 10, design: .monospaced)).foregroundStyle(Palette.secondaryInk) }
+            AxisMarks { _ in AxisValueLabel().font(Typo.mono(10)).foregroundStyle(Palette.tertiaryInk) }
         }
         .frame(height: height)
         .accessibilityElement(children: .ignore)
@@ -378,41 +377,45 @@ struct WhyButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                BLIcon(name: "bl.evidence", size: 14)
-                Text(title).font(.footnote.weight(.semibold))
+                BLIcon(name: "bl.evidence", size: 15)
+                Text(title).font(Typo.geist(14, .medium, relativeTo: .footnote))
             }
             .foregroundStyle(tint)
-            .padding(.vertical, 6)
+            .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 }
 
-/// An insight as an accent-barred card: the claim, its evidence and where to go next.
+/// An insight: the claim in one sentence, the number that backs it, the evidence as a small
+/// chart (highlighted bar = the claim), and where to look next. Resolves from dim to sharp.
 struct InsightCard: View {
     let insight: Insight
     var featured = false
     var onWhy: () -> Void
     var onOpen: (() -> Void)?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var resolved = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.m) {
-            HStack {
-                Eyebrow(text: featured ? "Worth knowing" : insight.label, icon: insight.icon, color: insight.tint)
+            HStack(spacing: Space.s) {
+                SignalGlyph(symbol: insight.icon, tint: insight.tint, size: 28)
+                Text((featured ? "Worth knowing · " + insight.label : insight.label).uppercased())
+                    .font(Typo.eyebrow).tracking(0.9).foregroundStyle(Palette.secondaryInk)
                 Spacer()
-                Text("confidence \(insight.confidence.label.lowercased())")
-                    .font(Typo.eyebrow).foregroundStyle(Palette.secondaryInk)
+                ConfidenceMeter(level: insight.confidence)
             }
             Text(insight.headline)
-                .font(featured ? .title3.weight(.semibold) : .body.weight(.semibold))
+                .font(featured ? Typo.story : Typo.geist(17, .semibold, relativeTo: .headline))
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
             if let emphasis = insight.emphasis {
                 HStack(alignment: .firstTextBaseline, spacing: Space.s) {
-                    Text(emphasis).font(Typo.score(featured ? 44 : 32)).monospacedDigit().foregroundStyle(insight.tint)
+                    Text(emphasis).font(Typo.score(featured ? 46 : 34)).foregroundStyle(insight.tint)
                     if let c = insight.emphasisCaption {
-                        Text(c).font(.footnote).foregroundStyle(Palette.secondaryInk)
+                        Text(c).font(Typo.caption).foregroundStyle(Palette.secondaryInk)
                     }
                 }
             }
@@ -420,35 +423,59 @@ struct InsightCard: View {
                 EvidenceChart(points: insight.points, tint: insight.tint)
             }
             Text(insight.explanation)
-                .font(.subheadline)
+                .font(Typo.geist(15, relativeTo: .subheadline))
                 .foregroundStyle(Palette.secondaryInk)
                 .fixedSize(horizontal: false, vertical: true)
             if let caveat = insight.caveat {
                 Label(caveat, systemImage: "info.circle")
-                    .font(.footnote)
-                    .foregroundStyle(Palette.secondaryInk)
+                    .font(Typo.caption)
+                    .foregroundStyle(Palette.tertiaryInk)
             }
+            Rectangle().fill(Palette.hairline).frame(height: 1)
             HStack {
                 WhyButton(tint: insight.tint, action: onWhy)
                 Spacer()
                 if let onOpen {
                     Button(action: onOpen) {
                         HStack(spacing: 4) {
-                            Text("INSPECT").font(Typo.eyebrow).tracking(1.1)
-                            Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
+                            Text("See the days").font(Typo.geist(14, .medium, relativeTo: .footnote))
+                            Image(systemName: "arrow.up.right").font(.system(size: 11, weight: .semibold))
                         }
-                        .foregroundStyle(insight.tint)
+                        .foregroundStyle(Palette.ink)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
-        .padding(.leading, 6)
         .card(padding: featured ? Space.xl : Space.l, tone: featured ? .tinted(insight.tint) : .plain)
-        .overlay(alignment: .leading) {
-            Capsule().fill(insight.tint).frame(width: 3).padding(.vertical, 18).padding(.leading, 1)
+        .opacity(resolved ? 1 : 0.35)
+        .blur(radius: resolved ? 0 : 3)
+        .onAppear {
+            withAnimation(reduceMotion ? nil : Motion.reveal) { resolved = true }
         }
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// Three ticks that fill with confidence: shape, not colour, carries the level.
+struct ConfidenceMeter: View {
+    let level: InsightConfidence
+
+    var body: some View {
+        let filled = switch level { case .high: 3; case .moderate: 2; case .low: 1 }
+        HStack(spacing: 6) {
+            HStack(spacing: 2) {
+                ForEach(0..<3, id: \.self) { i in
+                    Capsule().fill(i < filled ? Palette.ink : Palette.quiet).frame(width: 3, height: 6 + CGFloat(i) * 3)
+                }
+            }
+            .frame(height: 12, alignment: .bottom)
+            Text(level.label.uppercased()).font(Typo.eyebrow).tracking(0.8).foregroundStyle(Palette.tertiaryInk)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Confidence \(level.label)")
     }
 }
 
@@ -466,8 +493,8 @@ struct InsightExplanationSheet: View {
                 VStack(alignment: .leading, spacing: Space.xl) {
                     VStack(alignment: .leading, spacing: Space.s) {
                         Eyebrow(text: "Why you're seeing this", icon: "bl.evidence", color: insight.tint)
-                        Text(insight.headline).font(Typo.title).foregroundStyle(Palette.ink)
-                        Text(insight.explanation).foregroundStyle(Palette.secondaryInk)
+                        Text(insight.headline).font(Typo.story).foregroundStyle(Palette.ink)
+                        Text(insight.explanation).font(Typo.body).foregroundStyle(Palette.secondaryInk)
                     }
                     if insight.points.count >= 2 {
                         EvidenceChart(points: insight.points, tint: insight.tint, height: 130).card()
@@ -479,11 +506,11 @@ struct InsightExplanationSheet: View {
                         + (updated.map { [("Updated", $0.formatted(date: .abbreviated, time: .shortened))] } ?? []))
                     if let caveat = insight.caveat {
                         Label(caveat, systemImage: "exclamationmark.bubble")
-                            .font(.subheadline)
+                            .font(Typo.geist(15, relativeTo: .subheadline))
                             .foregroundStyle(Palette.secondaryInk)
                     }
                     Text("Compared against your own history, not population averages. Not medical advice.")
-                        .font(.footnote)
+                        .font(Typo.caption)
                         .foregroundStyle(Palette.tertiaryInk)
 
                     HStack(spacing: Space.m) {
@@ -529,11 +556,11 @@ struct KeyValueCard: View {
             if let title { Eyebrow(text: title).padding(.bottom, Space.xs) }
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 HStack(alignment: .firstTextBaseline) {
-                    Text(row.0).foregroundStyle(Palette.secondaryInk)
+                    Text(row.0).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
                     Spacer(minLength: Space.m)
-                    Text(row.1).fontWeight(.semibold).foregroundStyle(Palette.ink).multilineTextAlignment(.trailing).monospacedDigit()
+                    Text(row.1).font(Typo.geist(15, .medium, relativeTo: .subheadline)).foregroundStyle(Palette.ink)
+                        .multilineTextAlignment(.trailing).monospacedDigit()
                 }
-                .font(.subheadline)
                 .padding(.vertical, Space.m)
                 if index < rows.count - 1 { Rectangle().fill(Palette.separator).frame(height: 1) }
             }
@@ -555,13 +582,11 @@ struct StreakRing<Center: View>: View {
 
     var body: some View {
         ZStack {
-            Circle().stroke(tint.opacity(0.14), lineWidth: lineWidth)
+            Circle().stroke(Palette.sunken, lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: shown)
-                .stroke(AngularGradient(colors: [tint.opacity(0.5), tint, Palette.cyan], center: .center),
-                        style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .shadow(color: tint.opacity(0.5), radius: 6)
             center()
         }
         .onAppear {
@@ -589,8 +614,8 @@ extension Achievement {
         case .sleep: Palette.sleep
         case .body: Palette.note
         case .ask: Palette.cyan
-        case .checkIn: Palette.mint
-        default: Palette.cobalt
+        case .checkIn: Palette.recovery
+        default: Palette.signal
         }
     }
 }
@@ -604,19 +629,20 @@ struct AchievementBadge: View {
         VStack(spacing: Space.s) {
             ZStack {
                 if achievement.isUnlocked {
-                    Hexagon().fill(LinearGradient(colors: [achievement.tint.opacity(0.9), achievement.tint.opacity(0.35)], startPoint: .top, endPoint: .bottom))
-                    Hexagon().stroke(achievement.tint, lineWidth: 1.5).padding(3)
-                    BLIcon(name: achievement.icon, size: size * 0.38).foregroundStyle(Palette.canvas)
+                    Hexagon().fill(LinearGradient(colors: [achievement.tint.opacity(0.28), achievement.tint.opacity(0.08)], startPoint: .top, endPoint: .bottom))
+                    Hexagon().stroke(achievement.tint.opacity(0.9), lineWidth: 1.25)
+                    Hexagon().stroke(achievement.tint.opacity(0.35), lineWidth: 0.75).padding(5)
+                    BLIcon(name: achievement.icon, size: size * 0.36).foregroundStyle(achievement.tint)
                 } else {
                     Hexagon().fill(Palette.raised)
+                    Hexagon().stroke(Palette.hairline, lineWidth: 1)
                     Hexagon().trim(from: 0, to: achievement.progress)
-                        .stroke(achievement.tint, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                    BLIcon(name: achievement.icon, size: size * 0.36).foregroundStyle(Palette.baseline)
+                        .stroke(achievement.tint, style: StrokeStyle(lineWidth: 1.75, lineCap: .round))
+                    BLIcon(name: achievement.icon, size: size * 0.34).foregroundStyle(Palette.tertiaryInk)
                 }
             }
             .frame(width: size, height: size)
-            .shadow(color: achievement.isUnlocked ? achievement.tint.opacity(0.45) : .clear, radius: 10)
-            Text(achievement.title).font(.caption.weight(.semibold)).foregroundStyle(Palette.ink)
+            Text(achievement.title).font(Typo.geist(12, .semibold, relativeTo: .caption)).foregroundStyle(Palette.ink)
                 .multilineTextAlignment(.center).lineLimit(2).frame(width: size + 24)
             Text((achievement.unlockedOn.map { Fmt.shortDate($0) } ?? achievement.progressText).uppercased())
                 .font(Typo.eyebrow).foregroundStyle(Palette.secondaryInk).lineLimit(1)
@@ -638,5 +664,77 @@ struct Hexagon: Shape {
         }
         p.closeSubpath()
         return p
+    }
+}
+
+// MARK: - v4 primitives
+
+/// A glyph in a soft tinted disc with a hairline ring: the one way Blith presents an icon.
+struct SignalGlyph: View {
+    let symbol: String
+    var tint: Color = Palette.signal
+    var size: CGFloat = 36
+
+    var body: some View {
+        BLIcon(name: symbol, size: size * 0.5)
+            .foregroundStyle(tint)
+            .frame(width: size, height: size)
+            .background(Circle().fill(tint.opacity(0.12)))
+            .overlay(Circle().strokeBorder(tint.opacity(0.25), lineWidth: 1))
+            .accessibilityHidden(true)
+    }
+}
+
+/// "Something is being understood": a soft signal that breathes instead of spinning.
+struct SignalPulse: View {
+    var size: CGFloat = 48
+    var tint: Color = Palette.signal
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase = false
+
+    var body: some View {
+        ZStack {
+            Circle().fill(tint.opacity(0.12)).scaleEffect(phase ? 1 : 0.55)
+            Circle().strokeBorder(tint.opacity(0.35), lineWidth: 1).scaleEffect(phase ? 0.8 : 0.5)
+            Circle().fill(tint).frame(width: size * 0.18, height: size * 0.18)
+        }
+        .frame(width: size, height: size)
+        .onAppear { if !reduceMotion { withAnimation(Motion.breathe) { phase = true } } else { phase = true } }
+        .accessibilityLabel("Loading")
+    }
+}
+
+/// A score band said three ways: glyph, word and luminance.
+struct BandChip: View {
+    let band: ScoreBand?
+    var label: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: Palette.bandSymbol(band)).font(.system(size: 10, weight: .bold))
+            Text(label.uppercased()).font(Typo.eyebrow).tracking(0.9)
+        }
+        .foregroundStyle(Palette.band(band))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(Palette.band(band).opacity(0.12)))
+        .overlay(Capsule().strokeBorder(Palette.band(band).opacity(0.3), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Light / dark / system, chosen in Profile.
+enum AppearancePreference: String, CaseIterable, Identifiable {
+    case system, dark, light
+    static let key = "blith.appearance"
+    var id: String { rawValue }
+    var title: String {
+        switch self { case .system: "Match iPhone"; case .dark: "Dark"; case .light: "Light" }
+    }
+    var scheme: ColorScheme? {
+        switch self { case .system: nil; case .dark: .dark; case .light: .light }
+    }
+    static var current: AppearancePreference {
+        AppearancePreference(rawValue: UserDefaults.standard.string(forKey: key) ?? "") ?? .system
     }
 }

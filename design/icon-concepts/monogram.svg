@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Blith app icon concept — Monogram (any)</title>
+  <defs>
+    <radialGradient id="atm" cx="552" cy="592" r="600" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1B3A8C" stop-opacity="0.42"/><stop offset="1" stop-color="#1B3A8C" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="#080B10"/><rect width="1024" height="1024" fill="url(#atm)"/>
+  <circle cx="552" cy="592" r="184" fill="none" stroke="#4F8EFF" stroke-opacity=".34" stroke-width="124"/>
+  <circle cx="552" cy="592" r="184" fill="none" stroke="#F4F8FF" stroke-width="36"/>
+  <line x1="368" y1="222" x2="368" y2="592" stroke="#F4F8FF" stroke-width="36" stroke-linecap="round"/>
+</svg>

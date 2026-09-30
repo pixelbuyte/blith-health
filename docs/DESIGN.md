@@ -1,105 +1,137 @@
-# Blith design language
+# Blith design language — v4 "Signal"
 
-Blith v3 is a **precision instrument for your own body**. Like WHOOP, it's dark, dense and exact:
-three daily scores on glowing dials, a health monitor of personal ranges, and every number one tap
-away from the factors behind it. From Skintel it takes an editorial layer: serif sentences that
-interpret, mono data labels, bento tiles, accent-barred callouts, a 7-day strip, a heatmap and a
-"why this verdict" list with confidence labels.
+Blith is an **instrument for understanding your own body**. v4 keeps v3's engineering (scores,
+factors, personal ranges, evidence behind every number) and replaces its look, which read as a
+generic dashboard: traffic-light colours, neon dials, identical gradient cards and dark-only.
 
-## What changed from v2
+North star: **curiosity + control + calm**. Data emerges from darkness; colour only appears where
+it means something.
 
-| Area | v2 | v3 |
+## Principles
+
+1. **One story per screen.** Level 1 is one dominant thing (a score, a number with its comparison).
+   Level 2 is two or three supporting facts. Level 3 is detail behind a tap.
+2. **Luminance before hue.** Hierarchy must survive a greyscale screenshot. The brightest thing on a
+   screen is the thing that matters; history is dim, the current range is bright, the selected
+   point is brightest.
+3. **The person is the baseline.** The recurring motif is a translucent *usual range* band with a
+   crisp line or bar for what actually happened. Deviation is visible without maths.
+4. **Status never by colour alone.** Every state is colour + glyph + words. No red/green pairs.
+   Below your usual is not a failure: it is neutral, never red.
+5. **Warm colour is rare and therefore loud.** One amber marker on a blue chart is the unusual day.
+   Coral is reserved for heart signals and genuine alerts.
+6. **Precise geometry, organic motion.** Lines, ticks and grids are exact. Motion borrows from
+   breathing and pulse, and only runs to communicate state or guide attention.
+7. **Plain, specific language.** "Your 30-day average is the highest in six months", never
+   "You're crushing it". Numbers come from BlithCore; copy never overclaims causation.
+
+## Colour tokens (`ios/Blith/DesignSystem/Theme.swift`, `Palette`)
+
+Every token is adaptive (light / dark). Dark is the signature look; light is equally designed.
+
+### Neutrals
+
+| Token | Dark | Light | Use |
+|---|---|---|---|
+| canvas | #080B10 | #F2F4F7 | screen background |
+| surface | #0F131A | #FFFFFF | cards |
+| raised | #161B24 | #F7F8FA | insets, tiles inside cards |
+| sunken | #1C2330 | #E8ECF2 | tracks, empty bars, input fields |
+| hairline | white 8% | #0B1220 9% | borders, separators |
+| ink | #F4F6FA | #0B1220 | primary text, key numbers |
+| secondaryInk | #A7AFBC | #48505F | supporting text |
+| tertiaryInk | #7C8594 | #6A7282 | metadata, axis labels (AA on surface) |
+| quiet | #3A4352 | #C9D0DA | historical/context data in charts |
+
+### Brand blue family
+
+| Token | Dark | Light | Use |
+|---|---|---|---|
+| signal | #4F8EFF | #2563EB | the brand: selection, primary data, controls |
+| signalBright | #7DB2FF | #1D4ED8 | selected point, current value |
+| ice | #B9DAFF | #DCE9FF | soft highlight, band fills, high end of score ramp |
+| deep | #1B3A8C | #1E3A8A | low end of score ramp, depth |
+| cyan | #55D8E8 | #0E9FB3 | walking performance, "now", the assistant |
+
+### Physiological palette (one hue family per signal)
+
+| Signal | Token | Dark | Light |
+|---|---|---|---|
+| Movement / steps / load | signal | #4F8EFF | #2563EB |
+| Walking performance | signal → cyan | | |
+| Sleep | sleep (indigo) | #8B8CFF | #4F46E5 |
+| Recovery / readiness | recovery (teal-cyan) | #4FD1C5 | #0F9488 |
+| Heart | heart (coral) | #FF6B5E | #E0473B |
+| Weight | weight (slate violet) | #A3ADFF | #5B63D3 |
+| Body notes (the person's own) | note (amber) | #F5B04C | #B96F0A |
+| Worth a look (non-critical) | review (amber) | #F5B04C | #B96F0A |
+
+Sleep stages are one indigo ramp (deep darkest → REM lightest); awake is the only warm stage.
+
+### Scores
+
+Readiness, sleep and load share one **blue luminance ramp**: low scores are deep and dim, high
+scores bright and icy. The band is always also named ("High", "Moderate", "Low") and carries a glyph.
+Amber appears only when a signal is outside the person's usual range.
+
+## Type
+
+| Role | Face | Notes |
 |---|---|---|
-| Canvas | Light paper with a cobalt wash; dark mode as an afterthought | Near-black `#07080B` only, like an instrument. A soft glow at the top of each screen takes that screen's signal colour, such as the readiness band on Today. |
-| Today | A step story card | **Sleep, Readiness and Load dials**, a 7-day readiness strip, a **Health Monitor** (resting heart rate, HRV, respiratory rate, blood oxygen and wrist temperature against *your* range), movement at the same time of day, then the evidence-backed insight |
-| Tabs | Today · Walk · Body · Ask | Today · Activity · **Sleep** · Body · Ask |
-| Sleep | A sheet with a timeline | A full tab: performance against personal need, stages with shares, efficiency, time to fall asleep, wake-ups, consistency, 7-night debt, a "tonight" suggestion, timing and a 13-week heatmap |
-| Activity | Walking ranges | A **Load** dial (0–10, logarithmic) with your usual band, its factors and workouts, and a 13-week load heatmap, above the step ranges, gait and walking signature |
-| Body | A flat 2D SVG that could only flip | A **real 3D male figure** (SceneKit) with free turntable rotation, pinch zoom, tap-to-select regions, 3D note markers with dates, and a **Muscles** layer |
-| Mascot | Bli on six screens | Removed for now |
-| Icon | Soft blue tile | Black instrument tile; the "b" is a gauge whose glowing tip is the needle |
+| Hero numerals | Geist Light/Regular, tabular | tall, calm, instrument-like; scales with container |
+| UI, titles | Geist | medium/semibold for titles, regular body |
+| Data labels, units, eyebrows | Geist Mono | caps, +0.8 tracking, never below 11 pt |
+| Interpretation sentences | New York (system serif) | one sentence that explains what a number means |
 
-## Tokens (`ios/Blith/DesignSystem/Theme.swift`)
+Geist and Geist Mono are bundled (SIL OFL 1.1, `Resources/Fonts`). Everything scales with Dynamic Type
+except the giant numerals inside instruments.
 
-| Token | Meaning | Hex |
-|---|---|---|
-| canvas / surface / raised | background / cards / insets | #07080B / #101217 / #181B22 |
-| ink / secondary / tertiary | text | #F2F4F8 / #8A90A0 / #565C6B |
-| mint · amber · coral | readiness bands: high (67+) · moderate (34–66) · low (≤33) | #34E0A1 · #FFB547 · #FF5E57 |
-| cobalt | movement and load, the brand | #4C8DFF |
-| cyan | "now", highlights, the assistant | #3DDCFF |
-| violet (`sleep`) | sleep | #9B8CFF |
-| rose (`heart`) | heart signals | #FF4D6D |
-| orange (`note`) | the person's own body notes | #FF8A4C |
+## Surfaces and depth
 
-**Type:**
+canvas → surface (card) → raised (inset) → overlay (sheet) → floating (Liquid Glass bars).
+In dark mode depth comes from luminance steps and a 1 px top highlight, not shadows. In light mode
+cards get a soft, short shadow. Each screen has a faint atmospheric glow at the top in its signal
+colour (blue for Today and Activity, indigo for Sleep, cyan for Ask). Tab bar, top bar buttons,
+the chat composer and floating controls use Liquid Glass on iOS 26 (material fallback before).
 
-- Scores and hero values use condensed **SF Pro** (`Typo.score`, `.compressed`), the tall instrument numerals.
-- Section heads are expanded heavy caps (`SectionHeader`).
-- Data labels use SF Mono caps (`Eyebrow`, `MonoPill`).
-- Sentences that interpret use the New York serif (`Typo.story`, `Typo.display`).
+## Instruments
 
-**Motion:**
+- **ScoreDial** — a thin precise arc with a tick bezel, the usual band as a soft arc segment, the
+  value as a bright arc ending in a small lit tip. Light numerals. No neon.
+- **BaselineBand chart** — usual range as a translucent band, actual as a crisp line or bars,
+  today/selected brightest, one amber marker for an unusual day.
+- **RangeBar** — the person's range as a band with the latest reading placed on it.
+- **WeekStrip** — seven bars on the blue ramp, today outlined.
+- **Heatmap** — 13 weeks on the blue ramp; missing days are hollow, true zeros are filled dim.
 
-- Easing is iOS `cubic-bezier(0.32, 0.72, 0, 1)` (`Motion.standard`), plus a longer reveal curve (`Motion.reveal`).
-- Dial arcs draw to their value on appear.
-- Reduce Motion is respected everywhere.
+Missing data and real zero always look different.
 
-## Instruments (`DesignSystem/Instruments.swift`)
+## Motion
 
-- **ScoreDial**: a 300° gauge with ticks, a gradient arc, a glow, a needle knob and an optional "usual" band.
-- **FactorRow** + **DivergingMeter**: one factor per row. It shows the value, your usual, a centred meter for which way the factor pulled, and its share of the score.
-- **RangeBar**: your personal range as a band, with the latest reading placed on it.
-- **WeekStrip**: seven readiness bars, today outlined, tappable (Skintel's 7-day strip).
-- **ScoreHeatmap**: 13 weeks, Monday-first, for readiness, sleep or load (Skintel's journal heatmap).
-- **MetricTile**: a bento tile with a mono label, a condensed numeral and a sparkline.
-- **MonoPill**, **SegmentedProgress**.
-
-## Scores (`BlithCore/Analytics/Scores.swift`)
-
-All scores are relative to the person's own history and always shown with their factors.
-
-- **Readiness 0–100.** It needs 14 nights of heart data before it scores; until then the dial shows "Calibrating n/14".
-  - HRV against your 30-day log-baseline: 50%.
-  - Resting heart rate against its baseline: 20%.
-  - Sleep performance: 30%.
-  - −5 when respiratory rate is well above your usual.
-- **Sleep performance 0–100.**
-  - Hours against your personal need: 55%. Need is the 75th percentile of your last 28 nights, kept between 7 and 9 h.
-  - Efficiency: 15%.
-  - Deep + REM share: 15%.
-  - Bedtime consistency against your last 7 nights: 15%.
-- **Load 0–10.** A logarithmic scale of active energy + 4 × exercise minutes. It is shown against the middle half of your last 28 days.
-- **Health Monitor.** Each vital is compared with your 30-night mean ± 1.5 SD. A reading outside that range is never presented as a diagnosis.
+- Standard easing: iOS `cubic-bezier(0.32, 0.72, 0, 1)`; reveal: `cubic-bezier(0.23, 1, 0.32, 1)`.
+- Loading health data: a soft signal that breathes (expands/contracts), not a spinner.
+- Insight appears: resolves from dim/blurred to sharp.
+- Charts build left to right with a short cadence stagger.
+- Reduce Motion replaces all of this with instant state changes.
 
 ## Custom assets
 
-- **App icon** (`design/app-icon.svg`, plus dark and tinted variants).
-- **Symbols** (`Assets.xcassets/Symbols`, preview `design/symbols-preview.png`). 42 glyphs on a 24 pt grid with a 2.0 stroke and round caps, as template SVGs. The tab icons have filled variants. The body glyphs are an athletic male V-taper.
-- **3D body** (`Resources/Body3D`, generated by `design/body3d/build_body.py`).
-  - **Source:** MakeHuman's CC0 base mesh with male, muscular, ideal-proportion targets. The assets are CC0 1.0, and so is the output.
-  - **Regions:** triangles are grouped into the 33 `BodyRegion`s. Each region is its own SceneKit element, so a tap returns the region directly, and notes are anchored to regions, never to screen points.
-  - **Figure look:** a deep cobalt Lambert surface with a Fresnel rim, cyan anatomy lines baked into `body_detail.png`, a bloom and a slowly sweeping key light.
-  - **Muscles layer:** `body_muscle.jpg` is baked in the mesh's UV space from 3D fibre directions per muscle group, so seams stay continuous. It is an illustrative map of the main surface groups, not an anatomical atlas.
-
-## Interactions
-
-- Every dial opens its detail: Sleep → Sleep tab, Readiness → readiness sheet, Load → Activity.
-- Every vital row opens its 30–60 day chart with your range band.
-- Heatmap cells and strip bars select that day.
-- **Body:**
-  - Horizontal drag turns the figure; vertical drags still scroll the page. Pinch zooms.
-  - There are Front, Side and Back shortcuts.
-  - Tapping a region highlights it and opens its panel. On the Muscles layer, the panel names the muscle group.
-  - Selecting a note turns the figure to face that region, zooms in, and shows a 3D label with the date.
-  - The timeline shows which notes were unresolved on a chosen date.
-  - A region list is the accessible alternative to tapping.
+- **App icon** — see `design/app-icon.svg` (light, dark and tinted variants).
+- **Symbols** — `Assets.xcassets/Symbols`, template SVGs on a 24 pt grid, preview in
+  `design/symbols-preview.png`.
+- **3D body** — `Resources/Body3D`, generated by `design/body3d/`. The skin is BodyParts3D (a real
+  adult male scan) and the muscle layer is Z-Anatomy's, fitted to the same frame, so the layers align
+  exactly: 242 named muscle parts. Both are CC BY-SA (attribution in `design/body3d/LICENSE-ASSETS.md`,
+  `body3d.json` and on the Body screen). Notes anchor to regions, never screen points. The 3D stage is a
+  dark imaging chamber in both appearances.
+- **Fonts** — Geist and Geist Mono, SIL OFL 1.1 (`Resources/Fonts/OFL-Geist.txt`).
+- **No mascot** in this phase.
 
 ## Still honest about
 
-- The muscle layer is illustrative, not reviewed anatomy.
-- The Health Monitor and the scores are comparisons with you, not medical assessments.
+- Scores and the health monitor compare you with you; they are not medical assessments.
 - Sleep stages come from consumer devices.
+- Any anatomy shown is for orientation and notes, not diagnosis.
 
 ## Live heart rate (Today)
 

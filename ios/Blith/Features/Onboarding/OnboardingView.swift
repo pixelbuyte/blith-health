@@ -12,9 +12,7 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            Palette.canvas.ignoresSafeArea()
-            RadialGradient(colors: [Palette.cobalt.opacity(0.28), .clear], center: .top, startRadius: 0, endRadius: 460)
-                .ignoresSafeArea()
+            Color.clear.blithBackground(wash: Palette.signal.opacity(0.2))
             Group {
                 switch step {
                 case 0: welcome
@@ -36,8 +34,8 @@ struct OnboardingView: View {
             BrandMark().frame(width: 56, height: 56)
             HStack(spacing: -6) {
                 ScoreDial(fraction: 0.86, valueText: "86", unit: "%", label: "Sleep", color: Palette.sleep, size: 96)
-                ScoreDial(fraction: 0.74, valueText: "74", unit: "%", label: "Readiness", color: Palette.mint, size: 132)
-                ScoreDial(fraction: 0.54, valueText: "5.4", label: "Load", color: Palette.cobalt, size: 96)
+                ScoreDial(fraction: 0.74, valueText: "74", unit: "%", label: "Readiness", color: Palette.band(.high), size: 140, usual: 0.58...0.8)
+                ScoreDial(fraction: 0.54, valueText: "5.4", label: "Load", color: Palette.cyan, size: 96)
             }
             .frame(maxWidth: .infinity)
             .accessibilityHidden(true)
@@ -46,8 +44,8 @@ struct OnboardingView: View {
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Blith turns your Apple Health history into daily readiness, sleep and load scores, a personal health monitor and a 3D body map — every number explained with the evidence behind it.")
-                .font(.body)
-                .foregroundStyle(.secondary)
+                .font(Typo.body)
+                .foregroundStyle(Palette.secondaryInk)
             VStack(alignment: .leading, spacing: Space.m) {
                 bullet("chart.line.uptrend.xyaxis", "Compared with you, not population averages")
                 bullet("info.circle", "Every insight shows its evidence")
@@ -71,15 +69,22 @@ struct OnboardingView: View {
                             if selected { goals.remove(goal) } else { goals.insert(goal) }
                         } label: {
                             VStack(alignment: .leading, spacing: Space.m) {
-                                Image(systemName: goal.symbol).font(.title2)
-                                    .foregroundStyle(selected ? Color.white : Palette.accent)
-                                Text(goal.title).font(.headline).multilineTextAlignment(.leading)
-                                    .foregroundStyle(selected ? Color.white : Color.primary)
+                                HStack {
+                                    SignalGlyph(symbol: goal.symbol, tint: selected ? Palette.signal : Palette.secondaryInk, size: 36)
+                                    Spacer()
+                                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                        .font(.system(size: 20))
+                                        .foregroundStyle(selected ? Palette.signal : Palette.quiet)
+                                }
+                                Text(goal.title).font(Typo.geist(16, .semibold, relativeTo: .headline)).multilineTextAlignment(.leading)
+                                    .foregroundStyle(Palette.ink)
                             }
-                            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+                            .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
                             .padding(Space.l)
-                            .background(selected ? AnyShapeStyle(Palette.accent) : AnyShapeStyle(Palette.card),
+                            .background(selected ? Palette.raised : Palette.surface,
                                         in: RoundedRectangle(cornerRadius: Radius.inner + 4, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: Radius.inner + 4, style: .continuous)
+                                .strokeBorder(selected ? Palette.signal : Palette.hairline, lineWidth: selected ? 1.5 : 1))
                         }
                         .buttonStyle(.plain)
                         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -105,25 +110,27 @@ struct OnboardingView: View {
                                              set: { on in if on { categories.insert(category) } else { categories.remove(category) } })) {
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: Space.s) {
-                                    Text(category.title).font(.headline)
+                                    Text(category.title).font(Typo.geist(17, .semibold, relativeTo: .headline))
                                     Text(category.isRecommended ? "Recommended" : "Optional")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(category.isRecommended ? Palette.accent : .secondary)
+                                        .font(Typo.geist(12, .semibold, relativeTo: .caption))
+                                        .foregroundStyle(category.isRecommended ? Palette.signal : Palette.tertiaryInk)
                                 }
-                                Text(category.detail).font(.subheadline).foregroundStyle(.secondary)
+                                Text(category.detail).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
                             }
                         }
+                        .tint(Palette.signal)
                         .padding(Space.l)
-                        .background(Palette.card, in: RoundedRectangle(cornerRadius: Radius.inner + 4, style: .continuous))
+                        .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.inner + 4, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: Radius.inner + 4, style: .continuous).strokeBorder(Palette.hairline, lineWidth: 1))
                     }
                     Text("Blith only reads data. It never writes to Apple Health and never uses health data for advertising.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .font(Typo.caption)
+                        .foregroundStyle(Palette.secondaryInk)
                         .padding(.top, Space.s)
                 }
             }
             if let error = app.errorMessage {
-                Text(error).font(.footnote).foregroundStyle(.red)
+                Text(error).font(Typo.caption).foregroundStyle(.red)
             }
             if app.healthKitAvailable {
                 primaryButton(connecting ? "Connecting…" : "Connect Apple Health") {
@@ -136,7 +143,7 @@ struct OnboardingView: View {
                 }
                 .disabled(categories.isEmpty || connecting)
             } else {
-                Text("Apple Health isn't available on this device.").font(.footnote).foregroundStyle(.secondary)
+                Text("Apple Health isn't available on this device.").font(Typo.caption).foregroundStyle(Palette.secondaryInk)
             }
             Button {
                 Task {
@@ -156,23 +163,23 @@ struct OnboardingView: View {
 
     func stepHeader(_ title: String, _ subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: Space.s) {
-            Text(title).font(.system(.largeTitle, design: .rounded, weight: .bold))
-            Text(subtitle).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(title).font(Typo.pageTitle).foregroundStyle(Palette.ink)
+            Text(subtitle).font(Typo.body).foregroundStyle(Palette.secondaryInk).fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, Space.xl)
     }
 
     func bullet(_ symbol: String, _ text: String) -> some View {
         Label {
-            Text(text).font(.subheadline.weight(.medium))
+            Text(text).font(Typo.geist(15, .medium, relativeTo: .subheadline)).fixedSize(horizontal: false, vertical: true)
         } icon: {
-            Image(systemName: symbol).foregroundStyle(Palette.accent)
+            Image(systemName: symbol).foregroundStyle(Palette.signal)
         }
     }
 
     func primaryButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title).font(.headline).frame(maxWidth: .infinity, minHeight: 30)
+            Text(title).font(Typo.geist(17, .semibold, relativeTo: .headline)).frame(maxWidth: .infinity, minHeight: 30)
         }
         .glassButton(prominent: true)
         .controlSize(.large)
@@ -194,7 +201,7 @@ struct ProfileSetupStep: View {
         VStack(alignment: .leading, spacing: Space.l) {
             VStack(alignment: .leading, spacing: Space.s) {
                 Text("A few optional details").font(.system(.largeTitle, design: .rounded, weight: .bold))
-                Text("All of this is optional and stays on your iPhone.").foregroundStyle(.secondary)
+                Text("All of this is optional and stays on your iPhone.").foregroundStyle(Palette.secondaryInk)
             }
             .padding(.top, Space.xl)
             Form {
@@ -236,7 +243,7 @@ struct ProfileSetupStep: View {
                 app.profileChanged()
                 done()
             } label: {
-                Text("Continue").font(.headline).frame(maxWidth: .infinity, minHeight: 30)
+                Text("Continue").font(Typo.geist(17, .semibold, relativeTo: .headline)).frame(maxWidth: .infinity, minHeight: 30)
             }
             .glassButton(prominent: true)
             .controlSize(.large)
@@ -257,8 +264,11 @@ struct ImportProgressView: View {
         let current = app.importProgress
         VStack(alignment: .leading, spacing: Space.xl) {
             Spacer()
-            ScoreDial(fraction: current?.fraction ?? 0.02, valueText: "\(Int(((current?.fraction ?? 0) * 100).rounded()))", unit: "%",
-                      label: "Importing", color: Palette.cyan, size: 120)
+            ZStack {
+                SignalPulse(size: 150, tint: Palette.signal)
+                ScoreDial(fraction: current?.fraction ?? 0.02, valueText: "\(Int(((current?.fraction ?? 0) * 100).rounded()))", unit: "%",
+                          label: "Importing", color: Palette.signal, size: 120)
+            }
             Text("Building your health history…").font(Typo.display).foregroundStyle(Palette.ink)
             VStack(alignment: .leading, spacing: Space.l) {
                 ForEach(Array(stages.enumerated()), id: \.offset) { index, item in
@@ -274,16 +284,16 @@ struct ImportProgressView: View {
                                 Text("\(index + 1)").font(.caption.weight(.bold)).foregroundStyle(Palette.accent)
                             }
                         }
-                        Text(item.1).font(.headline).foregroundStyle(state == 0 ? .secondary : .primary)
+                        Text(item.1).font(Typo.geist(17, .semibold, relativeTo: .headline)).foregroundStyle(state == 0 ? .secondary : .primary)
                     }
                 }
             }
             if let current {
                 ProgressView(value: current.fraction).tint(Palette.accent)
-                Text(current.detail).font(.footnote).foregroundStyle(.secondary)
+                Text(current.detail).font(Typo.caption).foregroundStyle(Palette.secondaryInk)
             }
             if let error = app.errorMessage {
-                Text(error).font(.footnote).foregroundStyle(.red)
+                Text(error).font(Typo.caption).foregroundStyle(.red)
                 Button("Continue anyway") { app.phase = .ready }
             }
             Spacer()
@@ -304,27 +314,14 @@ struct ImportProgressView: View {
 
 /// The app mark drawn natively (matches the app icon).
 struct BrandMark: View {
+    /// The app icon ("Horizon"), shown in-app at any size.
     var body: some View {
         GeometryReader { geo in
-            let w = geo.size.width
-            let r = w * 0.2
-            let c = CGPoint(x: w * 0.55, y: w * 0.58)
-            let end = Angle.degrees(195 + 0.87 * 360)
-            ZStack {
-                RoundedRectangle(cornerRadius: w * 0.26, style: .continuous)
-                    .fill(RadialGradient(colors: [Color(hex: 0x12245A), Color(hex: 0x05070D)], center: .center, startRadius: 0, endRadius: w * 0.7))
-                RoundedRectangle(cornerRadius: w * 0.26, style: .continuous).strokeBorder(Palette.cobalt.opacity(0.35), lineWidth: 1)
-                Capsule().fill(Palette.cobalt).frame(width: w * 0.1, height: w * 0.4).position(x: c.x - r, y: w * 0.36)
-                Circle().trim(from: 0, to: 0.87)
-                    .stroke(AngularGradient(colors: [Palette.cobalt, Palette.cyan], center: .center),
-                            style: StrokeStyle(lineWidth: w * 0.1, lineCap: .round))
-                    .rotationEffect(.degrees(195))
-                    .frame(width: r * 2, height: r * 2)
-                    .position(c)
-                    .shadow(color: Palette.cyan.opacity(0.6), radius: w * 0.05)
-                Circle().fill(.white).frame(width: w * 0.05)
-                    .position(x: c.x + r * cos(end.radians), y: c.y + r * sin(end.radians))
-            }
+            Image("BrandMark")
+                .resizable()
+                .scaledToFit()
+                .clipShape(RoundedRectangle(cornerRadius: geo.size.width * 0.225, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: geo.size.width * 0.225, style: .continuous).strokeBorder(Palette.hairline, lineWidth: 1))
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityHidden(true)

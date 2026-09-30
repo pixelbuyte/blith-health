@@ -19,7 +19,7 @@ struct ChatBlockView: View {
                 content
                 if block.link != nil {
                     HStack(spacing: Space.xs) {
-                        Text(openLabel).font(.caption.weight(.semibold))
+                        Text(openLabel).font(Typo.geist(12, .semibold, relativeTo: .caption))
                         Image(systemName: "chevron.right").font(.caption2.weight(.bold))
                     }
                     .foregroundStyle(tint)
@@ -64,7 +64,7 @@ struct ChatBlockView: View {
                 header("Steps · \(b.title)", symbol: "bl.walk")
                 HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                     Text(Fmt.int(b.average ?? 0)).font(Typo.number(28)).monospacedDigit()
-                    Text(b.period == .day ? "so far" : "avg / day").foregroundStyle(.secondary)
+                    Text(b.period == .day ? "so far" : "avg / day").foregroundStyle(Palette.secondaryInk)
                     Spacer()
                     if let c = b.change { DeltaBadge(change: c) }
                 }
@@ -73,8 +73,8 @@ struct ChatBlockView: View {
                     HStack(spacing: 0) {
                         ForEach(b.buckets) { bucket in
                             VStack(spacing: 2) {
-                                Text(Fmt.weekdayShort[bucket.start.weekday - 1]).font(.caption2).foregroundStyle(.secondary)
-                                Text(bucket.value.map { Fmt.decimal($0 / 1000) + "k" } ?? "—").font(.caption.weight(.semibold)).monospacedDigit()
+                                Text(Fmt.weekdayShort[bucket.start.weekday - 1]).font(Typo.geist(11, relativeTo: .caption2)).foregroundStyle(Palette.secondaryInk)
+                                Text(bucket.value.map { Fmt.decimal($0 / 1000) + "k" } ?? "—").font(Typo.geist(12, .semibold, relativeTo: .caption)).monospacedDigit()
                             }
                             .frame(maxWidth: .infinity)
                         }
@@ -92,7 +92,7 @@ struct ChatBlockView: View {
                 Chart {
                     ForEach(b.last7, id: \.date) { d in
                         BarMark(x: .value("Day", Fmt.weekdayShort[d.date.weekday - 1]), y: .value("Steps", d.value))
-                            .foregroundStyle(Palette.accent.gradient)
+                            .foregroundStyle(Palette.signal)
                             .cornerRadius(4)
                     }
                     if let base = b.baseline28 {
@@ -120,7 +120,7 @@ struct ChatBlockView: View {
                 HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                     Text(Fmt.duration(b.asleep)).font(Typo.number(28)).monospacedDigit()
                     if let d = b.differenceFromAverage {
-                        Text("\(Fmt.duration(abs(d))) \(d >= 0 ? "more" : "less") than usual").font(.subheadline).foregroundStyle(.secondary)
+                        Text("\(Fmt.duration(abs(d))) \(d >= 0 ? "more" : "less") than usual").font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
                     }
                 }
                 SleepTimelineView(night: b.night, height: 90)
@@ -143,7 +143,7 @@ struct ChatBlockView: View {
             VStack(alignment: .leading, spacing: Space.xs) {
                 header(b.title, symbol: "number")
                 Text(Fmt.value(b.value, metric: b.metric, units: units)).font(Typo.number(28)).monospacedDigit()
-                Text(b.caption).font(.subheadline).foregroundStyle(.secondary)
+                Text(b.caption).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
             }
         case .insight(let i):
             VStack(alignment: .leading, spacing: Space.s) {
@@ -152,10 +152,10 @@ struct ChatBlockView: View {
                 if let e = i.emphasis {
                     HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                         Text(e).font(Typo.number(24))
-                        if let c = i.emphasisCaption { Text(c).font(.subheadline).foregroundStyle(.secondary) }
+                        if let c = i.emphasisCaption { Text(c).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk) }
                     }
                 }
-                Text(i.explanation).font(.subheadline).foregroundStyle(.secondary)
+                Text(i.explanation).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
             }
         case .daySteps(let b):
             VStack(alignment: .leading, spacing: Space.s) {
@@ -163,13 +163,13 @@ struct ChatBlockView: View {
                 if let steps = b.steps {
                     HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                         Text(Fmt.int(steps)).font(Typo.number(30)).monospacedDigit()
-                        Text("steps").foregroundStyle(.secondary)
+                        Text("steps").foregroundStyle(Palette.secondaryInk)
                     }
                     if let usual = b.usual {
                         comparisonBars(day: steps, usual: usual, weekday: Fmt.weekday(b.date), n: b.usualObservations)
                     }
                 } else {
-                    Text("No steps recorded that day").font(.subheadline.weight(.semibold))
+                    Text("No steps recorded that day").font(Typo.geist(15, .semibold, relativeTo: .subheadline))
                 }
                 if let hourly = b.hourly, hourly.reduce(0, +) > 0 {
                     Chart(Array(hourly.enumerated()), id: \.offset) { item in
@@ -192,7 +192,7 @@ struct ChatBlockView: View {
                               unit: b.readiness == nil ? "/\(ScoreEngine.calibrationDays)" : "%", label: b.readiness == nil ? "Calibrating" : "Readiness",
                               color: b.readiness == nil ? Palette.secondaryInk : Palette.band(b.band), size: 104)
                     ScoreDial(fraction: b.load.map { $0 / LoadResult.maximum }, valueText: b.load.map { Fmt.decimal($0) } ?? "–",
-                              label: "Load", color: Palette.cobalt, size: 76,
+                              label: "Load", color: Palette.cyan, size: 76,
                               usual: b.loadUsual.flatMap { $0.count == 2 ? ($0[0] / LoadResult.maximum)...($0[1] / LoadResult.maximum) : nil })
                         .frame(maxWidth: .infinity)
                 }
@@ -201,10 +201,10 @@ struct ChatBlockView: View {
         case .bodyNote(let n):
             VStack(alignment: .leading, spacing: Space.xs) {
                 header("Body note · \(n.bodyRegion?.displayName ?? "General")", symbol: "bl.bodynote", color: Palette.note)
-                Text(n.title).font(.headline)
-                if let text = n.note, !text.isEmpty { Text(text).font(.subheadline).foregroundStyle(.secondary) }
+                Text(n.title).font(Typo.geist(17, .semibold, relativeTo: .headline))
+                if let text = n.note, !text.isEmpty { Text(text).font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk) }
                 Text("Happened \(Fmt.dayLabel(n.date)) · written \(n.createdAt.formatted(date: .abbreviated, time: .omitted))\(n.resolvedDate.map { " · resolved \(Fmt.shortDate($0))" } ?? "")")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
             }
         case .sources(let b):
             VStack(alignment: .leading, spacing: Space.s) {
@@ -212,9 +212,9 @@ struct ChatBlockView: View {
                 let total = b.sources.reduce(0) { $0 + $1.value }
                 ForEach(b.sources) { s in
                     HStack {
-                        Text(s.source.name).font(.subheadline)
+                        Text(s.source.name).font(Typo.geist(15, relativeTo: .subheadline))
                         Spacer()
-                        Text(total > 0 ? Fmt.percent(s.value / total) : "—").font(.subheadline.weight(.semibold)).monospacedDigit()
+                        Text(total > 0 ? Fmt.percent(s.value / total) : "—").font(Typo.geist(15, .semibold, relativeTo: .subheadline)).monospacedDigit()
                     }
                 }
             }
@@ -235,22 +235,22 @@ struct ChatBlockView: View {
 
     func bar(_ label: String, _ v: Double, _ maxV: Double, _ color: Color) -> some View {
         HStack(spacing: Space.s) {
-            Text(label).font(.caption).foregroundStyle(.secondary).frame(width: 104, alignment: .leading)
+            Text(label).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk).frame(width: 104, alignment: .leading)
             GeometryReader { geo in
                 Capsule().fill(color.gradient).frame(width: max(6, geo.size.width * v / maxV))
             }
             .frame(height: 10)
-            Text(Fmt.int(v)).font(.caption.weight(.semibold)).monospacedDigit().frame(width: 52, alignment: .trailing)
+            Text(Fmt.int(v)).font(Typo.geist(12, .semibold, relativeTo: .caption)).monospacedDigit().frame(width: 52, alignment: .trailing)
         }
     }
 
     func comparisonColumn(_ label: String, _ value: Double, _ metric: HealthMetric, _ maxValue: Double, highlight: Bool) -> some View {
         VStack(alignment: .leading, spacing: Space.xs) {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(highlight ? AnyShapeStyle(Palette.accent.gradient) : AnyShapeStyle(Palette.baseline.opacity(0.5)))
+                .fill(highlight ? AnyShapeStyle(Palette.signalBright) : AnyShapeStyle(Palette.quiet))
                 .frame(height: max(8, 80 * (maxValue > 0 ? value / maxValue : 0)))
-            Text(Fmt.value(value, metric: metric, units: units)).font(.headline).monospacedDigit()
-            Text(label).font(.caption).foregroundStyle(.secondary)
+            Text(Fmt.value(value, metric: metric, units: units)).font(Typo.geist(17, .semibold, relativeTo: .headline)).monospacedDigit()
+            Text(label).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

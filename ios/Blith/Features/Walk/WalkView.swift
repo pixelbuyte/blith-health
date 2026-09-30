@@ -14,8 +14,6 @@ struct WalkView: View {
                 VStack(alignment: .leading, spacing: Space.l) {
                     header
                     if let s = app.snapshot, s.availability[.steps] != .noData || s.todaySteps != nil {
-                        LoadSection(snapshot: s)
-                        SectionHeader(title: "Steps", subtitle: "Every range with its own comparison")
                         PeriodPicker(selection: $router.walkPeriod)
                         story(s, period: router.walkPeriod)
                         chart(s, period: router.walkPeriod)
@@ -25,6 +23,7 @@ struct WalkView: View {
                             bucketPanel(b, s: s)
                         }
                         measured(s, period: router.walkPeriod)
+                        LoadSection(snapshot: s)
                         meaning(s)
                         signature(s)
                         gait(s)
@@ -46,7 +45,7 @@ struct WalkView: View {
                 .padding(.bottom, Space.section)
             }
             .scrollIndicators(.hidden)
-            .blithBackground(wash: Palette.cobalt.opacity(0.2))
+            .blithBackground(wash: Palette.signal.opacity(0.14))
             .refreshable { await app.refresh(force: true) }
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: router.walkPeriod) { _, _ in selectedBucket = nil }
@@ -57,10 +56,10 @@ struct WalkView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: Space.xs) {
                 HStack(spacing: Space.s) {
-                    Eyebrow(text: "Load · steps · gait", icon: "bl.activity", color: Palette.cobalt)
+                    Eyebrow(text: "Steps · load · gait", icon: "bl.activity", color: Palette.signal)
                     if app.isDemo { SampleDataBanner() }
                 }
-                Text("Activity").font(Typo.display).foregroundStyle(Palette.ink)
+                Text("Activity").font(Typo.pageTitle).foregroundStyle(Palette.ink)
             }
             Spacer()
             AvatarButton(name: app.profile.name) { router.sheet = .profile }
@@ -107,16 +106,17 @@ struct WalkView: View {
             Text(storyLine(s, p)).font(Typo.story).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                 Text(Fmt.int(period == .day ? (s.todaySteps ?? 0) : (p.dailyAverage ?? 0)))
-                    .font(Typo.score(heroSize + 10)).monospacedDigit().foregroundStyle(Palette.ink)
+                    .font(Typo.score(period == .day && (s.todaySteps ?? 0) == 0 ? heroSize - 8 : heroSize + 10))
+                    .foregroundStyle(period == .day && (s.todaySteps ?? 0) == 0 ? Palette.tertiaryInk : Palette.ink)
                     .contentTransition(.numericText())
-                Text(period == .day ? "steps so far" : "steps a day").font(.headline).foregroundStyle(Palette.secondaryInk)
+                Text(period == .day ? "steps so far" : "steps a day").font(Typo.geist(17, .medium, relativeTo: .headline)).foregroundStyle(Palette.secondaryInk)
             }
             if period == .day {
                 if let pace = s.pace, let usual = pace.usualByNow {
                     HStack(spacing: Space.m) {
                         if let c = pace.change { DeltaBadge(change: c) }
                         Text("Usually \(Fmt.int(usual)) by now · \(Fmt.int(pace.usualFullDay ?? 0)) by day's end")
-                            .font(.subheadline).foregroundStyle(Palette.secondaryInk)
+                            .font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
                     }
                 }
             } else {
@@ -124,10 +124,10 @@ struct WalkView: View {
                     if let c = p.change { DeltaBadge(change: c, caption: "vs the \(p.previousSpan.dayCount) days before") }
                     if let prev = p.previousDailyAverage {
                         Text("Before: \(Fmt.int(prev)) a day (\(Fmt.shortDate(p.previousSpan.start)) – \(Fmt.shortDate(p.previousSpan.end)))")
-                            .font(.footnote).foregroundStyle(Palette.secondaryInk)
+                            .font(Typo.caption).foregroundStyle(Palette.secondaryInk)
                     }
                     Text("Averages use complete days with records (\(p.daysWithData) of \(p.span.dayCount)); today counts once it's over.")
-                        .font(.footnote).foregroundStyle(Palette.secondaryInk)
+                        .font(Typo.caption).foregroundStyle(Palette.secondaryInk)
                 }
             }
         }
@@ -160,13 +160,13 @@ struct WalkView: View {
             .id(period)
             if period != .day {
                 HStack(spacing: Space.m) {
-                    legendItem(AnyView(Capsule().fill(Palette.cobalt).frame(width: 12, height: 3)), "avg")
-                    legendItem(AnyView(Capsule().fill(Palette.baseline).frame(width: 12, height: 2)), "before")
-                    legendItem(AnyView(Circle().strokeBorder(Palette.baseline, lineWidth: 1.5).frame(width: 7, height: 7)), "no record")
-                    legendItem(AnyView(Capsule().fill(Palette.cobalt).frame(width: 10, height: 3)), "zero")
+                    legendItem(AnyView(Capsule().fill(Palette.ink.opacity(0.55)).frame(width: 12, height: 1.5)), "avg")
+                    legendItem(AnyView(Capsule().fill(Palette.tertiaryInk).frame(width: 12, height: 1.5)), "before")
+                    legendItem(AnyView(Circle().strokeBorder(Palette.tertiaryInk, lineWidth: 1.25).frame(width: 7, height: 7)), "no record")
+                    legendItem(AnyView(Capsule().fill(Palette.signal).frame(width: 10, height: 3)), "zero")
                 }
                 Text(p.bucketUnit == .day ? "Tap or drag across the bars to inspect a day." : "Tap a bar to see that \(p.bucketUnit == .week ? "week" : "month").")
-                    .font(.caption).foregroundStyle(Palette.secondaryInk)
+                    .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
             }
         }
         .card(padding: Space.l)
@@ -175,7 +175,7 @@ struct WalkView: View {
     func legendItem(_ mark: AnyView, _ text: String) -> some View {
         HStack(spacing: 4) {
             mark
-            Text(text).font(.caption2).foregroundStyle(Palette.secondaryInk)
+            Text(text.uppercased()).font(Typo.mono(10)).foregroundStyle(Palette.tertiaryInk)
         }
     }
 
@@ -186,7 +186,7 @@ struct WalkView: View {
             HStack {
                 Eyebrow(text: "\(Fmt.shortDate(b.start)) – \(Fmt.shortDate(end))", icon: "bl.calendar", color: Palette.cobalt)
                 Spacer()
-                Button { selectedBucket = nil } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Palette.baseline) }
+                Button { selectedBucket = nil } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Palette.tertiaryInk) }
                     .accessibilityLabel("Close")
             }
             HStack(alignment: .firstTextBaseline, spacing: Space.s) {
@@ -194,10 +194,10 @@ struct WalkView: View {
                 Text("steps a day").foregroundStyle(Palette.secondaryInk)
             }
             Text("\(days.count) of \(b.dayCount) days have records · total \(Fmt.int(days.values.reduce(0, +)))")
-                .font(.footnote).foregroundStyle(Palette.secondaryInk)
+                .font(Typo.caption).foregroundStyle(Palette.secondaryInk)
             if let best = days.max(by: { $0.value < $1.value }) {
                 Button { router.walkSelectedDate = best.key; selectedBucket = nil } label: {
-                    Text("Biggest day: \(Fmt.dayLabel(best.key)) · \(Fmt.int(best.value))").font(.footnote.weight(.semibold))
+                    Text("Biggest day: \(Fmt.dayLabel(best.key)) · \(Fmt.int(best.value))").font(Typo.geist(13, .semibold, relativeTo: .footnote))
                 }
                 .buttonStyle(.plain).foregroundStyle(Palette.cobalt)
             }
@@ -259,8 +259,8 @@ struct WalkView: View {
                     Eyebrow(text: "How you tend to walk", icon: "bl.steptrail", color: Palette.cobalt)
                     ForEach(s.patterns) { p in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(p.text).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
-                            Text(p.detail).font(.footnote).foregroundStyle(Palette.secondaryInk).fixedSize(horizontal: false, vertical: true)
+                            Text(p.text).font(Typo.geist(15, .semibold, relativeTo: .subheadline)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
+                            Text(p.detail).font(Typo.caption).foregroundStyle(Palette.secondaryInk).fixedSize(horizontal: false, vertical: true)
                         }
                         .accessibilityElement(children: .combine)
                     }
@@ -289,7 +289,7 @@ struct WalkView: View {
                 WalkSignatureView(history: s.ctx.history, today: s.ctx.today)
                     .frame(maxWidth: .infinity)
                 Text("Each ring is a weekday (Monday innermost), each spoke an hour of the day. Bigger, brighter dots mean more steps in that hour, averaged over the last 8 weeks.")
-                    .font(.footnote).foregroundStyle(Palette.secondaryInk)
+                    .font(Typo.caption).foregroundStyle(Palette.secondaryInk)
             }
             .card(padding: Space.xl)
         }
@@ -315,14 +315,14 @@ struct WalkView: View {
                         let earlier = a.average(metric, in: s.ctx.trailing(28, endingDaysAgo: 57))
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(metric.displayName).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
-                                Text("28-day average").font(.caption).foregroundStyle(Palette.secondaryInk)
+                                Text(metric.displayName).font(Typo.geist(15, .semibold, relativeTo: .subheadline)).foregroundStyle(Palette.ink)
+                                Text("28-day average").font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
                             }
                             Spacer()
                             VStack(alignment: .trailing, spacing: 2) {
-                                Text(Fmt.value(recent.value, metric: metric, units: units)).font(.headline).monospacedDigit()
+                                Text(Fmt.value(recent.value, metric: metric, units: units)).font(Typo.geist(17, .semibold, relativeTo: .headline)).monospacedDigit()
                                 if let e = earlier, let c = Stats.percentChange(from: e.value, to: recent.value) {
-                                    Text("\(Fmt.signedPercent(c)) vs 2 months ago").font(.caption).foregroundStyle(Palette.secondaryInk)
+                                    Text("\(Fmt.signedPercent(c)) vs 2 months ago").font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
                                 }
                             }
                         }
@@ -332,7 +332,7 @@ struct WalkView: View {
                     }
                 }
                 .card(padding: Space.l)
-                Text("These describe walking patterns, not a diagnosis.").font(.caption).foregroundStyle(.tertiary)
+                Text("These describe walking patterns, not a diagnosis.").font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(.tertiary)
             }
         }
     }
@@ -371,12 +371,12 @@ struct DayPanel: View {
             HStack {
                 Eyebrow(text: date == ctx.today ? "Today" : Fmt.dayLabel(date), icon: "bl.calendar", color: Palette.cobalt)
                 Spacer()
-                Button(action: onClose) { Image(systemName: "xmark.circle.fill").font(.title3).foregroundStyle(Palette.baseline) }
+                Button(action: onClose) { Image(systemName: "xmark.circle.fill").font(.title3).foregroundStyle(Palette.tertiaryInk) }
                     .accessibilityLabel("Close day")
             }
             if let steps {
                 HStack(alignment: .firstTextBaseline, spacing: Space.s) {
-                    Text(Fmt.int(steps)).font(Typo.number(40)).monospacedDigit().foregroundStyle(Palette.ink)
+                    Text(Fmt.int(steps)).font(Typo.score(44)).foregroundStyle(Palette.ink)
                     Text(steps == 0 ? "steps recorded" : "steps").foregroundStyle(Palette.secondaryInk)
                 }
                 if let usual {
@@ -386,7 +386,7 @@ struct DayPanel: View {
             } else {
                 Text("No steps recorded").font(Typo.storySmall).foregroundStyle(Palette.ink)
                 Text("There's no record for this day, which is different from zero steps. Your phone or watch may not have been with you.")
-                    .font(.subheadline).foregroundStyle(Palette.secondaryInk)
+                    .font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
             }
             HStack {
                 StatTile(title: "Distance", value: h.value(.distanceWalkingRunning, on: date).map { Fmt.distance($0, units: ctx.units) } ?? "—")
@@ -402,9 +402,9 @@ struct DayPanel: View {
                     HStack(spacing: Space.s) {
                         BLIcon(name: "bl.bodynote", size: 16).foregroundStyle(Palette.note)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(note.title).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
+                            Text(note.title).font(Typo.geist(15, .semibold, relativeTo: .subheadline)).foregroundStyle(Palette.ink)
                             Text(note.date == date ? "Noted for this day" : "Unresolved since \(Fmt.dayLabel(note.date))")
-                                .font(.caption).foregroundStyle(Palette.secondaryInk)
+                                .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
                         }
                         Spacer()
                         Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(.tertiary)
@@ -415,13 +415,13 @@ struct DayPanel: View {
                 .buttonStyle(.plain)
             }
             if !notes.isEmpty {
-                Text("Notes are shown beside the data; they don't explain it.").font(.caption).foregroundStyle(Palette.secondaryInk)
+                Text("Notes are shown beside the data; they don't explain it.").font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
             }
             Button {
                 router.tab = .ask
                 Task { await app.ask.send("Tell me about my walking on \(Fmt.dayLabel(date))", app: app) }
             } label: {
-                Label("Ask about this day", systemImage: "sparkles").font(.subheadline.weight(.semibold))
+                Label("Ask about this day", systemImage: "sparkles").font(Typo.geist(15, .semibold, relativeTo: .subheadline))
             }
             .glassButton()
         }
@@ -445,15 +445,15 @@ struct WorkoutList: View {
                             .frame(width: 34, height: 34)
                             .background(Palette.accentSoft, in: Circle())
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(w.activity).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
+                            Text(w.activity).font(Typo.geist(15, .semibold, relativeTo: .subheadline)).foregroundStyle(Palette.ink)
                             Text(w.start.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute()))
-                                .font(.caption).foregroundStyle(Palette.secondaryInk)
+                                .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text(Fmt.duration(w.duration)).font(.subheadline.weight(.semibold)).monospacedDigit().foregroundStyle(Palette.ink)
+                            Text(Fmt.duration(w.duration)).font(Typo.geist(15, .semibold, relativeTo: .subheadline)).monospacedDigit().foregroundStyle(Palette.ink)
                             if let d = w.distanceMeters, d > 0 {
-                                Text(Fmt.distance(d, units: units)).font(.caption).foregroundStyle(Palette.secondaryInk)
+                                Text(Fmt.distance(d, units: units)).font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
                             }
                         }
                     }
@@ -484,25 +484,25 @@ struct LoadSection: View {
         VStack(alignment: .leading, spacing: Space.l) {
             HStack(alignment: .center, spacing: Space.l) {
                 ScoreDial(fraction: load.map { $0.value / LoadResult.maximum }, valueText: load.map { Fmt.decimal($0.value) } ?? "–",
-                          label: "Load", color: Palette.cobalt, size: 140, usual: usual)
+                          label: "Load", color: Palette.cyan, size: 140, usual: usual)
                     .id(day)
                 VStack(alignment: .leading, spacing: Space.s) {
-                    Eyebrow(text: day == snapshot.ctx.today ? "Today so far" : Fmt.dayLabel(day), icon: "bl.load", color: Palette.cobalt)
+                    Eyebrow(text: day == snapshot.ctx.today ? "Today so far" : Fmt.dayLabel(day), icon: "bl.load", color: Palette.cyan)
                     Text(sentence(load)).font(Typo.storySmall).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
                     if let r = load?.usualRange {
-                        MonoPill(text: "usual \(Fmt.decimal(r.lowerBound))–\(Fmt.decimal(r.upperBound))", color: Palette.cobalt)
+                        MonoPill(text: "usual \(Fmt.decimal(r.lowerBound))–\(Fmt.decimal(r.upperBound))", color: Palette.cyan)
                     }
                 }
             }
             if let load {
-                ForEach(load.factors) { FactorRow(factor: $0, color: Palette.cobalt, negative: Palette.cobalt.opacity(0.45)) }
+                ForEach(load.factors) { FactorRow(factor: $0, color: Palette.cyan) }
                 if !load.workouts.isEmpty {
                     VStack(alignment: .leading, spacing: Space.s) {
                         Eyebrow(text: "Workouts")
                         ForEach(load.workouts) { w in
                             HStack {
                                 BLIcon(name: w.isWalking ? "bl.steps" : "bl.energy", size: 14).foregroundStyle(Palette.cobalt)
-                                Text(w.activity).font(.subheadline.weight(.medium)).foregroundStyle(Palette.ink)
+                                Text(w.activity).font(Typo.geist(15, .medium, relativeTo: .subheadline)).foregroundStyle(Palette.ink)
                                 Spacer()
                                 Text("\(Fmt.duration(w.duration)) · \(w.energyKcal.map { "\(Fmt.int($0)) kcal" } ?? "")")
                                     .font(Typo.number(14)).foregroundStyle(Palette.secondaryInk)
@@ -512,13 +512,13 @@ struct LoadSection: View {
                 }
             }
             VStack(alignment: .leading, spacing: Space.s) {
-                Eyebrow(text: "Last 13 weeks · tap a day")
+                Eyebrow(text: "Last 13 weeks · tap or drag")
                 ScoreHeatmap(days: snapshot.scoreHistory, mode: .load, selected: day) { d in withAnimation(Motion.standard) { selected = d } }
             }
             Text("Load combines active energy and exercise minutes. Each point takes more effort than the one before; it isn't a training prescription.")
-                .font(.caption2).foregroundStyle(Palette.tertiaryInk)
+                .font(Typo.geist(11, relativeTo: .caption2)).foregroundStyle(Palette.tertiaryInk)
         }
-        .card(padding: Space.l, tone: .hero)
+        .card(padding: Space.l)
     }
 
     func sentence(_ l: LoadResult?) -> String {

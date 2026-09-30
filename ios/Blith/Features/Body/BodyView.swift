@@ -32,14 +32,14 @@ struct BodyView: View {
                     regionPanel
                     timeline
                     historyList
-                    Text("3D figure generated from MakeHuman's CC0 base mesh. The muscle layer is an illustrative map of the main surface muscle groups, not a medical atlas.")
-                        .font(.caption2).foregroundStyle(Palette.tertiaryInk)
+                    Text("3D figure and muscles derived from BodyParts3D (© The Database Center for Life Science, CC BY-SA 2.1 JP) and Z-Anatomy (CC BY-SA 4.0). For orientation and notes, not a medical atlas.")
+                        .font(Typo.geist(11, relativeTo: .caption2)).foregroundStyle(Palette.tertiaryInk)
                 }
                 .padding(.horizontal, Space.page)
                 .padding(.bottom, Space.section)
             }
             .scrollIndicators(.hidden)
-            .blithBackground(wash: Palette.cobalt.opacity(0.18))
+            .blithBackground(wash: Palette.signal.opacity(0.14))
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $editing) { note in
                 BodyNoteEditor(note: note, isNew: !notes.contains { $0.id == note.id }) { saved in
@@ -67,8 +67,8 @@ struct BodyView: View {
                     Eyebrow(text: "Body map · \(notes.filter { $0.isActive(on: today) }.count) open notes", icon: "bl.body", color: Palette.cyan)
                     if app.isDemo { SampleDataBanner() }
                 }
-                Text("Body").font(Typo.display).foregroundStyle(Palette.ink)
-                Text("Drag to turn · pinch to zoom · tap a region").font(.footnote).foregroundStyle(Palette.secondaryInk)
+                Text("Body").font(Typo.pageTitle).foregroundStyle(Palette.ink)
+                Text("Drag to turn · pinch to zoom · tap a region").font(Typo.caption).foregroundStyle(Palette.secondaryInk)
             }
             Spacer()
             AvatarButton(name: app.profile.name) { router.sheet = .profile }
@@ -95,7 +95,7 @@ struct BodyView: View {
                 selectedMuscle = muscle?.name
                 focusedNoteID = nil
             }
-            controller?.highlight(region)
+            controller?.highlight(region, muscle: muscle)
         }
         controller.onMarker = { id in if let n = notes.first(where: { $0.id == id }) { focus(n) } }
         if let l = UserDefaults.standard.string(forKey: "BlithBodyLayer").flatMap(BodyLayer.init(rawValue:)) { layer = l }
@@ -114,7 +114,7 @@ struct BodyView: View {
     var stage: some View {
         ZStack {
             RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
-                .fill(RadialGradient(colors: [Color(hex: 0x10214F), Color(hex: 0x05070D)], center: UnitPoint(x: 0.5, y: 0.42), startRadius: 10, endRadius: 380))
+                .fill(RadialGradient(colors: [Color(hex: 0x122044), Color(hex: 0x080B10)], center: UnitPoint(x: 0.5, y: 0.42), startRadius: 10, endRadius: 380))
             GridBackdrop().opacity(0.5).clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
             if let controller {
                 BodySceneView(controller: controller, animate: visible && !reduceMotion && scenePhase == .active)
@@ -127,6 +127,7 @@ struct BodyView: View {
             controls
         }
         .frame(height: 540)
+        .environment(\.colorScheme, .dark)
         .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Palette.hairline, lineWidth: 1))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("3D body map")
@@ -154,7 +155,7 @@ struct BodyView: View {
                 .glassSurface(Capsule())
                 Spacer()
                 Button { showRegions = true } label: {
-                    Image(systemName: "list.bullet").font(.subheadline.weight(.semibold)).frame(width: 38, height: 38)
+                    Image(systemName: "list.bullet").font(Typo.geist(15, .semibold, relativeTo: .subheadline)).frame(width: 38, height: 38)
                 }
                 .foregroundStyle(Palette.ink)
                 .glassSurface(Circle(), interactive: true)
@@ -235,7 +236,7 @@ struct BodyView: View {
             VStack(alignment: .leading, spacing: Space.m) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Eyebrow(text: layer == .muscle && selectedMuscle != nil ? "Muscle group · \(region.displayName)" : "Region", icon: "bl.bodynote",
+                        Eyebrow(text: layer == .muscle && selectedMuscle != nil ? "Muscle · \(region.displayName)" : "Region", icon: "bl.bodynote",
                                 color: layer == .muscle ? Palette.coral : Palette.cyan)
                         Text(layer == .muscle ? (selectedMuscle ?? region.displayName) : region.displayName)
                             .font(Typo.title).foregroundStyle(Palette.ink)
@@ -253,7 +254,7 @@ struct BodyView: View {
                     .accessibilityLabel("Close region")
                 }
                 if regionNotes.isEmpty {
-                    Text("No notes here yet.").font(.subheadline).foregroundStyle(Palette.secondaryInk)
+                    Text("No notes here yet.").font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
                 } else {
                     ForEach(regionNotes) { note in
                         NoteRow(note: note, today: today, focused: note.id == focusedNoteID) { focus(note) } onEdit: { editing = note }
@@ -263,12 +264,12 @@ struct BodyView: View {
                     Button {
                         editing = HealthEvent(date: today, kind: .note, title: "", bodyRegion: region, createdAt: AppClock.now())
                     } label: {
-                        Label("Add a note here", systemImage: "plus").font(.subheadline.weight(.semibold))
+                        Label("Add a note here", systemImage: "plus").font(Typo.geist(15, .semibold, relativeTo: .subheadline))
                     }
                     .glassButton(prominent: true)
                     if let focused = regionNotes.first(where: { $0.id == focusedNoteID }) {
                         Button { router.open(.walkDay(focused.date), snapshot: app.snapshot) } label: {
-                            Label("Activity that day", systemImage: "chart.bar").font(.subheadline.weight(.semibold))
+                            Label("Activity that day", systemImage: "chart.bar").font(Typo.geist(15, .semibold, relativeTo: .subheadline))
                         }
                         .glassButton()
                     }
@@ -307,7 +308,7 @@ struct BodyView: View {
                     .tint(Palette.note)
                     .accessibilityValue(Fmt.dayLabel(day))
                 Text("Markers show notes that were unresolved on this date. The figure itself doesn't change — Blith doesn't reconstruct your body for past dates.")
-                    .font(.caption).foregroundStyle(Palette.secondaryInk)
+                    .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
             }
             .card()
         }
@@ -406,11 +407,11 @@ struct NoteRow: View {
                         .padding(.top, 5)
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(note.title.isEmpty ? note.kindLabel : note.title).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
+                    Text(note.title.isEmpty ? note.kindLabel : note.title).font(Typo.geist(15, .semibold, relativeTo: .subheadline)).foregroundStyle(Palette.ink)
                     Text("\(note.bodyRegion?.displayName ?? "General") · \(note.kindLabel)\(note.severity.map { " · " + ["mild", "moderate", "strong"][max(0, min(2, $0 - 1))] } ?? "")")
-                        .font(.caption).foregroundStyle(Palette.secondaryInk)
+                        .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
                     Text("Happened \(Fmt.dayLabel(note.date)), \(note.date.year) · written \(note.createdAt.formatted(date: .abbreviated, time: .omitted))")
-                        .font(.caption2).foregroundStyle(Palette.secondaryInk)
+                        .font(Typo.geist(11, relativeTo: .caption2)).foregroundStyle(Palette.secondaryInk)
                     if let r = note.resolvedDate {
                         Text("Resolved \(Fmt.shortDate(r))").font(.caption2.weight(.semibold)).foregroundStyle(Palette.sleep)
                     }

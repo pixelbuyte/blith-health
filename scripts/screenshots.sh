@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Boots a small and a large iPhone simulator, installs the Debug build and captures key
-# screens (the app is dark by design) using sample data (launch arguments, see LaunchOptions.swift).
+# screens in dark and light appearance using sample data (launch arguments, see LaunchOptions.swift).
 set -euo pipefail
 
 ROOT="${CM_BUILD_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -73,6 +73,13 @@ for DEV in "$SMALL" "$LARGE"; do
     shoot "$UDID" "$NAME-16-newuser" -BlithDemo newUser -BlithClockHour 15.5 -BlithTab today
     shoot "$UDID" "$NAME-17-onboarding" -BlithResetOnboarding YES
   fi
+  # Light appearance: the same key screens, so both modes are checked every run.
+  xcrun simctl ui "$UDID" appearance light
+  shoot "$UDID" "$NAME-L01-today" "${DEMO[@]}" -BlithTab today
+  shoot "$UDID" "$NAME-L04-activity" "${DEMO[@]}" -BlithTab walk -BlithPeriod month
+  shoot "$UDID" "$NAME-L05-sleep" "${DEMO[@]}" -BlithTab sleep
+  shoot "$UDID" "$NAME-L12-ask" "${DEMO[@]}" -BlithTab ask -BlithAskScript YES
+  xcrun simctl ui "$UDID" appearance dark
   # Keep any crash reports and SceneKit/Metal errors from this device for debugging.
   xcrun simctl spawn "$UDID" log show --last 20m --style compact --predicate 'process == "Blith" AND (messageType == error OR messageType == fault)' \
     > "$OUT/$NAME-log.txt" 2>/dev/null || true

@@ -30,7 +30,7 @@ struct AskView: View {
                         if ask.isResponding {
                             HStack(spacing: Space.s) {
                                 AssistantOrb(active: true, size: 30)
-                                Text(ask.progress ?? "Thinking").font(.subheadline).foregroundStyle(Palette.secondaryInk)
+                                Text(ask.progress ?? "Thinking").font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
                                     .contentTransition(.opacity)
                             }
                             .id("progress")
@@ -49,7 +49,7 @@ struct AskView: View {
                     withAnimation(.smooth) { proxy.scrollTo("bottom", anchor: .bottom) }
                 }
             }
-            .blithBackground(wash: Palette.cyan.opacity(0.14))
+            .blithBackground(wash: Palette.cyan.opacity(0.12))
             .safeAreaInset(edge: .bottom) { composer }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -74,7 +74,7 @@ struct AskView: View {
                     Eyebrow(text: "Your health, explained", icon: "bl.sparkle", color: Palette.cyan)
                     if app.isDemo { SampleDataBanner() }
                 }
-                Text("Ask Blith").font(Typo.display).foregroundStyle(Palette.ink)
+                Text("Ask Blith").font(Typo.pageTitle).foregroundStyle(Palette.ink)
             }
             Spacer()
             AssistantOrb(active: responding, size: 54)
@@ -84,24 +84,37 @@ struct AskView: View {
     var emptyState: some View {
         VStack(alignment: .leading, spacing: Space.l) {
             Text("Ask about your walking, sleep, weight or body notes. Every answer is computed from your records and comes with the evidence behind it.")
+                .font(Typo.story)
                 .foregroundStyle(Palette.secondaryInk)
-            VStack(alignment: .leading, spacing: Space.s) {
-                ForEach(Self.suggestions, id: \.0) { s in
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("TRY ASKING").font(Typo.eyebrow).tracking(0.9).foregroundStyle(Palette.tertiaryInk)
+                    .padding(.horizontal, Space.l).padding(.top, Space.m).padding(.bottom, Space.xs)
+                ForEach(Array(Self.suggestions.enumerated()), id: \.offset) { i, s in
                     Button {
                         Task { await app.ask.send(s.0, app: app) }
                     } label: {
-                        HStack(spacing: Space.s) {
-                            BLIcon(name: s.1, size: 16).foregroundStyle(Palette.cobalt)
-                            Text(s.0).font(.subheadline.weight(.medium)).foregroundStyle(Palette.ink)
+                        HStack(spacing: Space.m) {
+                            SignalGlyph(symbol: s.1, tint: Palette.signal, size: 32)
+                            Text(s.0).font(Typo.geist(15, .medium, relativeTo: .subheadline)).foregroundStyle(Palette.ink)
+                                .multilineTextAlignment(.leading)
+                            Spacer(minLength: Space.s)
+                            Image(systemName: "arrow.up.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.tertiaryInk)
                         }
-                        .padding(.horizontal, Space.xs)
+                        .padding(.horizontal, Space.l)
+                        .frame(minHeight: 56)
+                        .contentShape(Rectangle())
                     }
-                    .glassButton()
+                    .buttonStyle(.plain)
+                    if i < Self.suggestions.count - 1 {
+                        Rectangle().fill(Palette.hairline).frame(height: 1).padding(.leading, Space.l + 44)
+                    }
                 }
             }
+            .card(padding: 0)
             if !AppConfig.aiConfigured || Persistence.aiConsent == false {
                 Label("Answers are generated on this iPhone.", systemImage: "iphone")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(Typo.caption).foregroundStyle(Palette.secondaryInk)
             }
         }
     }
@@ -149,20 +162,18 @@ struct MessageView: View {
                 Text(message.text)
                     .padding(.horizontal, Space.l)
                     .padding(.vertical, Space.m)
-                    .foregroundStyle(.white)
-                    .background(Palette.askGradient, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .font(Typo.body)
+                    .foregroundStyle(Palette.ink)
+                    .background(Palette.raised, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.hairline, lineWidth: 1))
             }
             .accessibilityLabel("You: \(message.text)")
         } else {
             VStack(alignment: .leading, spacing: Space.m) {
                 HStack(alignment: .top, spacing: Space.s) {
-                    ZStack {
-                        Circle().fill(Palette.accentSoft)
-                        BLIcon(name: "bl.sparkle", size: 15).foregroundStyle(Palette.cobalt)
-                    }
-                    .frame(width: 30, height: 30)
+                    SignalGlyph(symbol: "bl.sparkle", tint: Palette.cyan, size: 30)
                     Text(attributed(message.text))
-                        .font(.body)
+                        .font(Typo.body)
                         .foregroundStyle(Palette.ink)
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
@@ -194,8 +205,8 @@ struct AnswerEvidenceSheet: View {
                 Section {
                     ForEach(message.evidence) { e in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(e.label).font(.subheadline.weight(.semibold))
-                            Text(e.detail).font(.footnote).foregroundStyle(.secondary)
+                            Text(e.label).font(Typo.geist(15, .semibold, relativeTo: .subheadline))
+                            Text(e.detail).font(Typo.caption).foregroundStyle(Palette.secondaryInk)
                         }
                     }
                 } header: {
@@ -208,12 +219,12 @@ struct AnswerEvidenceSheet: View {
                 if !message.toolsUsed.isEmpty {
                     Section("Calculations run") {
                         ForEach(Array(Set(message.toolsUsed)).sorted(), id: \.self) { t in
-                            Text(t.replacingOccurrences(of: "_", with: " ").capitalized).font(.subheadline)
+                            Text(t.replacingOccurrences(of: "_", with: " ").capitalized).font(Typo.geist(15, relativeTo: .subheadline))
                         }
                     }
                 }
                 Section {
-                    Text("Relationships between records are patterns, not causes. Blith doesn't diagnose.").font(.footnote).foregroundStyle(.secondary)
+                    Text("Relationships between records are patterns, not causes. Blith doesn't diagnose.").font(Typo.caption).foregroundStyle(Palette.secondaryInk)
                 }
             }
             .navigationTitle("Why you're seeing this")
@@ -241,12 +252,12 @@ struct AIConsentSheet: View {
                         point("checkmark.shield", "Used only to answer you. Not used for advertising.")
                         point("iphone", "Prefer not to? Ask still answers common questions on this iPhone.")
                     }
-                    .font(.subheadline)
-                    Text("Blith is not a medical device and doesn't give diagnoses.").font(.footnote).foregroundStyle(.secondary)
+                    .font(Typo.geist(15, relativeTo: .subheadline))
+                    Text("Blith is not a medical device and doesn't give diagnoses.").font(Typo.caption).foregroundStyle(Palette.secondaryInk)
                     VStack(spacing: Space.m) {
                         Button {
                             decide(true)
-                        } label: { Text("Allow AI answers").font(.headline).frame(maxWidth: .infinity) }
+                        } label: { Text("Allow AI answers").font(Typo.geist(17, .semibold, relativeTo: .headline)).frame(maxWidth: .infinity) }
                             .glassButton(prominent: true)
                         Button {
                             decide(false)
@@ -273,21 +284,21 @@ struct AssistantOrb: View {
     var size: CGFloat = 54
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Calm intelligence, not a spinner: concentric light that breathes while Blith is working.
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 30, paused: !active || reduceMotion)) { tl in
             let t = active && !reduceMotion ? tl.date.timeIntervalSinceReferenceDate : 0
+            let breath = 0.5 + 0.5 * sin(t * 1.6)
             ZStack {
-                Circle().fill(RadialGradient(colors: [Palette.cyan.opacity(0.35), .clear], center: .center, startRadius: 0, endRadius: size * 0.6))
-                Circle().trim(from: 0, to: 0.72)
-                    .stroke(AngularGradient(colors: [Palette.cobalt.opacity(0.1), Palette.cobalt, Palette.cyan], center: .center),
-                            style: StrokeStyle(lineWidth: size * 0.07, lineCap: .round))
-                    .rotationEffect(.radians(t * 2.4))
-                    .padding(size * 0.08)
-                Circle().trim(from: 0, to: 0.4)
-                    .stroke(Palette.cyan.opacity(0.7), style: StrokeStyle(lineWidth: size * 0.04, lineCap: .round))
-                    .rotationEffect(.radians(-t * 3.4 + 1))
-                    .padding(size * 0.24)
-                BLIcon(name: "bl.sparkle", size: size * 0.3).foregroundStyle(Palette.ink)
+                Circle().fill(RadialGradient(colors: [Palette.cyan.opacity(0.28 + 0.12 * breath), .clear], center: .center,
+                                             startRadius: 0, endRadius: size * 0.62))
+                Circle().strokeBorder(Palette.cyan.opacity(0.18 + 0.2 * breath), lineWidth: 1)
+                    .scaleEffect(0.78 + 0.1 * breath)
+                Circle().strokeBorder(Palette.signal.opacity(0.35), lineWidth: 1)
+                    .scaleEffect(0.52)
+                Circle().fill(Palette.surface).frame(width: size * 0.42, height: size * 0.42)
+                    .overlay(Circle().strokeBorder(Palette.hairline, lineWidth: 1))
+                BLIcon(name: "bl.sparkle", size: size * 0.22).foregroundStyle(Palette.cyan)
             }
             .frame(width: size, height: size)
         }

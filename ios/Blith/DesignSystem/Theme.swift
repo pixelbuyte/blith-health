@@ -4,69 +4,92 @@ import UIKit
 
 // MARK: - Color
 
-/// Blith's instrument palette: a near-black canvas where colour only ever means something.
-///  • mint / amber / coral — readiness bands (high / moderate / low), never verdicts on the person
-///  • cobalt               — movement and load, the brand
-///  • cyan                 — "now", highlights, the assistant
-///  • violet               — sleep
-///  • rose                 — heart signals
-///  • orange               — the person's own body notes
-/// The app is dark by design, like a precision instrument.
+/// Blith v4 "Signal" palette (see docs/DESIGN.md). Every token adapts to light and dark.
+/// Neutrals carry the hierarchy; blue is the brand and the data; warm colour is rare and means
+/// something: amber = worth a look / the person's own notes, coral = heart and genuine alerts.
 enum Palette {
-    static let canvas = Color(hex: 0x07080B)
-    static let surface = Color(hex: 0x101217)
-    static let raised = Color(hex: 0x181B22)
-    static let hairline = Color.white.opacity(0.07)
+    // Neutrals
+    static let canvas = Color(light: 0xF2F4F7, dark: 0x080B10)
+    static let surface = Color(light: 0xFFFFFF, dark: 0x0F131A)
+    static let raised = Color(light: 0xF6F7FA, dark: 0x161B24)
+    static let sunken = Color(light: 0xE8ECF2, dark: 0x1C2330)
+    static let hairline = Color(light: 0x0B1220, lightOpacity: 0.09, dark: 0xFFFFFF, darkOpacity: 0.08)
+    static let topLight = Color(light: 0xFFFFFF, lightOpacity: 0, dark: 0xFFFFFF, darkOpacity: 0.07)
 
-    static let ink = Color(hex: 0xF2F4F8)
-    static let secondaryInk = Color(hex: 0x8A90A0)
-    static let tertiaryInk = Color(hex: 0x565C6B)
+    static let ink = Color(light: 0x0B1220, dark: 0xF4F6FA)
+    static let secondaryInk = Color(light: 0x48505F, dark: 0xA7AFBC)
+    static let tertiaryInk = Color(light: 0x6A7282, dark: 0x7C8594)
+    static let quiet = Color(light: 0xC9D0DA, dark: 0x3A4352)
 
-    static let cobalt = Color(hex: 0x4C8DFF)
-    static let cobaltDeep = Color(hex: 0x1F4FE0)
-    static let cyan = Color(hex: 0x3DDCFF)
-    static let mint = Color(hex: 0x34E0A1)
-    static let amber = Color(hex: 0xFFB547)
-    static let coral = Color(hex: 0xFF5E57)
-    static let sleep = Color(hex: 0x9B8CFF)
-    static let heart = Color(hex: 0xFF4D6D)
-    static let note = Color(hex: 0xFF8A4C)
-    static let weight = Color(hex: 0xC792FF)
+    // Brand blue family
+    static let signal = Color(light: 0x2563EB, dark: 0x4F8EFF)
+    static let signalBright = Color(light: 0x1D4ED8, dark: 0x7DB2FF)
+    static let ice = Color(light: 0xDCE9FF, dark: 0xB9DAFF)
+    static let deep = Color(light: 0x1E3A8A, dark: 0x1B3A8C)
+    static let cyan = Color(light: 0x0E9FB3, dark: 0x55D8E8)
+
+    // Physiological palette
+    static let sleep = Color(light: 0x4F46E5, dark: 0x8B8CFF)
+    static let recovery = Color(light: 0x0F9488, dark: 0x4FD1C5)
+    static let heart = Color(light: 0xE0473B, dark: 0xFF6B5E)
+    static let weight = Color(light: 0x5B63D3, dark: 0xA3ADFF)
+    static let note = Color(light: 0xB96F0A, dark: 0xF5B04C)
+    static let review = note
 
     // Semantic aliases used across features.
     static let background = canvas
     static let card = surface
     static let cardRaised = raised
     static let stroke = hairline
-    static let separator = Color.white.opacity(0.06)
-    static let baseline = Color(hex: 0x5E6576)
-    static let review = amber
-    static let warm = amber
-    static let navy = Color(hex: 0x0A0F24)
-    static let accent = cobalt
+    static let separator = hairline
+    static let baseline = quiet
+    static let accent = signal
+    static let cobalt = signal
+    static let cobaltDeep = deep
+    static let warm = note
+    static let amber = note
+    static let coral = heart
+    static let mint = recovery
+    static let navy = deep
 
-    static let accentSoft = cobalt.opacity(0.16)
-    static let noteSoft = note.opacity(0.16)
-    static let sleepSoft = sleep.opacity(0.16)
-    static let reviewSoft = amber.opacity(0.16)
-    static let weightSoft = weight.opacity(0.16)
+    static let accentSoft = signal.opacity(0.14)
+    static let noteSoft = note.opacity(0.14)
+    static let sleepSoft = sleep.opacity(0.14)
+    static let reviewSoft = note.opacity(0.14)
+    static let weightSoft = weight.opacity(0.14)
 
-    // Sleep stages: a cool ramp from light to deep; awake is the only warm stage.
-    static let sleepAwake = Color(hex: 0xFF8A7A)
-    static let sleepREM = Color(hex: 0x5FD4FF)
-    static let sleepCore = Color(hex: 0x7E8BFF)
-    static let sleepDeep = Color(hex: 0x5B3FD9)
+    /// The usual-range band behind charts: translucent brand blue.
+    static let usualBand = Color(light: 0x2563EB, lightOpacity: 0.10, dark: 0x4F8EFF, darkOpacity: 0.14)
 
-    static let heroGradient = LinearGradient(colors: [Color(hex: 0x10204F), Color(hex: 0x0B1330)], startPoint: .top, endPoint: .bottom)
-    static let askGradient = LinearGradient(colors: [cobalt, cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
-    static let heroGradientTop = cobalt.opacity(0.22)
+    // Sleep stages: one indigo ramp, deep darkest → REM lightest; awake is the only warm stage.
+    static let sleepAwake = Color(light: 0xD9774B, dark: 0xF2A07B)
+    static let sleepREM = Color(light: 0x8B9CFF, dark: 0xB4BEFF)
+    static let sleepCore = Color(light: 0x5B63F0, dark: 0x7D84FF)
+    static let sleepDeep = Color(light: 0x312E91, dark: 0x4B45C9)
 
+    static let heroGradient = LinearGradient(colors: [Color(light: 0xFFFFFF, dark: 0x122044), Color(light: 0xF4F7FD, dark: 0x0C1224)],
+                                             startPoint: .top, endPoint: .bottom)
+    static let askGradient = LinearGradient(colors: [signal, cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let heroGradientTop = signal.opacity(0.16)
+
+    /// Scores share one blue luminance ramp: low is deep and dim, high is bright. In light mode the
+    /// ramp inverts (high = most saturated) so the most important value keeps the most contrast.
     static func band(_ band: ScoreBand?) -> Color {
         switch band {
-        case .high: mint
-        case .moderate: amber
-        case .low: coral
-        case nil: secondaryInk
+        case .high: Color(light: 0x1D4ED8, dark: 0x9CC8FF)
+        case .moderate: Color(light: 0x3B82F6, dark: 0x4F8EFF)
+        case .low: Color(light: 0x8FA9DD, dark: 0x3A5A9E)
+        case nil: tertiaryInk
+        }
+    }
+
+    /// The glyph that says the band in shape, so status never depends on colour alone.
+    static func bandSymbol(_ band: ScoreBand?) -> String {
+        switch band {
+        case .high: "arrow.up.right"
+        case .moderate: "minus"
+        case .low: "arrow.down.right"
+        case nil: "ellipsis"
         }
     }
 
@@ -93,6 +116,15 @@ extension Color {
     init(hex: UInt32, opacity: Double = 1) {
         self.init(uiColor: UIColor(hex: hex, alpha: opacity))
     }
+
+    /// An adaptive colour: `light` in light appearance, `dark` in dark appearance.
+    init(light: UInt32, lightOpacity: Double = 1, dark: UInt32, darkOpacity: Double = 1) {
+        self.init(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(hex: dark, alpha: darkOpacity)
+                : UIColor(hex: light, alpha: lightOpacity)
+        })
+    }
 }
 
 // MARK: - Spacing, radius, motion
@@ -105,21 +137,23 @@ enum Space {
     static let l: CGFloat = 16
     static let xl: CGFloat = 20
     static let xxl: CGFloat = 28
-    static let section: CGFloat = 30
-    static let page: CGFloat = 16
+    static let section: CGFloat = 32
+    static let page: CGFloat = 18
 }
 
 enum Radius {
-    static let card: CGFloat = 22
-    static let inner: CGFloat = 14
+    static let card: CGFloat = 24
+    static let inner: CGFloat = 16
     static let chip: CGFloat = 10
 }
 
 enum Motion {
-    /// iOS sheet easing (Skintel's `ease-ios`).
+    /// iOS sheet easing.
     static let standard = Animation.timingCurve(0.32, 0.72, 0, 1, duration: 0.45)
     static let snappy = Animation.snappy(duration: 0.25)
     static let reveal = Animation.timingCurve(0.23, 1, 0.32, 1, duration: 0.9)
+    /// A slow, breathing rhythm for "something is being understood" states.
+    static let breathe = Animation.easeInOut(duration: 2.4).repeatForever(autoreverses: true)
 
     static func respecting(_ reduceMotion: Bool, _ animation: Animation = standard) -> Animation? {
         reduceMotion ? nil : animation
@@ -128,28 +162,45 @@ enum Motion {
 
 // MARK: - Typography
 
-/// Condensed SF Pro for instrument numerals, expanded caps for section heads, SF Mono for data
-/// labels, and a New York serif for the few sentences that interpret. All scale with Dynamic Type
-/// except the big dial numerals, which scale with their container.
+/// Geist for numerals and UI, Geist Mono for data labels, New York for the sentences that
+/// interpret. Everything scales with Dynamic Type except the numerals inside instruments.
 enum Typo {
-    /// Tall condensed numerals for scores and hero values.
-    static func score(_ size: CGFloat, weight: Font.Weight = .bold) -> Font {
-        .system(size: size, weight: weight).width(.compressed)
+    static func geist(_ size: CGFloat, _ weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {
+        let name = switch weight {
+        case .ultraLight, .thin, .light: "Geist-Light"
+        case .medium: "Geist-Medium"
+        case .semibold: "Geist-SemiBold"
+        case .bold, .heavy, .black: "Geist-Bold"
+        default: "Geist-Regular"
+        }
+        return .custom(name, size: size, relativeTo: style)
     }
 
-    static func number(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight).width(.condensed)
+    static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .caption) -> Font {
+        .custom(weight == .regular ? "GeistMono-Regular" : "GeistMono-Medium", size: size, relativeTo: style)
+    }
+
+    /// Large calm numerals for scores and hero values (fixed size: they live inside instruments).
+    static func score(_ size: CGFloat, weight: Font.Weight = .light) -> Font {
+        .custom(weight == .light || weight == .thin || weight == .ultraLight ? "Geist-Light" : "Geist-Regular", fixedSize: size)
+            .monospacedDigit()
+    }
+
+    static func number(_ size: CGFloat, weight: Font.Weight = .medium) -> Font {
+        geist(size, weight, relativeTo: .title3).monospacedDigit()
     }
 
     static let display = Font.system(.largeTitle, design: .serif, weight: .regular)
     static let story = Font.system(.title3, design: .serif, weight: .regular)
     static let storySmall = Font.system(.body, design: .serif, weight: .regular)
-    static let title = Font.system(.title2, weight: .bold).width(.condensed)
-    static let sectionTitle = Font.system(.footnote, weight: .heavy).width(.expanded)
-    static let cardTitle = Font.system(.subheadline, weight: .semibold)
-    static let metric = Font.system(.title2, weight: .semibold).width(.condensed)
-    static let caption = Font.footnote
-    static let eyebrow = Font.system(.caption2, design: .monospaced, weight: .medium)
+    static let pageTitle = geist(32, .semibold, relativeTo: .largeTitle)
+    static let title = geist(22, .semibold, relativeTo: .title2)
+    static let sectionTitle = geist(17, .semibold, relativeTo: .headline)
+    static let cardTitle = geist(15, .semibold, relativeTo: .subheadline)
+    static let body = geist(16, .regular, relativeTo: .body)
+    static let metric = geist(22, .medium, relativeTo: .title2).monospacedDigit()
+    static let caption = geist(13, .regular, relativeTo: .footnote)
+    static let eyebrow = mono(11, .medium, relativeTo: .caption2)
 }
 
 // MARK: - Surfaces
@@ -160,32 +211,39 @@ enum CardTone {
     case hero
 }
 
+/// Cards: in dark mode depth comes from a luminance step and a 1 px top highlight; in light mode
+/// from a short soft shadow. Tints are washes, never solid fills.
 struct CardBackground: ViewModifier {
     var padding: CGFloat = Space.l
     var tone: CardTone = .plain
+    @Environment(\.colorScheme) private var scheme
 
     func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background { background }
+            .background { background(shape) }
             .overlay {
-                RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
-                    .strokeBorder(borderColor, lineWidth: 1)
+                shape.strokeBorder(
+                    LinearGradient(colors: [Palette.topLight, borderColor], startPoint: .top, endPoint: .bottom),
+                    lineWidth: 1)
             }
+            .shadow(color: scheme == .dark ? .clear : Color(hex: 0x0B1220, opacity: 0.06), radius: 14, y: 6)
     }
 
-    @ViewBuilder var background: some View {
-        let shape = RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+    @ViewBuilder func background(_ shape: RoundedRectangle) -> some View {
         switch tone {
         case .plain: shape.fill(Palette.surface)
         case .tinted(let c):
             shape.fill(Palette.surface)
-                .overlay(shape.fill(LinearGradient(colors: [c.opacity(0.16), c.opacity(0.03)], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                .overlay(shape.fill(LinearGradient(colors: [c.opacity(scheme == .dark ? 0.12 : 0.07), c.opacity(0)],
+                                                   startPoint: .topLeading, endPoint: .bottomTrailing)))
         case .hero:
             shape.fill(Palette.heroGradient)
-                .overlay(alignment: .topTrailing) {
-                    RadialGradient(colors: [Palette.cobalt.opacity(0.35), .clear], center: .topTrailing, startRadius: 0, endRadius: 260)
+                .overlay(alignment: .top) {
+                    RadialGradient(colors: [Palette.signal.opacity(scheme == .dark ? 0.32 : 0.10), .clear],
+                                   center: .top, startRadius: 0, endRadius: 300)
                         .clipShape(shape)
                 }
         }
@@ -193,8 +251,8 @@ struct CardBackground: ViewModifier {
 
     var borderColor: Color {
         switch tone {
-        case .hero: Palette.cobalt.opacity(0.28)
-        case .tinted(let c): c.opacity(0.22)
+        case .hero: Palette.signal.opacity(0.22)
+        case .tinted(let c): c.opacity(0.18)
         case .plain: Palette.hairline
         }
     }
@@ -225,17 +283,38 @@ extension View {
         }
     }
 
-    /// The canvas, with a soft glow at the top in the screen's signal colour.
+    /// The canvas with a faint atmospheric glow at the top in the screen's signal colour, plus a
+    /// barely visible measurement grid that fades out — the instrument's "glass".
     func blithBackground(wash: Color = Palette.heroGradientTop) -> some View {
         background(alignment: .top) {
             ZStack(alignment: .top) {
                 Palette.canvas
-                RadialGradient(colors: [wash.opacity(0.9), wash.opacity(0)], center: .top, startRadius: 0, endRadius: 420)
-                    .frame(height: 460)
-                    .blur(radius: 10)
+                RadialGradient(colors: [wash, wash.opacity(0)], center: UnitPoint(x: 0.5, y: 0), startRadius: 0, endRadius: 440)
+                    .frame(height: 520)
+                InstrumentGrid()
+                    .frame(height: 360)
+                    .mask(LinearGradient(colors: [.black.opacity(0.9), .clear], startPoint: .top, endPoint: .bottom))
             }
             .ignoresSafeArea()
         }
+    }
+}
+
+/// A faint 24 pt measurement grid, the only texture in Blith.
+struct InstrumentGrid: View {
+    var body: some View {
+        Canvas { ctx, size in
+            let step: CGFloat = 24
+            var path = Path()
+            var x: CGFloat = 0
+            while x <= size.width { path.move(to: CGPoint(x: x, y: 0)); path.addLine(to: CGPoint(x: x, y: size.height)); x += step }
+            var y: CGFloat = 0
+            while y <= size.height { path.move(to: CGPoint(x: 0, y: y)); path.addLine(to: CGPoint(x: size.width, y: y)); y += step }
+            ctx.stroke(path, with: .color(Palette.hairline), lineWidth: 0.5)
+        }
+        .opacity(0.55)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 

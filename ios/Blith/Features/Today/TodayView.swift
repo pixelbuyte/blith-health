@@ -18,10 +18,11 @@ struct TodayView: View {
                     if let s = app.snapshot {
                         scores(s).id("scores")
                         LiveHeartCard(live: app.liveHeart, isDemo: app.isDemo).id("live")
-                        week(s).id("week")
-                        monitor(s).id("monitor")
+                        DayRibbon(ctx: s.ctx).id("ribbon")
                         movement(s).id("movement")
                         insights(s).id("insight")
+                        week(s).id("week")
+                        monitor(s).id("monitor")
                         milestones
                         context(s)
                         moreInsights(s)
@@ -47,7 +48,7 @@ struct TodayView: View {
             }
             .onChange(of: restingBaseline) { _, value in app.liveHeart.resting = value }
             .scrollIndicators(.hidden)
-            .blithBackground(wash: Palette.band(app.snapshot?.readiness.band).opacity(app.snapshot?.readiness.band == nil ? 0.12 : 0.2))
+            .blithBackground(wash: Palette.signal.opacity(0.16))
             .refreshable { await app.refresh(force: true) }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $router.showAchievements) { AchievementsView() }
@@ -73,6 +74,19 @@ struct TodayView: View {
         return name.isEmpty ? part : "\(part), \(name)"
     }
 
+    /// One personal sentence computed from the day so far: movement against the same time on a
+    /// usual day, else the readiness story. Never generic encouragement.
+    var statusLine: String? {
+        guard let s = app.snapshot else { return nil }
+        if let pace = s.pace, let change = pace.change, pace.usualByNow != nil, abs(change) >= 0.08 {
+            let day = pace.basis == .sameWeekday ? Fmt.weekday(s.ctx.today) : "day"
+            return change > 0
+                ? "Your movement is running \(Fmt.percent(change)) ahead of a usual \(day) at this hour."
+                : "You're \(Fmt.percent(abs(change))) behind a usual \(day) at this hour, with the evening still to come."
+        }
+        return s.readiness.score == nil ? nil : s.readiness.summary
+    }
+
     var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
@@ -81,10 +95,17 @@ struct TodayView: View {
                     if app.isDemo { SampleDataBanner() }
                 }
                 Text(greeting)
-                    .font(Typo.display)
+                    .font(Typo.pageTitle)
                     .foregroundStyle(Palette.ink)
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
+                if let line = statusLine {
+                    Text(line)
+                        .font(Typo.story)
+                        .foregroundStyle(Palette.secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
+                }
             }
             Spacer()
             HStack(spacing: Space.s) {
@@ -106,29 +127,26 @@ struct TodayView: View {
             HStack(alignment: .center, spacing: 0) {
                 Button { router.open(.sleep(nil), snapshot: s) } label: {
                     ScoreDial(fraction: s.sleepScore.map { Double($0.score) / 100 }, valueText: s.sleepScore.map { "\($0.score)" } ?? "–",
-                              unit: s.sleepScore == nil ? nil : "%", label: "Sleep", color: Palette.sleep, size: 96)
+                              unit: s.sleepScore == nil ? nil : "%", label: "Sleep", color: Palette.sleep, size: 92)
                 }
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
                 Button { router.sheet = .readiness(nil) } label: {
                     ScoreDial(fraction: r.score.map { Double($0) / 100 }, valueText: r.score.map(String.init) ?? "\(r.calibrationDays)",
                               unit: r.score == nil ? "/\(ScoreEngine.calibrationDays)" : "%", label: r.score == nil ? "Calibrating" : "Readiness",
-                              color: r.score == nil ? Palette.secondaryInk : band, size: 150)
+                              color: r.score == nil ? Palette.tertiaryInk : band, size: 168)
                 }
                 .buttonStyle(.plain)
                 Button { router.open(.walk(.day), snapshot: s) } label: {
                     ScoreDial(fraction: load.map { $0.value / LoadResult.maximum }, valueText: load.map { Fmt.decimal($0.value) } ?? "–",
-                              label: "Load", color: Palette.cobalt, size: 96, usual: usual)
+                              label: "Load", color: Palette.cyan, size: 92, usual: usual)
                 }
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
             }
-            VStack(spacing: Space.s) {
-                if let b = r.band { MonoPill(text: "\(b.label) readiness", color: band) }
-                Text(r.summary).font(Typo.story).foregroundStyle(Palette.ink).multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
+            if let b = r.band {
+                BandChip(band: b, label: "\(b.label) readiness")
             }
-            .frame(maxWidth: .infinity)
             HStack(spacing: 0) {
                 chip("HRV", s.ctx.history.value(.hrv, on: s.ctx.today).map { "\(Fmt.int($0)) ms" })
                 divider
@@ -138,17 +156,17 @@ struct TodayView: View {
                 divider
                 chip("Load usual", load?.usualRange.map { "\(Fmt.decimal($0.lowerBound))–\(Fmt.decimal($0.upperBound))" })
             }
-            WhyButton(tint: band == Palette.secondaryInk ? Palette.cobalt : band, title: "What's behind these scores") { router.sheet = .readiness(nil) }
+            WhyButton(tint: Palette.signal, title: "What's behind these scores") { router.sheet = .readiness(nil) }
         }
-        .card(padding: Space.l, tone: .tinted(r.band == nil ? Palette.cobalt : band))
+        .card(padding: Space.l, tone: .hero)
     }
 
     var divider: some View { Rectangle().fill(Palette.hairline).frame(width: 1, height: 28) }
 
     func chip(_ title: String, _ value: String?) -> some View {
         VStack(spacing: 2) {
-            Text(title.uppercased()).font(Typo.eyebrow).foregroundStyle(Palette.secondaryInk).lineLimit(1)
-            Text(value ?? "–").font(Typo.number(16)).foregroundStyle(Palette.ink).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+            Text(title.uppercased()).font(Typo.eyebrow).tracking(0.8).foregroundStyle(Palette.tertiaryInk).lineLimit(1)
+            Text(value ?? "–").font(Typo.number(16)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
@@ -165,7 +183,7 @@ struct TodayView: View {
                     Eyebrow(text: "Last 7 days · readiness", icon: "bl.readiness")
                     Spacer()
                     let avg = Stats.mean(days.compactMap(\.readiness).map(Double.init))
-                    Text("AVG \(avg.map { Fmt.int($0) } ?? "–")").font(Typo.eyebrow).foregroundStyle(Palette.secondaryInk)
+                    Text("AVG \(avg.map { Fmt.int($0) } ?? "–")").font(Typo.eyebrow).foregroundStyle(Palette.tertiaryInk)
                 }
                 WeekStrip(days: days, selected: s.ctx.today) { d in router.sheet = .readiness(d) }
             }
@@ -179,10 +197,10 @@ struct TodayView: View {
         let m = s.monitor
         return VStack(alignment: .leading, spacing: Space.m) {
             HStack(alignment: .firstTextBaseline) {
-                Eyebrow(text: "Health monitor", icon: "bl.heart", color: Palette.heart)
+                Text("Health monitor").font(Typo.sectionTitle).foregroundStyle(Palette.ink)
                 Spacer()
                 if m.measured > 0 {
-                    MonoPill(text: "\(m.within)/\(m.measured) in your range", color: m.within == m.measured ? Palette.mint : Palette.amber)
+                    MonoPill(text: "\(m.within) of \(m.measured) in your range", color: m.within == m.measured ? Palette.secondaryInk : Palette.note)
                 }
             }
             ForEach(m.vitals) { v in
@@ -191,7 +209,7 @@ struct TodayView: View {
                 if v.id != m.vitals.last?.id { Rectangle().fill(Palette.separator).frame(height: 1) }
             }
             Text("Ranges are your own: the middle of your last 30 nights. Outside your range isn't a diagnosis.")
-                .font(.caption2).foregroundStyle(Palette.tertiaryInk)
+                .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.tertiaryInk)
         }
         .card(padding: Space.l)
     }
@@ -204,26 +222,28 @@ struct TodayView: View {
         return Button { router.open(.walk(.day), snapshot: s) } label: {
             VStack(alignment: .leading, spacing: Space.m) {
                 HStack {
-                    Eyebrow(text: "Movement · \(time)", icon: "bl.steps", color: Palette.cobalt)
+                    Eyebrow(text: "Movement · \(time)", icon: "bl.steps", color: Palette.signal)
                     Spacer()
-                    Image(systemName: "chevron.right").font(.system(size: 11, weight: .bold)).foregroundStyle(Palette.tertiaryInk)
+                    Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Palette.tertiaryInk)
                 }
                 HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                     Text(Fmt.int(s.todaySteps ?? 0))
-                        .font(Typo.score(58))
-                        .monospacedDigit()
+                        .font(Typo.score(60))
                         .foregroundStyle(Palette.ink)
                         .contentTransition(.numericText())
-                    Text("steps").font(Typo.number(18, weight: .medium)).foregroundStyle(Palette.secondaryInk)
+                    Text("steps").font(Typo.geist(17, .medium, relativeTo: .headline)).foregroundStyle(Palette.secondaryInk)
                     Spacer()
-                    if let change = s.pace?.change { DeltaBadge(change: change, tint: Palette.cyan) }
+                    if let change = s.pace?.change {
+                        DeltaBadge(change: change, tint: change >= 0 ? Palette.signalBright : Palette.secondaryInk)
+                    }
                 }
                 if let pace = s.pace, let usual = pace.usualByNow {
-                    Text("Usually \(Fmt.int(usual)) by \(time) on a \(pace.basis == .sameWeekday ? weekday : "typical day").")
-                        .font(.subheadline).foregroundStyle(Palette.secondaryInk)
+                    Text("Usually \(Fmt.int(usual)) by \(time) on a \(pace.basis == .sameWeekday ? weekday : "typical day"). The shaded area is your usual day.")
+                        .font(Typo.geist(14, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if let pace = s.pace, !pace.usualCurve.isEmpty {
-                    AccumulationChart(pace: pace, compact: true, onHero: true).frame(height: 112)
+                    AccumulationChart(pace: pace, compact: true).frame(height: 128)
                 }
                 HStack(spacing: Space.s) {
                     StatTile(title: "Distance", value: s.todayDistance.map { Fmt.distance($0, units: s.ctx.units) } ?? "–")
@@ -232,7 +252,7 @@ struct TodayView: View {
                     StatTile(title: "7-day avg", value: s.average7.map { Fmt.int($0.value) } ?? "–")
                 }
             }
-            .card(padding: Space.l, tone: .hero)
+            .card(padding: Space.l)
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens today's activity")
@@ -334,21 +354,17 @@ struct TodayView: View {
     func noteTile(_ note: HealthEvent, today: LocalDate) -> some View {
         Button { router.open(.body(note.id), snapshot: app.snapshot) } label: {
             HStack(spacing: Space.m) {
-                BLIcon(name: "bl.bodynote", size: 20)
-                    .foregroundStyle(Palette.note)
-                    .frame(width: 42, height: 42)
-                    .background(Circle().fill(Palette.noteSoft))
+                SignalGlyph(symbol: "bl.bodynote", tint: Palette.note, size: 42)
                 VStack(alignment: .leading, spacing: 2) {
                     Eyebrow(text: "Body note · \(note.bodyRegion?.displayName ?? "General")", color: Palette.note)
-                    Text(note.title).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink).lineLimit(2)
+                    Text(note.title).font(Typo.cardTitle).foregroundStyle(Palette.ink).lineLimit(2)
                     Text("\(Fmt.dayLabel(note.date)) · \(note.isActive(on: today) ? "unresolved" : "resolved")")
-                        .font(.caption).foregroundStyle(Palette.secondaryInk)
+                        .font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.system(size: 11, weight: .bold)).foregroundStyle(Palette.tertiaryInk)
             }
             .card(padding: Space.l)
-            .overlay(alignment: .leading) { Capsule().fill(Palette.note).frame(width: 3).padding(.vertical, 16).padding(.leading, 1) }
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens the note on the body map")
@@ -361,16 +377,17 @@ struct VitalRow: View {
 
     var body: some View {
         HStack(spacing: Space.m) {
-            BLIcon(name: reading.metric.icon, size: 16).foregroundStyle(reading.metric.tint).frame(width: 22)
-            VStack(alignment: .leading, spacing: 5) {
+            BLIcon(name: reading.metric.icon, size: 17).foregroundStyle(reading.metric.tint).frame(width: 24)
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(reading.metric.shortName).font(.subheadline.weight(.medium)).foregroundStyle(Palette.ink)
+                    Text(reading.metric.shortName).font(Typo.geist(15, .medium, relativeTo: .subheadline)).foregroundStyle(Palette.ink)
                     Spacer()
-                    Text(reading.value.map { reading.metric.format($0) } ?? "–").font(Typo.number(18)).foregroundStyle(Palette.ink).monospacedDigit()
+                    Text(reading.value.map { reading.metric.format($0) } ?? "–").font(Typo.number(18)).foregroundStyle(Palette.ink)
                 }
                 RangeBar(value: reading.value, range: reading.range, color: reading.metric.tint)
-                HStack {
-                    Text(statusText).font(Typo.eyebrow).foregroundStyle(statusColor)
+                HStack(spacing: 5) {
+                    Image(systemName: statusSymbol).font(.system(size: 9, weight: .bold)).foregroundStyle(statusColor)
+                    Text(statusText).font(Typo.eyebrow).tracking(0.8).foregroundStyle(statusColor)
                     Spacer()
                     if let r = reading.range {
                         Text("\(reading.metric.format(r.lowerBound)) – \(reading.metric.format(r.upperBound))").font(Typo.eyebrow).foregroundStyle(Palette.tertiaryInk)
@@ -395,9 +412,19 @@ struct VitalRow: View {
 
     var statusColor: Color {
         switch reading.status {
-        case .within: Palette.mint
-        case .above, .below: Palette.amber
-        case .learning, .noData: Palette.secondaryInk
+        case .within: Palette.secondaryInk
+        case .above, .below: Palette.note
+        case .learning, .noData: Palette.tertiaryInk
+        }
+    }
+
+    var statusSymbol: String {
+        switch reading.status {
+        case .within: "checkmark"
+        case .above: "arrow.up"
+        case .below: "arrow.down"
+        case .learning: "ellipsis"
+        case .noData: "minus"
         }
     }
 }
@@ -436,10 +463,10 @@ extension HealthMetric {
     var tint: Color {
         switch self {
         case .restingHeartRate, .walkingHeartRate, .vo2Max: Palette.heart
-        case .hrv: Palette.mint
+        case .hrv: Palette.recovery
         case .respiratoryRate: Palette.cyan
-        case .oxygenSaturation: Palette.cobalt
-        case .wristTemperature: Palette.amber
+        case .oxygenSaturation: Palette.signal
+        case .wristTemperature: Palette.sleep
         case .sleepDuration: Palette.sleep
         case .weight, .bodyFat: Palette.weight
         default: Palette.cobalt
@@ -469,10 +496,10 @@ struct AchievementsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Space.xl) {
                     VStack(alignment: .leading, spacing: Space.s) {
-                        Eyebrow(text: "\(app.achievements.filter(\.isUnlocked).count) of \(app.achievements.count) earned", icon: "bl.medal", color: Palette.mint)
-                        Text("Milestones").font(Typo.display).foregroundStyle(Palette.ink)
+                        Eyebrow(text: "\(app.achievements.filter(\.isUnlocked).count) of \(app.achievements.count) earned", icon: "bl.medal", color: Palette.signal)
+                        Text("Milestones").font(Typo.pageTitle).foregroundStyle(Palette.ink)
                         Text("Each one is a fact from your own records, with the day it became true. Nothing expires and nothing resets.")
-                            .foregroundStyle(Palette.secondaryInk)
+                            .font(Typo.body).foregroundStyle(Palette.secondaryInk)
                     }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: Space.l)], spacing: Space.xl) {
                         ForEach(app.achievements) { AchievementBadge(achievement: $0, size: 72) }
@@ -481,7 +508,7 @@ struct AchievementsView: View {
                 }
                 .padding(Space.page)
             }
-            .blithBackground(wash: Palette.mint.opacity(0.14))
+            .blithBackground(wash: Palette.signal.opacity(0.14))
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
     }
