@@ -75,7 +75,8 @@ final class AppModel {
             history = saved
             await rebuildSnapshot()
             phase = .ready
-            await refresh()
+            // Screenshot runs relaunch within seconds; force a sync so demo-only state is applied.
+            await refresh(force: LaunchOptions.huaweiLag != nil)
         } else {
             await runImport(categories: Persistence.connectedCategories)
         }
