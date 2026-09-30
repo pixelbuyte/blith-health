@@ -46,7 +46,7 @@ enum TodaySection: String, CaseIterable, Identifiable {
             return section
         }
         switch LaunchOptions.args.string(forKey: "BlithScrollTo") {
-        case "heart": return .heart
+        case "heart", "live": return .heart
         case "monitor", "context": return .vitals
         case "week", "rhythm", "ribbon", "milestones", "scores": return .insights
         default: return .overview

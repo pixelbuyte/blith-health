@@ -69,6 +69,8 @@ for DEV in "$SMALL" "$LARGE"; do
   shoot "$UDID" "$NAME-18-heart" "${DEMO[@]}" -BlithTab today -BlithTodaySection heart
   shoot "$UDID" "$NAME-19-insights" "${DEMO[@]}" -BlithTab today -BlithTodaySection insights
   shoot "$UDID" "$NAME-02-today-monitor" "${DEMO[@]}" -BlithTab today -BlithScrollTo monitor
+  shoot "$UDID" "$NAME-02b-today-live" "${DEMO[@]}" -BlithTab today -BlithScrollTo live -BlithLiveBPM 74
+  shoot "$UDID" "$NAME-02c-today-live-hard" "${DEMO[@]}" -BlithTab today -BlithScrollTo live -BlithLiveBPM 152
   shoot "$UDID" "$NAME-03-today-movement" "${DEMO[@]}" -BlithTab today -BlithScrollTo movement
   shoot "$UDID" "$NAME-04-activity" "${DEMO[@]}" -BlithTab walk -BlithPeriod month
   shoot "$UDID" "$NAME-05-sleep" "${DEMO[@]}" -BlithTab sleep

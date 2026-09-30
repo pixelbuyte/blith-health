@@ -50,7 +50,7 @@ final class HeartRateMonitor {
         guard !Task.isCancelled, enabled, let mode else { return }
         if mode.isDemo {
             if case .demo(.newUser) = mode { return }
-            reading = HeartRateReading(bpm: 72, measuredAt: AppClock.now(),
+            reading = HeartRateReading(bpm: LiveHeartRate.pinnedBPM ?? 72, measuredAt: AppClock.now(),
                                       source: SourceRef(provider: .demo, name: "Sample data", identifier: "demo.heart"))
             return
         }
