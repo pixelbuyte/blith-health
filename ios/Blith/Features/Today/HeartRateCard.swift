@@ -53,7 +53,7 @@ struct HeartRateCard: View {
             if let reading {
                 VStack(spacing: Space.xs) {
                     if isDemo {
-                        Text("Example reading · 72 BPM")
+                        Text("Example reading · \(Fmt.int(reading.bpm)) BPM")
                     } else {
                         Text(reading.source.name)
                         Text("Measured \(reading.measuredAt.formatted(date: .abbreviated, time: .shortened))")
