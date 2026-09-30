@@ -184,7 +184,7 @@ struct ReadinessWidgetView: View {
                     if let name = s.companionName, let last = s.companionLastSync {
                         HStack(spacing: 4) {
                             Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 9, weight: .semibold))
-                            Text("\(name) · \(Fmt.ago(last, now: date))").lineLimit(1)
+                            Text("\(name.replacingOccurrences(of: " Health", with: "")) · \(Fmt.ago(last, now: date))").lineLimit(1)
                         }
                         .font(Typo.mono(9, .medium))
                         .foregroundStyle(Palette.note)
