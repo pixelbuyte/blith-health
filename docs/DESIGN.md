@@ -133,13 +133,15 @@ Missing data and real zero always look different.
 - Sleep stages come from consumer devices.
 - Any anatomy shown is for orientation and notes, not diagnosis.
 
-## Live heart rate (Today)
+## Heart rate and Today sections
 
-`LiveHeartCard` sits under the score dials. It streams heart rate from Apple Health (`HKAnchoredObjectQuery`), so it is exactly as live as the source: an Apple Watch records every few minutes at rest and every few seconds during a Workout.
+Today uses a persistent horizontal Overview / Heart / Vitals / Insights selector. Each section replaces the content below the selector. Overview leads with `HeartRateCard`, compact scores and walking summary; the Heart section expands the artwork and adds daily heart context. Detailed scores, walking week and milestones remain in Insights.
 
-- The heart pounds at the measured BPM: a "lub-dub" every 60/BPM seconds, eased between readings so it never jumps.
-- The beat swells harder and glows brighter as intensity rises above the person's own resting rate. Zones (Resting, Warm, Elevated, Hard, Peak) are intensity labels, not health judgements.
-- The ECG trace's spacing follows the same rate; its R spike lands with the "lub".
-- LIVE means the reading is under 90 s old. Older readings show how long ago they were, dimmer; after 30 minutes the heart holds still.
-- Reduce Motion stops the pounding but keeps the number and zone.
-- The check-in streak is now a small chip beside the avatar; it replaced the streak and walking-week tiles.
+- The shaded pink/coral heart contains a stationary BPM. Its silhouette gives a subtle double-thump every 60/BPM seconds.
+- `HeartRateMonitor` is owned by Today. One foreground HealthKit observer re-queries the latest raw heart-rate sample when Apple Health changes, including deletions. Changing sections does not restart acquisition.
+- Recent means the actual measurement is less than 60 seconds old. Older readings retain their timestamp and source, and the heart stops moving. Sample-data mode is explicitly labelled.
+- Reduce Motion, leaving Today, hiding the artwork and opening a sheet pause the pulse.
+- The pulse is an illustration of the measured BPM, not a sensor ECG. Continuous Apple Watch streaming is not implemented.
+- The large streak tile is removed from Overview; milestones remain accessible in Insights.
+
+The earlier `LiveHeartCard`, `LiveHeartRate` and summary/waveform helpers from PR #6 remain available in source, with their tests, but Today renders the redesigned `HeartRateCard` and uses `HeartRateMonitor`.

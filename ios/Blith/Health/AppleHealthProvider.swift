@@ -64,9 +64,9 @@ final class AppleHealthProvider: HealthDataProvider, @unchecked Sendable {
             for metric in category.metrics {
                 if let t = quantityType(for: metric) { types.insert(t) }
             }
+            if category == .heart { types.insert(HKQuantityType(.heartRate)) }
             if category == .sleep { types.insert(HKCategoryType(.sleepAnalysis)) }
             if category == .movement { types.insert(HKObjectType.workoutType()) }
-            if category == .heart { types.insert(HKQuantityType(.heartRate)) }
         }
         return types
     }

@@ -32,6 +32,10 @@ enum Palette {
     static let sleep = Color(light: 0x4F46E5, dark: 0x8B8CFF)
     static let recovery = Color(light: 0x0F9488, dark: 0x4FD1C5)
     static let heart = Color(light: 0xE0473B, dark: 0xFF6B5E)
+    // Deep center keeps the white BPM readable in both appearances.
+    static let heartHighlight = Color(hex: 0xFF668F)
+    static let heartBody = Color(hex: 0xCB254F)
+    static let heartDepth = Color(hex: 0x861A3C)
     static let weight = Color(light: 0x5B63D3, dark: 0xA3ADFF)
     static let note = Color(light: 0xB96F0A, dark: 0xF5B04C)
     static let review = note

@@ -658,7 +658,7 @@ struct Hexagon: Shape {
         let c = CGPoint(x: rect.midX, y: rect.midY)
         let r = min(rect.width, rect.height) / 2
         for i in 0..<6 {
-            let a = Double(i) * .pi / 3 - .pi / 2
+            let a: CGFloat = CGFloat(i) * .pi / 3 - .pi / 2
             let pt = CGPoint(x: c.x + r * cos(a), y: c.y + r * sin(a))
             if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
         }

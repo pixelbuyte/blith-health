@@ -1,70 +1,185 @@
 import BlithCore
 import SwiftUI
 
-/// Today: three dials (sleep, readiness, load) against the person's own usual, the vitals behind
-/// them, movement so far compared with the same time on a usual day, and one insight with its evidence.
+/// A concise overview with focused Heart, Vitals and Insights sections behind a persistent bar.
 struct TodayView: View {
     @Environment(AppModel.self) private var app
     @Environment(AppRouter.self) private var router
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
+    // Launch arguments only seed the initial section for simulator screenshots.
+    @State private var section = TodaySection.initial
+    @State private var heartMonitor = HeartRateMonitor()
+    @State private var permissionRevision = 0
+    @State private var requestingHeart = false
+    @State private var appeared = false
     @State private var scrollTarget: String?
+
+    private var heartActive: Bool { appeared && scenePhase == .active && router.tab == .today }
+    private var heartConnected: Bool { app.history?.requestedCategories.contains(.heart) == true }
+    private var heartTaskID: String {
+        "\(app.mode?.storageValue ?? "none")-\(heartActive)-\(heartConnected)-\(permissionRevision)"
+    }
 
     var body: some View {
         @Bindable var router = router
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Space.l) {
-                    header
-                    if let s = app.snapshot {
-                        scores(s).id("scores")
-                        LiveHeartCard(live: app.liveHeart, isDemo: app.isDemo).id("live")
-                        DayRibbon(ctx: s.ctx).id("ribbon")
-                        movement(s).id("movement")
-                        insights(s).id("insight")
-                        week(s).id("week")
-                        monitor(s).id("monitor")
-                        milestones
-                        context(s)
-                        moreInsights(s)
-                        if let history = app.history {
-                            SyncStatusLine(history: history, isSyncing: app.isSyncing).padding(.top, Space.s)
+            VStack(spacing: Space.m) {
+                header.padding(.horizontal, Space.page)
+                if app.snapshot != nil { TodaySectionBar(selection: $section) }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Space.l) {
+                        if let s = app.snapshot {
+                            sectionContent(s)
+                            if let history = app.history {
+                                SyncStatusLine(history: history, isSyncing: app.isSyncing).padding(.top, Space.s)
+                            }
+                        } else {
+                            EmptyStateView(symbol: "bl.today", title: "Connect Apple Health",
+                                           message: "Connect Apple Health to start building your personal baseline.",
+                                           actionTitle: "Open settings", action: { router.sheet = .profile })
                         }
-                    } else {
-                        EmptyStateView(symbol: "bl.today", title: "Connect Apple Health",
-                                       message: "Connect Apple Health to start building your personal baseline.",
-                                       actionTitle: "Open settings", action: { router.sheet = .profile })
                     }
+                    .padding(.horizontal, Space.page)
+                    .padding(.bottom, Space.section)
+                    .scrollTargetLayout()
                 }
-                .padding(.horizontal, Space.page)
-                .padding(.bottom, Space.section)
-                .scrollTargetLayout()
+                .scrollPosition(id: $scrollTarget, anchor: .top)
+                .scrollIndicators(.hidden)
+                .refreshable { await app.refresh(force: true); permissionRevision += 1 }
+                .id(section)
             }
-            .scrollPosition(id: $scrollTarget, anchor: .top)
             .task { await LaunchOptions.scroll { scrollTarget = $0 } }
-            .onAppear { startLive() }
-            .onDisappear { app.liveHeart.stop() }
-            .onChange(of: scenePhase) { _, phase in
-                if phase == .active, router.tab == .today { startLive() } else if phase != .active { app.liveHeart.stop() }
+            .task(id: heartTaskID) {
+                await heartMonitor.run(provider: app.healthKit, mode: app.mode,
+                                       enabled: heartActive, connected: heartConnected)
             }
-            .onChange(of: restingBaseline) { _, value in app.liveHeart.resting = value }
-            .scrollIndicators(.hidden)
+            .onAppear { appeared = true }
+            .onDisappear { appeared = false }
+            .onChange(of: section) { scrollTarget = nil }
             .blithBackground(wash: Palette.signal.opacity(0.16))
-            .refreshable { await app.refresh(force: true) }
-            .toolbar(.hidden, for: .navigationBar)
+            .toolbarVisibility(.hidden, for: .navigationBar)
             .sheet(isPresented: $router.showAchievements) { AchievementsView() }
         }
     }
 
-    /// The person's usual resting heart rate, used to place the live rate in a zone.
-    var restingBaseline: Double? {
-        guard let v = app.snapshot?.monitor.vitals.first(where: { $0.metric == .restingHeartRate }) else { return nil }
-        return v.mean ?? v.value
+    @ViewBuilder
+    private func sectionContent(_ s: HealthSnapshot) -> some View {
+        switch section {
+        case .overview:
+            heartCard().id("heart")
+            compactScores(s)
+            compactMovement(s).id("movement")
+            insights(s).id("insight")
+        case .heart:
+            heartCard(expanded: true).id("heart")
+            heartContext(s)
+            vo2Tile(s)
+        case .vitals:
+            monitor(s).id("monitor")
+            context(s).id("context")
+        case .insights:
+            insights(s).id("insight")
+            moreInsights(s)
+            week(s).id("week")
+            walkingWeek(s).id("rhythm")
+            DayRibbon(ctx: s.ctx).id("ribbon")
+            scores(s).id("scores")
+            milestones.id("milestones")
+        }
     }
 
-    func startLive() {
-        guard app.phase == .ready else { return }
-        app.liveHeart.resting = restingBaseline
-        app.liveHeart.start(simulated: app.isDemo)
+    private func heartCard(expanded: Bool = false) -> some View {
+        HeartRateCard(monitor: heartMonitor, isDemo: app.isDemo,
+                      active: heartActive && router.sheet == nil && !router.showAchievements,
+                      canConnect: app.healthKitAvailable, requesting: requestingHeart,
+                      onConnect: connectHeart, expanded: expanded)
+    }
+
+    private func connectHeart() {
+        guard !requestingHeart else { return }
+        Task {
+            requestingHeart = true
+            await app.connectMore([.heart])
+            requestingHeart = false
+            permissionRevision += 1
+        }
+    }
+
+    private func compactScores(_ s: HealthSnapshot) -> some View {
+        let layout = dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Space.m))
+            : AnyLayout(HStackLayout(spacing: Space.m))
+        return layout {
+            summaryButton("Readiness", value: s.readiness.score.map(String.init) ?? "\(s.readiness.calibrationDays)/14",
+                          detail: s.readiness.score == nil ? "Nights learned" : "Today's score", color: Palette.signal) {
+                router.sheet = .readiness(nil)
+            }
+            summaryButton("Sleep", value: s.sleepScore.map { "\($0.score)" } ?? "–",
+                          detail: s.sleepScore.map { Fmt.duration($0.asleep) } ?? "No reading", color: Palette.sleep) {
+                router.open(.sleep(nil), snapshot: s)
+            }
+            summaryButton("Load", value: s.load.map { Fmt.decimal($0.value) } ?? "–",
+                          detail: "Today's activity", color: Palette.cyan) {
+                router.open(.walk(.day), snapshot: s)
+            }
+        }
+    }
+
+    private func summaryButton(_ title: String, value: String, detail: String, color: Color,
+                               action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text(title).font(Typo.eyebrow).foregroundStyle(color)
+                Text(value).font(Typo.number(26)).foregroundStyle(Palette.ink)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                Text(detail).font(Typo.caption).foregroundStyle(Palette.secondaryInk)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card(padding: Space.m)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func compactMovement(_ s: HealthSnapshot) -> some View {
+        Button { router.open(.walk(.day), snapshot: s) } label: {
+            HStack(spacing: Space.m) {
+                Image(systemName: "figure.walk").font(.system(size: 28)).foregroundStyle(Palette.signal)
+                VStack(alignment: .leading, spacing: Space.xs) {
+                    Text(s.todaySteps.map { "\(Fmt.int($0)) steps" } ?? "No steps recorded")
+                        .font(Typo.sectionTitle).foregroundStyle(Palette.ink)
+                    Text(s.average7.map { "7-day average · \(Fmt.int($0.value))" } ?? "Building your walking baseline")
+                        .font(Typo.caption).foregroundStyle(Palette.secondaryInk)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Palette.tertiaryInk)
+            }
+            .card(padding: Space.l)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens today's activity and charts")
+    }
+
+    private func heartContext(_ s: HealthSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: Space.m) {
+            SectionHeader(title: "Your heart, in context", subtitle: "Daily measures, separate from your latest pulse")
+            ForEach([HealthMetric.restingHeartRate, .hrv], id: \.self) { metric in
+                Button { router.sheet = .vital(metric) } label: {
+                    HStack {
+                        Text(metric.shortName).font(Typo.body)
+                        Spacer()
+                        Text(s.ctx.history.value(metric, on: s.ctx.today).map { metric.format($0) } ?? "–")
+                            .font(Typo.number(18))
+                        Image(systemName: "chevron.right").font(.caption)
+                    }
+                    .foregroundStyle(Palette.ink).padding(.vertical, Space.s)
+                }
+                .buttonStyle(.plain)
+            }
+            Text("A pulse illustration follows the measured BPM; it is not an ECG or a beat-by-beat sensor trace.")
+                .font(Typo.caption).foregroundStyle(Palette.secondaryInk)
+        }
+        .card(padding: Space.l)
     }
 
     var greeting: String {
@@ -95,23 +210,13 @@ struct TodayView: View {
                     if app.isDemo { SampleDataBanner() }
                 }
                 Text(greeting)
-                    .font(Typo.pageTitle)
+                    .font(Typo.geist(26, .semibold, relativeTo: .title))
                     .foregroundStyle(Palette.ink)
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
-                if let line = statusLine {
-                    Text(line)
-                        .font(Typo.story)
-                        .foregroundStyle(Palette.secondaryInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 2)
-                }
             }
             Spacer()
-            HStack(spacing: Space.s) {
-                StreakChip(days: app.streak.current, checkedIn: app.streak.checkedInToday) { router.showAchievements = true }
-                AvatarButton(name: app.profile.name) { router.sheet = .profile }
-            }
+            AvatarButton(name: app.profile.name) { router.sheet = .profile }
         }
         .padding(.top, Space.s)
     }
@@ -285,6 +390,25 @@ struct TodayView: View {
                                 onOpen: { router.open(insight.link, snapshot: s) })
                 }
             }
+        }
+    }
+
+    // MARK: Walking week
+
+    @ViewBuilder
+    func walkingWeek(_ s: HealthSnapshot) -> some View {
+        if let c = s.consistency {
+            VStack(alignment: .leading, spacing: Space.s) {
+                Eyebrow(text: "Walking week", icon: "bl.steptrail")
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text("\(c.metCount)").font(Typo.score(50)).foregroundStyle(Palette.ink)
+                    Text("/7").font(Typo.geist(15, .medium, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
+                }
+                ConsistencyDots(week: c)
+                Text(c.thresholdIsGoal ? "days at your goal" : "days near your usual").font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+            .card(padding: Space.l)
         }
     }
 
@@ -511,29 +635,5 @@ struct AchievementsView: View {
             .blithBackground(wash: Palette.signal.opacity(0.14))
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
-    }
-}
-
-/// The check-in streak, small: a flame and the day count. Opens the milestones.
-struct StreakChip: View {
-    let days: Int
-    let checkedIn: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 5) {
-                BLIcon(name: "bl.streak", size: 14)
-                Text("\(days)").font(Typo.number(16)).monospacedDigit()
-            }
-            .foregroundStyle(checkedIn ? Palette.mint : Palette.secondaryInk)
-            .padding(.horizontal, 12)
-            .frame(height: 40)
-            .background(Capsule().fill(Palette.raised))
-            .overlay(Capsule().strokeBorder((checkedIn ? Palette.mint : Palette.hairline).opacity(checkedIn ? 0.45 : 1), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(days) day check-in streak")
-        .accessibilityHint("Opens milestones")
     }
 }

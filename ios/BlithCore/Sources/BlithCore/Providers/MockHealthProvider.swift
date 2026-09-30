@@ -128,7 +128,11 @@ public struct MockHealthProvider: HealthDataProvider {
                 let loadEffect = max(-1, min(1, (hourly(for: date.adding(days: -1), today: today).total - 7_500) / 5_000))
                 let sinceAnkle = Self.ankleNoteDaysAgo - date.days(until: today)
                 let ankle = scenario == .balanced && (0...3).contains(sinceAnkle) ? 1.0 : 0
-                let restingHR = 58.5 + 2.5 * min(k, 120) / 120 - 1.3 * sleepEffect + 1.1 * loadEffect + 1.8 * ankle + v.gaussian() * 1.2
+                let restingBaseline: Double = 58.5 + 2.5 * min(k, 120) / 120
+                let sleepAdjusted = restingBaseline - 1.3 * sleepEffect
+                let loadAdjusted = sleepAdjusted + 1.1 * loadEffect
+                let ankleAdjusted = loadAdjusted + 1.8 * ankle
+                let restingHR = ankleAdjusted + v.gaussian() * 1.2
                 rhr.append(DailyAggregate(date: date, metric: .restingHeartRate, value: restingHR, sampleCount: 1))
                 let variability = 46 + 6.5 * sleepEffect - 4.5 * loadEffect - 5 * ankle + v.gaussian() * 6
                 hrv.append(DailyAggregate(date: date, metric: .hrv, value: max(15, variability), sampleCount: 5))
