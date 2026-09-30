@@ -174,6 +174,18 @@ struct AssistantTests {
         HealthSnapshot.build(history: T.history(steps: steps), profile: UserProfile(), now: T.now, calendar: T.calendar)
     }
 
+    @Test func heartRateToolReportsHighestWithTime() {
+        let noon = T.calendar.startOfDay(for: T.now).addingTimeInterval(12 * 3600)
+        let samples = [HeartSample(date: noon.addingTimeInterval(-3600), bpm: 62), HeartSample(date: noon, bpm: 151), HeartSample(date: noon.addingTimeInterval(600), bpm: 90)]
+        let tools = HealthAssistantTools(snapshot: snapshot([:]), heartSamples: samples)
+        let out = tools.execute(name: "get_heart_rate", arguments: [:])
+        #expect(out.result["highest"]?["bpm"]?.doubleValue == 151)
+        #expect(out.result["highest"]?["time"]?.stringValue == "12:00 PM")
+        #expect(out.result["lowest"]?["bpm"]?.doubleValue == 62)
+        #expect(out.result["readings"]?.doubleValue == 3)
+        #expect(HealthAssistantTools(snapshot: snapshot([:])).execute(name: "get_heart_rate", arguments: [:]).result["readings"]?.doubleValue == 0)
+    }
+
     @Test func comparePeriodsComputesChangeDeterministically() {
         var steps = T.constant(7410, days: 1...7)
         for d in 8...14 { steps[d] = 6810 }
