@@ -6,6 +6,7 @@ import SwiftUI
 struct TodayView: View {
     @Environment(AppModel.self) private var app
     @Environment(AppRouter.self) private var router
+    @Environment(\.scenePhase) private var scenePhase
     @State private var scrollTarget: String?
 
     var body: some View {
@@ -16,12 +17,12 @@ struct TodayView: View {
                     header
                     if let s = app.snapshot {
                         scores(s).id("scores")
+                        LiveHeartCard(live: app.liveHeart, isDemo: app.isDemo).id("live")
                         DayRibbon(ctx: s.ctx).id("ribbon")
                         movement(s).id("movement")
                         insights(s).id("insight")
                         week(s).id("week")
                         monitor(s).id("monitor")
-                        rhythm(s).id("rhythm")
                         milestones
                         context(s)
                         moreInsights(s)
@@ -40,12 +41,30 @@ struct TodayView: View {
             }
             .scrollPosition(id: $scrollTarget, anchor: .top)
             .task { await LaunchOptions.scroll { scrollTarget = $0 } }
+            .onAppear { startLive() }
+            .onDisappear { app.liveHeart.stop() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active, router.tab == .today { startLive() } else if phase != .active { app.liveHeart.stop() }
+            }
+            .onChange(of: restingBaseline) { _, value in app.liveHeart.resting = value }
             .scrollIndicators(.hidden)
             .blithBackground(wash: Palette.signal.opacity(0.16))
             .refreshable { await app.refresh(force: true) }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $router.showAchievements) { AchievementsView() }
         }
+    }
+
+    /// The person's usual resting heart rate, used to place the live rate in a zone.
+    var restingBaseline: Double? {
+        guard let v = app.snapshot?.monitor.vitals.first(where: { $0.metric == .restingHeartRate }) else { return nil }
+        return v.mean ?? v.value
+    }
+
+    func startLive() {
+        guard app.phase == .ready else { return }
+        app.liveHeart.resting = restingBaseline
+        app.liveHeart.start(simulated: app.isDemo)
     }
 
     var greeting: String {
@@ -89,7 +108,10 @@ struct TodayView: View {
                 }
             }
             Spacer()
-            AvatarButton(name: app.profile.name) { router.sheet = .profile }
+            HStack(spacing: Space.s) {
+                StreakChip(days: app.streak.current, checkedIn: app.streak.checkedInToday) { router.showAchievements = true }
+                AvatarButton(name: app.profile.name) { router.sheet = .profile }
+            }
         }
         .padding(.top, Space.s)
     }
@@ -264,40 +286,6 @@ struct TodayView: View {
                 }
             }
         }
-    }
-
-    // MARK: Rhythm (bento: streak + week)
-
-    func rhythm(_ s: HealthSnapshot) -> some View {
-        let streak = app.streak
-        let next = [3, 7, 14, 30, 60, 100].first { $0 > streak.current } ?? streak.current + 1
-        return HStack(alignment: .top, spacing: Space.m) {
-            VStack(alignment: .leading, spacing: Space.s) {
-                Eyebrow(text: "Check-in streak", icon: "bl.streak", color: Palette.signal)
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("\(streak.current)").font(Typo.score(50)).foregroundStyle(Palette.ink)
-                    Text(streak.current == 1 ? "day" : "days").font(Typo.geist(15, .medium, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
-                }
-                SegmentedProgress(total: min(next, 14), done: min(next, 14) * streak.current / max(next, 1), color: Palette.signal)
-                Text("\(next - streak.current) to \(next) · best \(streak.best)").font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
-            }
-            .frame(maxHeight: .infinity, alignment: .top)
-            .card(padding: Space.l)
-            if let c = s.consistency {
-                VStack(alignment: .leading, spacing: Space.s) {
-                    Eyebrow(text: "Walking week", icon: "bl.steptrail")
-                    HStack(alignment: .firstTextBaseline, spacing: 2) {
-                        Text("\(c.metCount)").font(Typo.score(50)).foregroundStyle(Palette.ink)
-                        Text("/7").font(Typo.geist(15, .medium, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
-                    }
-                    ConsistencyDots(week: c)
-                    Text(c.thresholdIsGoal ? "days at your goal" : "days near your usual").font(Typo.geist(12, relativeTo: .caption)).foregroundStyle(Palette.secondaryInk)
-                }
-                .frame(maxHeight: .infinity, alignment: .top)
-                .card(padding: Space.l)
-            }
-        }
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: Milestones
@@ -523,5 +511,29 @@ struct AchievementsView: View {
             .blithBackground(wash: Palette.signal.opacity(0.14))
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+    }
+}
+
+/// The check-in streak, small: a flame and the day count. Opens the milestones.
+struct StreakChip: View {
+    let days: Int
+    let checkedIn: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                BLIcon(name: "bl.streak", size: 14)
+                Text("\(days)").font(Typo.number(16)).monospacedDigit()
+            }
+            .foregroundStyle(checkedIn ? Palette.mint : Palette.secondaryInk)
+            .padding(.horizontal, 12)
+            .frame(height: 40)
+            .background(Capsule().fill(Palette.raised))
+            .overlay(Capsule().strokeBorder((checkedIn ? Palette.mint : Palette.hairline).opacity(checkedIn ? 0.45 : 1), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(days) day check-in streak")
+        .accessibilityHint("Opens milestones")
     }
 }

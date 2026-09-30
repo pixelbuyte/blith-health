@@ -51,6 +51,7 @@ final class AppModel {
     let router = AppRouter()
     let ask = AskModel()
     let healthKit = AppleHealthProvider()
+    let liveHeart = LiveHeartRate()
     private let store = LocalHealthStore(directory: LocalHealthStore.defaultDirectory())
 
     init() {
