@@ -23,6 +23,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Select Xcode 26 for Liquid Glass APIs
+        run: |
+          XCODE_APP=$(ls -d /Applications/Xcode_26*.app | sort | tail -1)
+          sudo xcode-select --switch "$XCODE_APP/Contents/Developer"
+          xcodebuild -version
       - name: Install XcodeGen
         run: command -v xcodegen || brew install xcodegen
       - name: Core tests
