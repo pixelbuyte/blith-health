@@ -1,5 +1,10 @@
 # Blith design language — v4 "Signal"
 
+> **Redesign 2 in progress** (branch `redesign-2/*`). Step 1 swaps the palette in `Theme.swift` to paper, ink and
+> teal, with rust (`Palette.note`) reserved for readings outside the usual range. Names and roles below are unchanged;
+> only hex values moved. Mockups: the "Blith Redesign 2" board. Next: Today rebuilt, then four tabs (Today, Trends,
+> Body, Ask). Body3D's imaging-chamber colours and LiveHeartCard's fixed red are still hard-coded and change later.
+
 Blith is an **instrument for understanding your own body**. v4 keeps v3's engineering (scores,
 factors, personal ranges, evidence behind every number) and replaces its look, which read as a
 generic dashboard: traffic-light colours, neon dials, identical gradient cards and dark-only.

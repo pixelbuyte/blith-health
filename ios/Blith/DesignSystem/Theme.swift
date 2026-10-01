@@ -4,36 +4,36 @@ import UIKit
 
 // MARK: - Color
 
-/// Blith v4 "Signal" palette (see docs/DESIGN.md). Every token adapts to light and dark.
+/// Blith "Redesign 2" palette: paper, ink and teal; rust only for outside-usual (see docs/DESIGN.md). Every token adapts to light and dark.
 /// Neutrals carry the hierarchy; blue is the brand and the data; warm colour is rare and means
 /// something: amber = worth a look / the person's own notes, coral = heart and genuine alerts.
 enum Palette {
     // Neutrals
-    static let canvas = Color(light: 0xF2F4F7, dark: 0x080B10)
-    static let surface = Color(light: 0xFFFFFF, dark: 0x0F131A)
-    static let raised = Color(light: 0xF6F7FA, dark: 0x161B24)
-    static let sunken = Color(light: 0xE8ECF2, dark: 0x1C2330)
-    static let hairline = Color(light: 0x0B1220, lightOpacity: 0.09, dark: 0xFFFFFF, darkOpacity: 0.08)
+    static let canvas = Color(light: 0xEEF0EA, dark: 0x0E1211)
+    static let surface = Color(light: 0xFBFBF8, dark: 0x161B1A)
+    static let raised = Color(light: 0xF2F3EE, dark: 0x1E2423)
+    static let sunken = Color(light: 0xDADED6, dark: 0x262D2B)
+    static let hairline = Color(light: 0x14181B, lightOpacity: 0.09, dark: 0xFFFFFF, darkOpacity: 0.08)
     static let topLight = Color(light: 0xFFFFFF, lightOpacity: 0, dark: 0xFFFFFF, darkOpacity: 0.07)
 
-    static let ink = Color(light: 0x0B1220, dark: 0xF4F6FA)
-    static let secondaryInk = Color(light: 0x48505F, dark: 0xA7AFBC)
-    static let tertiaryInk = Color(light: 0x6A7282, dark: 0x7C8594)
-    static let quiet = Color(light: 0xC9D0DA, dark: 0x3A4352)
+    static let ink = Color(light: 0x14181B, dark: 0xEEF1EC)
+    static let secondaryInk = Color(light: 0x4A524F, dark: 0xA9B2AD)
+    static let tertiaryInk = Color(light: 0x6B736F, dark: 0x7E8883)
+    static let quiet = Color(light: 0xBCC3BD, dark: 0x3A4340)
 
     // Brand blue family
-    static let signal = Color(light: 0x2563EB, dark: 0x4F8EFF)
-    static let signalBright = Color(light: 0x1D4ED8, dark: 0x7DB2FF)
-    static let ice = Color(light: 0xDCE9FF, dark: 0xB9DAFF)
-    static let deep = Color(light: 0x1E3A8A, dark: 0x1B3A8C)
-    static let cyan = Color(light: 0x0E9FB3, dark: 0x55D8E8)
+    static let signal = Color(light: 0x0F6B6F, dark: 0x5EC4C0)
+    static let signalBright = Color(light: 0x0B585B, dark: 0x8ED8D4)
+    static let ice = Color(light: 0xD6ECEA, dark: 0xBDE8E5)
+    static let deep = Color(light: 0x0A4547, dark: 0x1F4E4C)
+    static let cyan = Color(light: 0x0E8A8F, dark: 0x6ED3CF)
 
     // Physiological palette
-    static let sleep = Color(light: 0x4F46E5, dark: 0x8B8CFF)
-    static let recovery = Color(light: 0x0F9488, dark: 0x4FD1C5)
-    static let heart = Color(light: 0xE0473B, dark: 0xFF6B5E)
+    static let sleep = Color(light: 0x4A4FA8, dark: 0x9EA3F2)
+    static let recovery = Color(light: 0x0F6B6F, dark: 0x5EC4C0)
+    static let heart = Color(light: 0xB83A35, dark: 0xF07A6E)
     static let weight = Color(light: 0x5B63D3, dark: 0xA3ADFF)
-    static let note = Color(light: 0xB96F0A, dark: 0xF5B04C)
+    static let note = Color(light: 0xB8481A, dark: 0xF08A4B)
     static let review = note
 
     // Semantic aliases used across features.
@@ -59,15 +59,15 @@ enum Palette {
     static let weightSoft = weight.opacity(0.14)
 
     /// The usual-range band behind charts: translucent brand blue.
-    static let usualBand = Color(light: 0x2563EB, lightOpacity: 0.10, dark: 0x4F8EFF, darkOpacity: 0.14)
+    static let usualBand = Color(light: 0x0F6B6F, lightOpacity: 0.12, dark: 0x5EC4C0, darkOpacity: 0.14)
 
     // Sleep stages: one indigo ramp, deep darkest → REM lightest; awake is the only warm stage.
-    static let sleepAwake = Color(light: 0xD9774B, dark: 0xF2A07B)
-    static let sleepREM = Color(light: 0x8B9CFF, dark: 0xB4BEFF)
-    static let sleepCore = Color(light: 0x5B63F0, dark: 0x7D84FF)
-    static let sleepDeep = Color(light: 0x312E91, dark: 0x4B45C9)
+    static let sleepAwake = Color(light: 0xD9783F, dark: 0xF2A07B)
+    static let sleepREM = Color(light: 0xA6AEE8, dark: 0xB4BEFF)
+    static let sleepCore = Color(light: 0x6A70C9, dark: 0x7D84FF)
+    static let sleepDeep = Color(light: 0x2F3488, dark: 0x4B45C9)
 
-    static let heroGradient = LinearGradient(colors: [Color(light: 0xFFFFFF, dark: 0x122044), Color(light: 0xF4F7FD, dark: 0x0C1224)],
+    static let heroGradient = LinearGradient(colors: [Color(light: 0xFBFBF8, dark: 0x161B1A), Color(light: 0xF4F5F0, dark: 0x121716)],
                                              startPoint: .top, endPoint: .bottom)
     static let askGradient = LinearGradient(colors: [signal, cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
     static let heroGradientTop = signal.opacity(0.16)
@@ -76,9 +76,9 @@ enum Palette {
     /// ramp inverts (high = most saturated) so the most important value keeps the most contrast.
     static func band(_ band: ScoreBand?) -> Color {
         switch band {
-        case .high: Color(light: 0x1D4ED8, dark: 0x9CC8FF)
-        case .moderate: Color(light: 0x3B82F6, dark: 0x4F8EFF)
-        case .low: Color(light: 0x8FA9DD, dark: 0x3A5A9E)
+        case .high: Color(light: 0x0F6B6F, dark: 0x5EC4C0)
+        case .moderate: Color(light: 0x4C8E90, dark: 0x3E8E8B)
+        case .low: Color(light: 0xA9C3C2, dark: 0x2A4E4C)
         case nil: tertiaryInk
         }
     }
