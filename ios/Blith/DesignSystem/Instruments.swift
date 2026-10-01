@@ -266,11 +266,7 @@ struct ScoreHeatmap: View {
         }
     }
 
-    var usual: ClosedRange<Double>? {
-        let vs = days.compactMap(value)
-        guard vs.count >= 7, let lo = Stats.percentile(vs, 0.25), let hi = Stats.percentile(vs, 0.75), hi > lo else { return nil }
-        return lo...hi
-    }
+    var usual: ClosedRange<Double>? { Stats.usualRange(days.compactMap(value)) }
 
     var yMax: Double {
         switch mode {

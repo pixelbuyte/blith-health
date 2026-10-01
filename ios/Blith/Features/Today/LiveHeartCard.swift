@@ -2,12 +2,14 @@ import BlithCore
 import SwiftUI
 
 extension HeartZone {
+    /// One heart tint for every zone, stronger as intensity rises. The zone is always also said in
+    /// words, so the tint only reinforces it.
     var color: Color {
         switch self {
-        case .resting: Palette.mint
-        case .warm: Palette.cyan
-        case .elevated: Palette.amber
-        case .hard: Palette.coral
+        case .resting: Palette.heart.opacity(0.4)
+        case .warm: Palette.heart.opacity(0.55)
+        case .elevated: Palette.heart.opacity(0.7)
+        case .hard: Palette.heart.opacity(0.85)
         case .peak: Palette.heart
         }
     }
@@ -35,8 +37,8 @@ final class BeatClock {
 }
 
 /// Live heart rate: the heart pounds at exactly the measured BPM (a "lub-dub" every 60/BPM seconds)
-/// and harder as the rate climbs above the person's resting rate; the ECG trace's spacing follows
-/// the same rate. Honest about freshness: LIVE under 90 s, otherwise how long ago the reading was.
+/// and harder as the rate climbs above the person's resting rate. Honest about freshness: LIVE under
+/// 90 s, otherwise how long ago the reading was.
 struct LiveHeartCard: View {
     let live: LiveHeartRate
     var isDemo = false
@@ -45,7 +47,6 @@ struct LiveHeartCard: View {
     @State private var clock = BeatClock()
 
     private let heartArea: CGFloat = 132
-    private let ecgHeight: CGFloat = 58
 
     var body: some View {
         let summary = live.summary()
@@ -70,7 +71,7 @@ struct LiveHeartCard: View {
         HStack {
             Eyebrow(text: "Live heart rate", icon: "bl.heart", color: Palette.heart)
             Spacer()
-            if live.isSimulated { MonoPill(text: "Sample", color: Palette.amber) }
+            if live.isSimulated { MonoPill(text: "Sample", color: Palette.secondaryInk) }
             if live.status == .ready, s.latest != nil { freshnessBadge }
         }
     }
@@ -92,11 +93,11 @@ struct LiveHeartCard: View {
         }
     }
 
+    /// Rust stays reserved for readings outside the usual, so an older reading is plain ink.
     func color(for f: LiveHeartSummary.Freshness) -> Color {
         switch f {
         case .live: Palette.mint
-        case .recent: Palette.amber
-        case .stale, .none: Palette.secondaryInk
+        case .recent, .stale, .none: Palette.secondaryInk
         }
     }
 
@@ -113,7 +114,7 @@ struct LiveHeartCard: View {
         }
     }
 
-    // MARK: The pounding heart and ECG
+    // MARK: The pounding heart
 
     func pounding(_ s: LiveHeartSummary) -> some View {
         let bpm = s.bpm ?? 70
@@ -122,12 +123,11 @@ struct LiveHeartCard: View {
         let animating = !reduceMotion && scenePhase == .active && s.freshness != .stale
         return ZStack(alignment: .topLeading) {
             TimelineView(.animation(minimumInterval: 1 / 30, paused: !animating)) { tl in
-                let beat = animating ? clock.advance(to: tl.date, target: bpm) : (phase: 0.86, bpm: bpm)
+                let phase = animating ? clock.advance(to: tl.date, target: bpm).phase : 0.86
                 Canvas { ctx, size in
-                    drawHeart(&ctx, size: size, phase: beat.phase, intensity: s.intensity, freshness: s.freshness)
-                    drawECG(&ctx, size: size, phase: beat.phase, bpm: beat.bpm, color: zone.color, animating: animating)
+                    drawHeart(&ctx, size: size, phase: phase, intensity: s.intensity, freshness: s.freshness)
                 }
-                .frame(height: heartArea + ecgHeight + Space.s)
+                .frame(height: heartArea)
             }
             HStack(alignment: .center, spacing: 0) {
                 Spacer().frame(width: heartArea + Space.s)
@@ -139,7 +139,7 @@ struct LiveHeartCard: View {
                         Text("BPM").font(Typo.eyebrow).tracking(1.2).foregroundStyle(Palette.secondaryInk)
                     }
                     HStack(spacing: Space.s) {
-                        MonoPill(text: zone.label, color: zone.color, filled: zone >= .hard)
+                        zoneLabel(zone)
                         if let above = s.aboveResting {
                             Text(above >= 3 ? "\(Int(above.rounded())) above resting" : "at resting")
                                 .font(.caption).foregroundStyle(Palette.secondaryInk)
@@ -156,6 +156,18 @@ struct LiveHeartCard: View {
         .accessibilityValue(s.freshness == .live ? "Live" : "Last reading \(ageText(s.age(now: Date()) ?? 0)) ago")
     }
 
+    /// The zone in words. The words keep full contrast (solid from Hard up); the ring around them
+    /// takes the zone's heart tint, which strengthens with intensity.
+    func zoneLabel(_ zone: HeartZone) -> some View {
+        let solid = zone >= .hard
+        return Text(zone.label.uppercased())
+            .font(Typo.eyebrow).tracking(0.9)
+            .foregroundStyle(solid ? Palette.canvas : Palette.heart)
+            .padding(.horizontal, 9).padding(.vertical, 5)
+            .background(Capsule().fill(solid ? Palette.heart : Palette.heart.opacity(0.10)))
+            .overlay(Capsule().strokeBorder(zone.color, lineWidth: 1))
+    }
+
     func drawHeart(_ ctx: inout GraphicsContext, size: CGSize, phase: Double, intensity: Double, freshness: LiveHeartSummary.Freshness) {
         let thump = HeartWaveform.thump(phase: phase)
         let dim = freshness == .live ? 1.0 : (freshness == .recent ? 0.9 : 0.6)
@@ -164,26 +176,23 @@ struct LiveHeartCard: View {
         // Harder beats at higher intensity: the heart swells more.
         let swell = 0.09 + 0.15 * intensity
         let scale = 1 + swell * thump
-        // One bright red heart in every zone and appearance.
-        let red = Self.heartRed
+        // One heart colour in every zone, adapted to light and dark.
+        let tint = Palette.heart
 
         // The glow underlay only shows when nothing is being monitored; while a reading is live or
         // recent the heart stands on its own.
         if freshness == .stale {
             ctx.fill(Path(ellipseIn: CGRect(x: center.x - radius * 2.1, y: center.y - radius * 2.1, width: radius * 4.2, height: radius * 4.2)),
-                     with: .radialGradient(Gradient(colors: [red.opacity(0.18), .clear]),
+                     with: .radialGradient(Gradient(colors: [tint.opacity(0.18), .clear]),
                                            center: center, startRadius: 0, endRadius: radius * 1.7))
         }
 
         var heart = Self.heartPath(center: center, halfWidth: radius * scale)
-        ctx.fill(heart, with: .color(red.opacity(dim)))
+        ctx.fill(heart, with: .color(tint.opacity(dim)))
         // A soft highlight on the upper left lobe.
         heart = Self.heartPath(center: CGPoint(x: center.x - radius * 0.34, y: center.y - radius * 0.34), halfWidth: radius * 0.22 * scale)
         ctx.fill(heart, with: .color(.white.opacity(0.22 * dim)))
     }
-
-    /// The bright red of the heart, the same in light and dark mode.
-    static let heartRed = Color(red: 1, green: 0.16, blue: 0.2)
 
     /// The classic parametric heart, centred and scaled to `halfWidth`.
     static func heartPath(center: CGPoint, halfWidth: CGFloat) -> Path {
@@ -198,37 +207,6 @@ struct LiveHeartCard: View {
         }
         p.closeSubpath()
         return p
-    }
-
-    func drawECG(_ ctx: inout GraphicsContext, size: CGSize, phase: Double, bpm: Double, color: Color, animating: Bool) {
-        let top = heartArea + Space.s
-        let w = size.width
-        let baseline = top + ecgHeight * 0.70
-        let window = 3.2 // seconds of trace on screen; the R spikes sit 60/bpm seconds apart
-        var grid = Path()
-        grid.move(to: CGPoint(x: 0, y: baseline))
-        grid.addLine(to: CGPoint(x: w, y: baseline))
-        ctx.stroke(grid, with: .color(Palette.hairline), style: StrokeStyle(lineWidth: 1, dash: [2, 4]))
-
-        var trace = Path()
-        var x: CGFloat = 0
-        while x <= w {
-            let age = Double((w - x) / w) * window
-            let ph = phase - age * bpm / 60
-            let y = baseline - CGFloat(HeartWaveform.ecg(phase: ph)) * ecgHeight * 0.62
-            if x == 0 { trace.move(to: CGPoint(x: x, y: y)) } else { trace.addLine(to: CGPoint(x: x, y: y)) }
-            x += 2
-        }
-        let fade = Gradient(stops: [.init(color: color.opacity(0), location: 0), .init(color: color.opacity(0.9), location: 0.55), .init(color: color, location: 1)])
-        let glow = Gradient(stops: [.init(color: color.opacity(0), location: 0), .init(color: color.opacity(0.22), location: 1)])
-        ctx.stroke(trace, with: .linearGradient(glow, startPoint: .zero, endPoint: CGPoint(x: w, y: 0)),
-                   style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
-        ctx.stroke(trace, with: .linearGradient(fade, startPoint: .zero, endPoint: CGPoint(x: w, y: 0)),
-                   style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
-        // The pen: a bright dot at the leading edge of the trace.
-        let ny = baseline - CGFloat(HeartWaveform.ecg(phase: phase)) * ecgHeight * 0.62
-        ctx.fill(Path(ellipseIn: CGRect(x: w - 9, y: ny - 9, width: 18, height: 18)), with: .radialGradient(Gradient(colors: [color.opacity(0.8), .clear]), center: CGPoint(x: w - 1, y: ny), startRadius: 0, endRadius: 9))
-        ctx.fill(Path(ellipseIn: CGRect(x: w - 4, y: ny - 3, width: 6, height: 6)), with: .color(.white))
     }
 
     // MARK: Stats

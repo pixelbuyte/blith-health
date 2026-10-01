@@ -71,6 +71,7 @@ for DEV in "$SMALL" "$LARGE"; do
     shoot "$UDID" "$NAME-14-activity-day" "${DEMO[@]}" -BlithTab walk -BlithPeriod month -BlithWalkDaysAgo 40
     shoot "$UDID" "$NAME-15-achievements" "${DEMO[@]}" -BlithSheet achievements
     shoot "$UDID" "$NAME-16-newuser" -BlithDemo newUser -BlithClockHour 15.5 -BlithTab today
+    shoot "$UDID" "$NAME-16b-nowatch" -BlithDemo partialPermissions -BlithClockHour 15.5 -BlithTab today
     shoot "$UDID" "$NAME-17-onboarding" -BlithResetOnboarding YES
   fi
   # Light appearance: the same key screens, so both modes are checked every run.

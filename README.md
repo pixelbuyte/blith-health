@@ -7,11 +7,11 @@ Health history into three daily scores measured against **you**:
 - **Sleep performance**: sleep measured against your personal need.
 - **Load**: how much the day asked of your body.
 
-It also keeps a health monitor of your personal vital ranges and a 3D body map for dated notes,
+It also shows your overnight readings against your own usual ranges and a 3D body map for dated notes,
 and answers questions from your real data with native cards. Every number is one tap away from the
 factors behind it.
 
-**Today** · readiness, sleep and load dials, the 7-day strip, the health monitor, and movement compared with the same time on a usual day
+**Today** · readiness on a 0–100 line against your usual (movement leads without an Apple Watch), sleep and load, live heart rate, what's worth a look, and your overnight readings
 **Activity** · load against your usual range, steps with a story for every range, gait and your walking signature
 **Sleep** · stages, efficiency, time to fall asleep, wake-ups, consistency, 7-night sleep debt, a suggestion for tonight and a 13-week heatmap
 **Body** · a free-rotating 3D male figure from BodyParts3D / Z-Anatomy (CC BY-SA) with region notes, a timeline and a muscle layer of 242 named muscles

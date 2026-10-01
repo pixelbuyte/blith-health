@@ -2,8 +2,9 @@
 
 > **Redesign 2 in progress** (branch `redesign-2/*`). Step 1 swaps the palette in `Theme.swift` to paper, ink and
 > teal, with rust (`Palette.note`) reserved for readings outside the usual range. Names and roles below are unchanged;
-> only hex values moved. Mockups: the "Blith Redesign 2" board. Next: Today rebuilt, then four tabs (Today, Trends,
-> Body, Ask). Body3D's imaging-chamber colours and LiveHeartCard's fixed red are still hard-coded and change later.
+> only hex values moved. Mockups: the "Blith Redesign 2" board. Step 2 rebuilds Today around one hero (readiness on a
+> HorizonBar, honest calibration, or movement when there is no overnight heart data). Next: four tabs (Today, Trends,
+> Body, Ask). Body3D's imaging-chamber colours are still hard-coded and change later.
 
 Blith is an **instrument for understanding your own body**. v4 keeps v3's engineering (scores,
 factors, personal ranges, evidence behind every number) and replaces its look, which read as a
@@ -101,6 +102,8 @@ the chat composer and floating controls use Liquid Glass on iOS 26 (material fal
 
 ## Instruments
 
+- **HorizonBar** (Redesign 2) — a line from zero to the maximum, the usual as a translucent band, the
+  value as a fill and an ink marker; a thin style for supporting tiles. Replaces dials on Today.
 - **ScoreDial** — a thin precise arc with a tick bezel, the usual band as a soft arc segment, the
   value as a bright arc ending in a small lit tip. Light numerals. No neon.
 - **BaselineBand chart** — usual range as a translucent band, actual as a crisp line or bars,
@@ -134,17 +137,17 @@ Missing data and real zero always look different.
 
 ## Still honest about
 
-- Scores and the health monitor compare you with you; they are not medical assessments.
+- Scores and overnight readings compare you with you; they are not medical assessments.
 - Sleep stages come from consumer devices.
 - Any anatomy shown is for orientation and notes, not diagnosis.
 
 ## Live heart rate (Today)
 
-`LiveHeartCard` sits under the score dials. It streams heart rate from Apple Health (`HKAnchoredObjectQuery`), so it is exactly as live as the source: an Apple Watch records every few minutes at rest and every few seconds during a Workout.
+`LiveHeartCard` sits under the readiness hero and the sleep and load tiles. It streams heart rate from Apple Health (`HKAnchoredObjectQuery`), so it is exactly as live as the source: an Apple Watch records every few minutes at rest and every few seconds during a Workout.
 
-- The heart pounds at the measured BPM: a "lub-dub" every 60/BPM seconds, eased between readings so it never jumps.
-- The beat swells harder and glows brighter as intensity rises above the person's own resting rate. Zones (Resting, Warm, Elevated, Hard, Peak) are intensity labels, not health judgements.
-- The ECG trace's spacing follows the same rate; its R spike lands with the "lub".
+- The heart pounds at the measured BPM: a "lub-dub" every 60/BPM seconds, eased between readings so it never jumps. It is drawn in `Palette.heart`.
+- The beat swells harder as intensity rises above the person's own resting rate. Zones (Resting, Warm, Elevated, Hard, Peak) are intensity labels, not health judgements; they share one heart tint that strengthens with the zone, and the word always says which zone.
+- No synthetic ECG trace: the card shows only what was measured.
 - LIVE means the reading is under 90 s old. Older readings show how long ago they were, dimmer; after 30 minutes the heart holds still.
 - Reduce Motion stops the pounding but keeps the number and zone.
 - The check-in streak is now a small chip beside the avatar; it replaced the streak and walking-week tiles.
