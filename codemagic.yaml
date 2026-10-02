@@ -31,7 +31,23 @@ workflows:
       events:
         - push
         - pull_request
+      # Saves build minutes: pushes build only on main; PRs build only when they target main. Other
+      # branches get no automatic build (start ios-ci by hand if one is really needed).
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+        - pattern: main
+          include: true
+          source: false
       cancel_previous_builds: true
+    # ...and only when iOS code, the CI config or the scripts changed (docs-only changes skip CI).
+    when:
+      changeset:
+        includes:
+          - 'ios/**'
+          - 'scripts/**'
+          - 'codemagic.yaml'
     cache:
       cache_paths:
         - $HOME/Library/Caches/org.swift.swiftpm
