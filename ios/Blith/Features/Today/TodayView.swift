@@ -15,6 +15,11 @@ struct TodayView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Space.l) {
                     header
+                    if let sync = app.huaweiSync, sync.freshness != .current {
+                        CompanionSyncCard(status: sync,
+                                          onRefresh: { Task { await app.refresh(force: true) } },
+                                          onDetails: { router.sheet = .sources })
+                    }
                     if let s = app.snapshot {
                         scores(s).id("scores")
                         LiveHeartCard(live: app.liveHeart, isDemo: app.isDemo).id("live")

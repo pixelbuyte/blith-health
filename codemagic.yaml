@@ -238,6 +238,13 @@ workflows:
           TEAM=$(app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json \
             | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["attributes"]["seedId"])')
           echo "BUNDLE_RID=$RID" >> "$CM_ENV"
+          # The widget extension needs its own App ID (no capabilities: it shares data through a
+          # team-prefixed Keychain group, which every profile allows).
+          WIDGET_ID="$BUNDLE_ID.widgets"
+          if [ -z "$(app-store-connect bundle-ids list --bundle-id-identifier "$WIDGET_ID" --strict-match-identifier --json \
+                | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["id"] if d else "")')" ]; then
+            app-store-connect bundle-ids create "$WIDGET_ID" --name "$APP_NAME Widgets" --platform IOS
+          fi
           echo "DEVELOPMENT_TEAM=$TEAM" >> "$CM_ENV"
 
       - name: Write build configuration (Secrets.xcconfig)
@@ -263,6 +270,7 @@ workflows:
           set -euo pipefail
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --platform IOS --strict-match-identifier --create
+          app-store-connect fetch-signing-files "$BUNDLE_ID.widgets" --type IOS_APP_STORE --platform IOS --strict-match-identifier --create
           keychain add-certificates
           xcode-project use-profiles
 
