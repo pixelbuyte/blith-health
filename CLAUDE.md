@@ -46,6 +46,19 @@ cd ios && xcodegen generate                     # only on a Mac
 7. Token economy: read only the lines you need, avoid screenshots and extra agents unless asked, and keep PR
    check-ins to one cheap status call every 6 hours.
 
+## Builds and CI minutes
+
+Codemagic build minutes are limited. Only two workflows are ever used:
+- **`ios-ci`** (core tests, simulator build, screenshots, no signing). It runs only on pushes to `main` and on pull
+  requests into `main` that change `ios/`, `scripts/` or `codemagic.yaml`; markdown-only changes don't build.
+- **`ios-release`** (TestFlight). The founder starts it from `main`. Agents start it only when the founder asks for it in
+  that same session, and never submit to App Review.
+Never run the app on a phone or simulator yourself, and never start other workflows (`ios-release-check`, `ios-setup`)
+to "try things". To show how a design will look, build a mockup page (artifact) instead of a build. Merge to `main`
+first when a release is wanted: `ios-release` builds the branch you pick, and an unmerged branch is not released by default.
+The Codemagic API token, like every key, is never written to a file or committed; use it only for what the founder
+asked in that session (start `ios-ci` or `ios-release`), and the founder rotates it afterwards.
+
 ## Redesign 2 (in progress)
 
 Palette moved to paper, ink and teal (PR #10). Next: Today rebuilt with one hero per situation (readiness with a

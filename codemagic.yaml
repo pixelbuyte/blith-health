@@ -27,11 +27,28 @@ workflows:
       xcode: latest
       groups:
         - blith_ai
+    # Build minutes are limited: ios-ci runs only for pushes to main and for pull requests into main,
+    # and only when iOS code, the screenshot script or this file changed (markdown-only changes skip it).
     triggering:
       events:
         - push
         - pull_request
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+        - pattern: main
+          include: true
+          source: false
       cancel_previous_builds: true
+    when:
+      changeset:
+        includes:
+          - 'ios/'
+          - 'scripts/'
+          - 'codemagic.yaml'
+        excludes:
+          - '**/*.md'
     cache:
       cache_paths:
         - $HOME/Library/Caches/org.swift.swiftpm
