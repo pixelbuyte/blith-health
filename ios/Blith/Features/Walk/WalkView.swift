@@ -87,10 +87,12 @@ struct WalkView: View {
                 }
                 return "Quiet so far today."
             }
-            guard let change = pace.change else { return "Today's steps, hour by hour." }
-            if change >= 0.1 { return "Ahead of your usual \(weekday) at this hour." }
-            if change <= -0.1 { return "Behind your usual \(weekday) so far — the day isn't over." }
-            return "Right on your usual \(weekday) pace."
+            guard let status = PaceStatus(pace) else { return "Today's steps, hour by hour." }
+            switch status {
+            case .above: return "Ahead of your usual \(weekday) at this hour."
+            case .below: return "Behind your usual \(weekday) so far — the day isn't over."
+            case .usual: return "Right on your usual \(weekday) pace."
+            }
         }
         let n = p.previousSpan.dayCount
         guard let change = p.change else { return p.daysWithData < 3 ? "Still building this range." : "Your walking across this range." }
@@ -114,7 +116,7 @@ struct WalkView: View {
             if period == .day {
                 if let pace = s.pace, let usual = pace.usualByNow {
                     HStack(spacing: Space.m) {
-                        if let c = pace.change { DeltaBadge(change: c) }
+                        if let status = PaceStatus(pace) { StatusLabel(symbol: status.symbol, text: status.text, color: status.color) }
                         Text("Usually \(Fmt.int(usual)) by now · \(Fmt.int(pace.usualFullDay ?? 0)) by day's end")
                             .font(Typo.geist(15, relativeTo: .subheadline)).foregroundStyle(Palette.secondaryInk)
                     }
@@ -527,5 +529,49 @@ struct LoadSection: View {
         if l.value > r.upperBound { return "A bigger day than usual for you." }
         if l.value < r.lowerBound { return "Lighter than your usual day so far." }
         return "Within your usual range."
+    }
+}
+
+/// Today's steps against the usual by this time of day: the one rule Activity and Today share.
+enum PaceStatus {
+    case above, usual, below
+
+    /// `TodayPace` carries no usual band, so within 10% either side of the usual by now counts as usual.
+    static let threshold = 0.1
+
+    /// Nil until there's a usual by now to compare with.
+    init?(_ pace: TodayPace?) {
+        guard let change = pace?.change else { return nil }
+        if change >= Self.threshold {
+            self = .above
+        } else if change <= -Self.threshold {
+            self = .below
+        } else {
+            self = .usual
+        }
+    }
+
+    var text: String {
+        switch self {
+        case .above: "Above usual"
+        case .usual: "As usual"
+        case .below: "Below usual"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .above: "arrow.up.right"
+        case .usual: "minus"
+        case .below: "arrow.down.right"
+        }
+    }
+
+    /// Below the usual is neutral, never a warning colour.
+    var color: Color {
+        switch self {
+        case .above, .usual: Palette.signal
+        case .below: Palette.secondaryInk
+        }
     }
 }

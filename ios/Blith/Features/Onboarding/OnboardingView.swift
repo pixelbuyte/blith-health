@@ -43,7 +43,7 @@ struct OnboardingView: View {
                 .font(Typo.display)
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Blith turns your Apple Health history into daily readiness, sleep and load scores, a personal health monitor and a 3D body map — every number explained with the evidence behind it.")
+            Text("Blith turns your Apple Health history into daily readiness, sleep and load scores, overnight readings against your own usual and a 3D body map — every number explained with the evidence behind it.")
                 .font(Typo.body)
                 .foregroundStyle(Palette.secondaryInk)
             VStack(alignment: .leading, spacing: Space.m) {

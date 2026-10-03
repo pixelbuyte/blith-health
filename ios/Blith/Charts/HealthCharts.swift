@@ -78,7 +78,7 @@ struct AccumulationChart: View {
                 AxisGridLine().foregroundStyle(Palette.hairline)
                 AxisValueLabel {
                     if let h = value.as(Double.self) {
-                        Text(Fmt.hour(Int(h) % 24).replacingOccurrences(of: " ", with: "")).font(Typo.mono(10)).foregroundStyle(axisColor)
+                        Text(Fmt.hour(Int(h) % 24).replacingOccurrences(of: " ", with: "")).font(Typo.mono(11)).foregroundStyle(axisColor)
                     }
                 }
             }

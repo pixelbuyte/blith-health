@@ -155,7 +155,7 @@ struct EmptyStateView: View {
 struct SampleDataBanner: View {
     var body: some View {
         HStack(spacing: 6) {
-            Circle().fill(Palette.note).frame(width: 5, height: 5)
+            Circle().fill(Palette.tertiaryInk).frame(width: 5, height: 5)
             Text("SAMPLE DATA").font(Typo.eyebrow).tracking(0.9)
         }
         .foregroundStyle(Palette.secondaryInk)
