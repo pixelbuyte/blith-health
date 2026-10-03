@@ -245,11 +245,11 @@ struct AIConsentSheet: View {
                 VStack(alignment: .leading, spacing: Space.xl) {
                     Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(Palette.accent)
                     Text("Use AI to answer your questions?").font(.system(.title2, design: .rounded, weight: .bold))
-                    Text("To answer in conversation, Blith sends your question and a small summary of the relevant numbers to an AI model (via OpenRouter). You choose; you can change this any time in Settings.")
+                    Text("To answer in conversation, Blith sends your question and the health readings needed to answer it to an AI model, through OpenRouter. You choose; you can change this any time in Profile.")
                     VStack(alignment: .leading, spacing: Space.m) {
-                        point("checkmark.circle", "Sent: your question, and aggregates like “7-day average: 7,420 steps” or “weight trend: −1.2 kg in 30 days”.")
-                        point("xmark.circle", "Never sent: your name, raw health records, identifiers or location.")
-                        point("checkmark.shield", "Used only to answer you. Not used for advertising.")
+                        point("checkmark.circle", "Sent: your question, the last few messages of this chat, and the readings it needs: daily or weekly values (up to 120 per measure), sleep, heart and body readings, and your body notes.")
+                        point("exclamationmark.circle", "Readings can include the name of the device that recorded them, such as an Apple Watch name, which may contain your name. Location and contacts are never sent.")
+                        point("checkmark.shield", "OpenRouter and the AI provider process it to write the answer. Blith doesn't use it for advertising.")
                         point("iphone", "Prefer not to? Ask still answers common questions on this iPhone.")
                     }
                     .font(Typo.geist(15, relativeTo: .subheadline))

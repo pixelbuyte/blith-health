@@ -1,6 +1,6 @@
 # Blith privacy policy
 
-_Last updated: September 29, 2026_
+_Last updated: October 3, 2026_
 
 Blith helps you understand your own health data. This policy explains what the app reads,
 where it is kept, and what (if anything) leaves your iPhone.
@@ -13,6 +13,7 @@ With your permission, Blith reads from Apple Health only the categories you choo
   climbed, walking speed, step length, walking asymmetry, double support time, workouts.
 - **Sleep:** sleep analysis (time asleep and stages).
 - **Body:** weight, body fat percentage.
+- **Vitals:** blood oxygen, respiratory rate, wrist temperature during sleep, VO₂ max.
 - **Heart:** resting heart rate, walking heart rate average, heart rate variability, and heart rate readings (shown live on Today; only the last 24 hours are held in memory and nothing new is stored for them).
 
 Blith never writes to Apple Health. You can review or revoke access at any time in
@@ -20,8 +21,9 @@ Blith never writes to Apple Health. You can review or revoke access at any time 
 
 ## Where your data is stored
 
-Your imported history, settings and conversations are stored **on your iPhone**, in the app's
-private storage, encrypted by iOS while your device is locked. There are no Blith accounts
+Your imported history, settings and body notes are stored **on your iPhone**, in the app's
+private storage, encrypted by iOS while your device is locked. Ask conversations are kept
+in memory only and are gone when you close the app. There are no Blith accounts
 and no Blith servers holding your health data.
 
 ## The AI assistant (optional)
@@ -29,11 +31,15 @@ and no Blith servers holding your health data.
 Ask can answer questions in two ways:
 
 1. **On this iPhone** (default until you choose): answers are computed locally.
-2. **With AI**, only if you turn it on: your question and a minimal summary of relevant
-   numbers — for example "7-day average: 7,420 steps" or "weight trend −1.2 kg over 30 days" —
-   are sent via OpenRouter to an AI model to write the answer.
-   - Never sent: your name, raw health records, device identifiers, location.
-   - Used only to answer your question; not used by Blith for advertising or profiling.
+2. **With AI**, only if you turn it on: your question, the last few messages of the chat, and
+   the readings needed to answer it are sent through OpenRouter (openrouter.ai) to the AI model
+   provider, which writes the answer. Readings can include daily or weekly values (up to 120 per
+   measure), sleep, heart and body readings, your body notes, and the name of the device that
+   recorded them (an Apple Watch name may contain your name).
+   - Never sent: your location, contacts or Apple ID.
+   - Blith doesn't control how long OpenRouter or the model provider keep requests; see their
+     privacy policies.
+   - Not used by Blith for advertising or profiling.
    - You can switch this off at any time in **Profile › AI assistant**.
 
 ## What Blith does not do
