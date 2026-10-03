@@ -275,11 +275,28 @@ workflows:
 
       # Finds (or, the first time, creates) the distribution certificate that belongs to
       # CERTIFICATE_PRIVATE_KEY and an App Store profile for it, then signs with them.
+      # The key is rebuilt as clean PEM first: pasting it on a phone can turn "-----" into long
+      # dashes or break the line wrapping, which the CLI rejects.
       - name: Set up code signing
         script: |
           set -euo pipefail
           keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --platform IOS --strict-match-identifier --create
+          KEY_FILE="$(mktemp)"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          python3 - "$KEY_FILE" <<'PY'
+          import os, re, sys, textwrap
+          raw = os.environ.get("CERTIFICATE_PRIVATE_KEY", "")
+          m = re.search(r"BEGIN ((?:RSA |EC )?PRIVATE KEY)(.*?)END", raw, re.S)
+          if not m:
+              sys.exit("CERTIFICATE_PRIVATE_KEY has no BEGIN ... PRIVATE KEY / END lines")
+          body = re.sub(r"[^A-Za-z0-9+/=]", "", m.group(2))
+          kind = m.group(1)
+          with open(sys.argv[1], "w") as f:
+              f.write(f"-----BEGIN {kind}-----\n" + "\n".join(textwrap.wrap(body, 64)) + f"\n-----END {kind}-----\n")
+          print(f"Certificate key: {kind}, {len(body)} base64 characters")
+          PY
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --platform IOS --strict-match-identifier --create \
+            --certificate-key "@file:$KEY_FILE"
           keychain add-certificates
           xcode-project use-profiles
 
