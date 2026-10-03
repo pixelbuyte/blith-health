@@ -85,7 +85,7 @@ final class LiveHeartRate {
     // MARK: HealthKit
 
     private func startQuery() {
-        let since = Date().addingTimeInterval(-24 * 3600)
+        let since = Date().addingTimeInterval(-7 * 24 * 3600)
         let predicate = HKQuery.predicateForSamples(withStart: since, end: nil, options: .strictStartDate)
         let unit = unit
         let handler: @Sendable (HKAnchoredObjectQuery, [HKSample]?, [HKDeletedObject]?, HKQueryAnchor?, Error?) -> Void = { [weak self] _, added, _, _, _ in
@@ -105,7 +105,7 @@ final class LiveHeartRate {
         var merged = samples
         let known = Set(merged.map(\.date))
         merged.append(contentsOf: items.filter { !known.contains($0.date) })
-        let cutoff = Date().addingTimeInterval(-24 * 3600)
+        let cutoff = Date().addingTimeInterval(-7 * 24 * 3600)
         samples = merged.filter { $0.date >= cutoff }.sorted { $0.date < $1.date }
         status = .ready
     }

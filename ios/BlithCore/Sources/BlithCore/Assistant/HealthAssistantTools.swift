@@ -35,8 +35,13 @@ public struct ToolOutput: Sendable {
 /// from here — the model explains, it never computes.
 public struct HealthAssistantTools: Sendable {
     public let snapshot: HealthSnapshot
+    /// Individual heart rate readings (roughly the last week) from Apple Health, newest last.
+    public let heartSamples: [HeartSample]
 
-    public init(snapshot: HealthSnapshot) { self.snapshot = snapshot }
+    public init(snapshot: HealthSnapshot, heartSamples: [HeartSample] = []) {
+        self.snapshot = snapshot
+        self.heartSamples = heartSamples
+    }
 
     var ctx: AnalyticsContext { snapshot.ctx }
     var a: HealthAnalytics { HealthAnalytics(ctx) }
@@ -56,6 +61,9 @@ public struct HealthAssistantTools: Sendable {
         ToolDefinition(name: "get_today_summary",
                        description: "Today so far: steps vs the user's usual for this weekday at this time, distance, exercise, 7/30-day averages, last night's sleep, weight trend.",
                        parameters: object([:])),
+        ToolDefinition(name: "get_heart_rate",
+                       description: "Heart rate readings for one day (default today): latest reading and how long ago it was, lowest, highest (with the time of day each happened), average, the peak of each hour, and the person's resting heart rate. Use for 'what was my heart rate', 'when was it highest', 'what is it right now'. Covers roughly the last 7 days of individual readings.",
+                       parameters: object(["date": date])),
         ToolDefinition(name: "get_walking_summary",
                        description: "Walking/steps statistics for a period: daily average, previous-period average and change, total, highest/lowest day, median, active days, weekday vs weekend.",
                        parameters: object(["period": ["type": "string", "enum": ["day", "week", "month", "6m", "year", "all"]]], required: ["period"])),
@@ -137,6 +145,7 @@ public struct HealthAssistantTools: Sendable {
         let args = arguments
         switch name {
         case "get_today_summary": return todaySummary()
+        case "get_heart_rate": return heartRate(args["date"]?.stringValue.flatMap(LocalDate.init(string:)) ?? ctx.today)
         case "get_walking_summary": return walkingSummary(period: WalkPeriod(token: args["period"]?.stringValue ?? "week") ?? .week)
         case "get_metric_summary":
             guard let m = metric(args["metric"]), let span = span(args["start_date"], args["end_date"]) else { return invalid("metric, start_date and end_date are required") }
@@ -206,6 +215,40 @@ public struct HealthAssistantTools: Sendable {
     }
 
     // MARK: Tools
+
+    func heartRate(_ day: LocalDate) -> ToolOutput {
+        let cal = ctx.calendar
+        let clock = DateFormatter()
+        clock.calendar = cal
+        clock.timeZone = cal.timeZone
+        clock.dateFormat = "h:mm a"
+        let now = Date()
+        let resting = ctx.history.values(.restingHeartRate, in: ctx.trailing(30))[day] ?? ctx.history.values(.restingHeartRate, in: ctx.trailing(30)).sorted { $0.key < $1.key }.last?.value
+        var obj: [String: JSONValue] = ["date": .string(day.description), "resting_heart_rate_bpm": .num(resting)]
+        let all = heartSamples.sorted { $0.date < $1.date }
+        if let last = all.last {
+            let age = now.timeIntervalSince(last.date)
+            obj["latest_reading"] = ["bpm": .num(last.bpm), "time": .string(clock.string(from: last.date)),
+                                     "minutes_ago": .num(age / 60), "is_live": .bool(age < 90)]
+        }
+        let samples = all.filter { LocalDate($0.date, calendar: cal) == day }
+        guard let hi = samples.max(by: { $0.bpm < $1.bpm }), let lo = samples.min(by: { $0.bpm < $1.bpm }) else {
+            obj["readings"] = .number(0)
+            obj["note"] = .string(all.isEmpty
+                ? "No individual heart rate readings are available (Health access not granted for heart rate, no Apple Watch data, or sample data). Daily resting heart rate is still available."
+                : "No readings on this date. Individual readings are only kept for about the last 7 days (\(day.description) may be older).")
+            return ToolOutput(result: .object(obj))
+        }
+        var byHour: [Int: Double] = [:]
+        for x in samples { byHour[cal.component(.hour, from: x.date), default: 0] = max(byHour[cal.component(.hour, from: x.date)] ?? 0, x.bpm) }
+        obj["readings"] = .number(Double(samples.count))
+        obj["highest"] = ["bpm": .num(hi.bpm), "time": .string(clock.string(from: hi.date))]
+        obj["lowest"] = ["bpm": .num(lo.bpm), "time": .string(clock.string(from: lo.date))]
+        obj["average_bpm"] = .num(samples.map(\.bpm).reduce(0, +) / Double(samples.count))
+        obj["peak_by_hour"] = .array(byHour.keys.sorted().map { h in ["hour": .string(Fmt.hour(h)), "max_bpm": .num(byHour[h])] })
+        obj["note"] = .string("Apple Watch records every few minutes at rest and every few seconds during a workout, so the highest reading is the highest recorded, not necessarily the true peak.")
+        return ToolOutput(result: .object(obj))
+    }
 
     func todaySummary() -> ToolOutput {
         let s = snapshot

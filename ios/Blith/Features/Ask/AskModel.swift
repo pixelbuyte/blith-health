@@ -37,7 +37,7 @@ final class AskModel {
             isResponding = false
             progress = nil
         }
-        let tools = HealthAssistantTools(snapshot: snapshot)
+        let tools = HealthAssistantTools(snapshot: snapshot, heartSamples: app.liveHeart.samples)
         let useAI = AppConfig.aiConfigured && Persistence.aiConsent == true
         let onProgress: @Sendable (String) -> Void = { p in Task { @MainActor in self.progress = p } }
         do {
