@@ -171,7 +171,7 @@ struct ProfileView: View {
         } header: {
             Text("Connected data")
         } footer: {
-            Text("Apple Health doesn't tell apps which types you allowed. To review or revoke access: Settings › Health › Data Access & Devices › Blith. Huawei Health will appear here once its integration is available.")
+            Text("Apple Health doesn't tell apps which types you allowed. To review or revoke access: Settings › Health › Data Access & Devices › Blith.")
         }
     }
 
@@ -193,7 +193,7 @@ struct ProfileView: View {
         } header: {
             Text("AI assistant")
         } footer: {
-            Text("When on, your question and a minimal summary of relevant numbers (for example “7-day average: 7,420 steps”) are sent through OpenRouter to answer it. Your name, raw records and identifiers are never sent. When off, Ask answers on this iPhone.")
+            Text("When on, your question, the last few messages of the chat and the readings needed to answer (daily values, sleep, heart and body readings, your body notes, and the name of the device that recorded them) are sent through OpenRouter to an AI model. When off, Ask answers on this iPhone.")
         }
     }
 }

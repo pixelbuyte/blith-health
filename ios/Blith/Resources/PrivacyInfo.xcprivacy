@@ -8,9 +8,9 @@
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
 
-	<!-- Only when the user turns on AI answers in Ask: the question and minimized health
-	     aggregates (never raw samples, never name or identifiers) are sent to the AI
-	     provider to answer it. Not linked to identity; there are no accounts. -->
+	<!-- Only when the user turns on AI answers in Ask: the question, recent chat messages,
+	     the health readings needed to answer, body notes and recording-device names are sent
+	     through OpenRouter to the AI provider to answer it. Not linked to identity; there are no accounts. -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
 		<dict>
