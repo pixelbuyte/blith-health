@@ -286,11 +286,18 @@ workflows:
           python3 - "$KEY_FILE" <<'PY'
           import os, re, sys, textwrap
           raw = os.environ.get("CERTIFICATE_PRIVATE_KEY", "")
-          m = re.search(r"BEGIN ((?:RSA |EC )?PRIVATE KEY)(.*?)END", raw, re.S)
-          if not m:
-              sys.exit("CERTIFICATE_PRIVATE_KEY has no BEGIN ... PRIVATE KEY / END lines")
-          body = re.sub(r"[^A-Za-z0-9+/=]", "", m.group(2))
-          kind = m.group(1)
+          print(f"CERTIFICATE_PRIVATE_KEY length: {len(raw)} characters")
+          # \s also matches the non-breaking spaces a phone paste can leave between words.
+          m = re.search(r"BEGIN\s+((?:RSA\s+|EC\s+)?PRIVATE\s+KEY)(.*?)END", raw, re.S)
+          if m:
+              kind = re.sub(r"\s+", " ", m.group(1))
+              body = re.sub(r"[^A-Za-z0-9+/=]", "", m.group(2))
+          else:
+              # BEGIN/END lines were lost: accept the bare base64 body of an RSA key.
+              kind = "RSA PRIVATE KEY"
+              body = re.sub(r"[^A-Za-z0-9+/=]", "", raw)
+              if len(body) < 1000:
+                  sys.exit("CERTIFICATE_PRIVATE_KEY is empty or too short: paste the whole key again")
           with open(sys.argv[1], "w") as f:
               f.write(f"-----BEGIN {kind}-----\n" + "\n".join(textwrap.wrap(body, 64)) + f"\n-----END {kind}-----\n")
           print(f"Certificate key: {kind}, {len(body)} base64 characters")
